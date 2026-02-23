@@ -1,0 +1,37 @@
+# 白泽3.0 LLM配置
+
+default: "aliyun"
+
+providers:
+  aliyun:
+    enabled: true
+    type: "openai-compatible"
+    baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    model: "qwen-max"
+    temperature: 0.7
+    maxTokens: 4096
+    timeout: 60000
+
+  zhipu:
+    enabled: true
+    type: "openai-compatible"
+    baseURL: "https://open.bigmodel.cn/api/paas/v4"
+    model: "glm-4"
+    temperature: 0.7
+    maxTokens: 4096
+    timeout: 60000
+
+  ollama:
+    enabled: true
+    type: "ollama"
+    baseURL: "http://localhost:11434"
+    model: "qwen2:7b"
+    temperature: 0.7
+    maxTokens: 4096
+    timeout: 120000
+
+strategy:
+  taskMapping:
+    thinking: "aliyun"
+    simple: "ollama"
+    fallback: "zhipu"

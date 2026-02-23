@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 - FAQ</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 - FAQ</h1>
+</header>
+<h1 id="白泽3.0-常见问题-faq">白泽3.0 常见问题 (FAQ)</h1>
+<p><strong>版本</strong>: 3.0.2<br />
+<strong>最后更新</strong>: 2025年2月</p>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#1-安装与配置">安装与配置</a></li>
+<li><a href="#2-使用问题">使用问题</a></li>
+<li><a href="#3-技能开发">技能开发</a></li>
+<li><a href="#4-api对接">API对接</a></li>
+<li><a href="#5-性能优化">性能优化</a></li>
+<li><a href="#6-故障排查">故障排查</a></li>
+</ol>
+<hr />
+<h2 id="安装与配置">1. 安装与配置</h2>
+<h3 id="q1.1-系统要求是什么">Q1.1: 系统要求是什么？</h3>
+<p><strong>A</strong>: 白泽3.0的系统要求：</p>
+<table>
+<thead>
+<tr class="header">
+<th>组件</th>
+<th>最低要求</th>
+<th>推荐配置</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Node.js</td>
+<td>18.0+</td>
+<td>20.0+</td>
+</tr>
+<tr class="even">
+<td>内存</td>
+<td>512MB</td>
+<td>1GB+</td>
+</tr>
+<tr class="odd">
+<td>磁盘</td>
+<td>100MB</td>
+<td>1GB+</td>
+</tr>
+<tr class="even">
+<td>操作系统</td>
+<td>Windows/Linux/macOS</td>
+<td>Linux</td>
+</tr>
+</tbody>
+</table>
+<h3 id="q1.2-如何安装白泽">Q1.2: 如何安装白泽？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 克隆仓库</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/your-repo/baize-nodejs.git</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> baize-nodejs</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 安装依赖</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 配置环境变量</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.example .env</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 编辑 .env 文件</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 编译并运行</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run build</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> start</span></code></pre></div>
+<h3 id="q1.3-如何配置llm提供商">Q1.3: 如何配置LLM提供商？</h3>
+<p><strong>A</strong>: 编辑 <code>config/llm.yaml</code>：</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;aliyun&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">providers</span><span class="kw">:</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">aliyun</span><span class="kw">:</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;openai-compatible&quot;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">baseURL</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://dashscope.aliyuncs.com/compatible-mode/v1&quot;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">model</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;qwen-max&quot;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">apiKey</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;${ALIYUN_API_KEY}&quot;</span><span class="co">  # 从环境变量读取</span></span></code></pre></div>
+<p>然后在 <code>.env</code> 中设置：</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="va">ALIYUN_API_KEY</span><span class="op">=</span>your_api_key_here</span></code></pre></div>
+<h3 id="q1.4-支持哪些llm提供商">Q1.4: 支持哪些LLM提供商？</h3>
+<p><strong>A</strong>: 目前支持：</p>
+<table>
+<thead>
+<tr class="header">
+<th>提供商</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>阿里云百炼</td>
+<td>openai-compatible</td>
+<td>推荐</td>
+</tr>
+<tr class="even">
+<td>智谱AI</td>
+<td>openai-compatible</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Ollama</td>
+<td>ollama</td>
+<td>本地部署</td>
+</tr>
+<tr class="even">
+<td>OpenAI</td>
+<td>openai-compatible</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="q1.5-如何使用本地llm">Q1.5: 如何使用本地LLM？</h3>
+<p><strong>A</strong>: 1. 安装Ollama: https://ollama.ai 2. 拉取模型:
+<code>ollama pull llama2</code> 3. 配置
+<code>config/llm.yaml</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">providers</span><span class="kw">:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">ollama</span><span class="kw">:</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;ollama&quot;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">baseURL</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;http://localhost:11434&quot;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">model</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;llama2&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="使用问题">2. 使用问题</h2>
+<h3 id="q2.1-白泽能做什么">Q2.1: 白泽能做什么？</h3>
+<p><strong>A</strong>: 白泽3.0可以： - 💬 进行自然语言对话 - 📁
+操作文件系统（创建、读取、写入文件） - ⏰ 查询时间 - 🔧 执行自定义技能 -
+🧠 记住用户偏好 - 🛒 自主获取新能力</p>
+<h3 id="q2.2-如何添加新技能">Q2.2: 如何添加新技能？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 方法1: 从市场安装</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> skill install weather</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 方法2: 手动创建</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> skills/my_skill</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 创建 SKILL.md 和 main.js</span></span></code></pre></div>
+<p>详见 <a href="./DEVELOPMENT.md#41-开发新技能">开发文档</a></p>
+<h3 id="q2.3-为什么白泽回复很慢">Q2.3: 为什么白泽回复很慢？</h3>
+<p><strong>A</strong>: 可能原因： 1. <strong>LLM响应慢</strong> -
+检查网络连接和API响应时间 2. <strong>思考过程复杂</strong> -
+复杂任务需要更多思考时间 3. <strong>Token过多</strong> -
+检查上下文是否过长</p>
+<p>优化方法：</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># config/llm.yaml</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">providers</span><span class="kw">:</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">aliyun</span><span class="kw">:</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">model</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;qwen-turbo&quot;</span><span class="co">  # 使用更快的模型</span></span></code></pre></div>
+<h3 id="q2.4-如何查看对话历史">Q2.4: 如何查看对话历史？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># CLI方式</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> memory search <span class="st">&quot;关键词&quot;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># API方式</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/chat/history/conv_001</span></code></pre></div>
+<h3 id="q2.5-如何设置每日预算">Q2.5: 如何设置每日预算？</h3>
+<p><strong>A</strong>: 编辑 <code>config/llm.yaml</code>:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">costControl</span><span class="kw">:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">dailyBudget</span><span class="kw">:</span><span class="at"> </span><span class="dv">10</span><span class="co">      # 每日预算（美元）</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">perTaskBudget</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.5</span><span class="co">   # 单任务预算</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">alertThreshold</span><span class="kw">:</span><span class="at"> </span><span class="dv">80</span><span class="co">   # 告警阈值（%）</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">hardLimit</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span><span class="co">      # 超限拒绝</span></span></code></pre></div>
+<hr />
+<h2 id="技能开发">3. 技能开发</h2>
+<h3 id="q3.1-如何开发一个新技能">Q3.1: 如何开发一个新技能？</h3>
+<p><strong>A</strong>: 1. 创建技能目录</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> skills/my_skill</span></code></pre></div>
+<ol start="2" type="1">
+<li>创建 SKILL.md</li>
+</ol>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> my_skill</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 我的技能</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co">  - my_capability</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="fu"># 技能说明</span></span></code></pre></div>
+<ol start="3" type="1">
+<li><p>创建实现文件 (main.js 或 main.py)</p></li>
+<li><p>重启白泽，技能自动加载</p></li>
+</ol>
+<h3 id="q3.2-技能支持哪些语言">Q3.2: 技能支持哪些语言？</h3>
+<p><strong>A</strong>: - <strong>JavaScript</strong> (推荐) - main.js -
+<strong>Python</strong> - main.py - <strong>Shell</strong> - run.sh</p>
+<p>执行优先级: Python &gt; JavaScript &gt; Shell</p>
+<h3 id="q3.3-如何调试技能">Q3.3: 如何调试技能？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 直接测试技能</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;{&quot;params&quot;:{&quot;key&quot;:&quot;value&quot;}}&#39;</span> <span class="kw">|</span> <span class="ex">node</span> skills/my_skill/main.js</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看日志</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span> <span class="at">-f</span> logs/baize.log <span class="kw">|</span> <span class="fu">grep</span> <span class="st">&quot;my_skill&quot;</span></span></code></pre></div>
+<h3 id="q3.4-技能参数如何传递">Q3.4: 技能参数如何传递？</h3>
+<p><strong>A</strong>: 技能通过环境变量 <code>BAIZE_PARAMS</code>
+接收参数：</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span> <span class="op">||</span> <span class="st">&#39;{}&#39;</span>)<span class="op">;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { params } <span class="op">=</span> input<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Python</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os, json</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>input_data <span class="op">=</span> json.loads(os.environ.get(<span class="st">&#39;BAIZE_PARAMS&#39;</span>, <span class="st">&#39;</span><span class="sc">{}</span><span class="st">&#39;</span>))</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>params <span class="op">=</span> input_data.get(<span class="st">&#39;params&#39;</span>, {})</span></code></pre></div>
+<h3 id="q3.5-如何返回技能执行结果">Q3.5: 如何返回技能执行结果？</h3>
+<p><strong>A</strong>: 输出JSON到stdout：</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 成功</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">data</span><span class="op">:</span> { <span class="dt">result</span><span class="op">:</span> <span class="st">&#39;...&#39;</span> }<span class="op">,</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">message</span><span class="op">:</span> <span class="st">&#39;执行成功&#39;</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>}))<span class="op">;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co">// 失败</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">error</span><span class="op">:</span> <span class="st">&#39;错误信息&#39;</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>}))<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="api对接">4. API对接</h2>
+<h3 id="q4.1-如何通过api调用白泽">Q4.1: 如何通过API调用白泽？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 发送消息</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST http://localhost:3000/api/chat <span class="dt">\</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;message&quot;: &quot;你好&quot;}&#39;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 响应</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="kw">{</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;success&quot;</span><span class="ex">:</span> true,</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;data&quot;</span><span class="ex">:</span> {</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;response&quot;</span><span class="ex">:</span> <span class="st">&quot;你好！我是白泽...&quot;</span>,</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;conversationId&quot;</span><span class="ex">:</span> <span class="st">&quot;conv_001&quot;</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">}</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="er">}</span></span></code></pre></div>
+<h3 id="q4.2-如何开发gui客户端">Q4.2: 如何开发GUI客户端？</h3>
+<p><strong>A</strong>: 推荐使用WebSocket实现实时交互：</p>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> ws <span class="op">=</span> <span class="kw">new</span> <span class="bu">WebSocket</span>(<span class="st">&#39;ws://localhost:3000/ws&#39;</span>)<span class="op">;</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="at">onopen</span> <span class="op">=</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  ws<span class="op">.</span><span class="fu">send</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;chat&#39;</span><span class="op">,</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">data</span><span class="op">:</span> { <span class="dt">message</span><span class="op">:</span> <span class="st">&#39;你好&#39;</span> }</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  }))<span class="op">;</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="at">onmessage</span> <span class="op">=</span> (<span class="bu">event</span>) <span class="kw">=&gt;</span> {</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> data <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">event</span><span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 处理响应</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>详见 <a href="./API.md#3-websocket-api">API文档</a></p>
+<h3 id="q4.3-api需要认证吗">Q4.3: API需要认证吗？</h3>
+<p><strong>A</strong>: 默认不需要。生产环境可配置API Key：</p>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># config/system.yaml</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">api</span><span class="kw">:</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">auth</span><span class="kw">:</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">header</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;X-API-Key&quot;</span></span></code></pre></div>
+<h3 id="q4.4-如何获取思考过程">Q4.4: 如何获取思考过程？</h3>
+<p><strong>A</strong>: 使用WebSocket，会推送思考进度：</p>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;thinking_progress&quot;</span><span class="fu">,</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;phase&quot;</span><span class="fu">:</span> <span class="st">&quot;understanding&quot;</span><span class="fu">,</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;正在理解...&quot;</span><span class="fu">,</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;progress&quot;</span><span class="fu">:</span> <span class="dv">20</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="q4.5-有sdk吗">Q4.5: 有SDK吗？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript/TypeScript</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { BaizeClient } <span class="im">from</span> <span class="st">&#39;baize-sdk&#39;</span><span class="op">;</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> client <span class="op">=</span> <span class="kw">new</span> <span class="fu">BaizeClient</span>()<span class="op">;</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">chat</span>(<span class="st">&#39;你好&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<p>详见 <a href="./API.md#6-sdk-使用">API文档</a></p>
+<hr />
+<h2 id="性能优化">5. 性能优化</h2>
+<h3 id="q5.1-如何减少token消耗">Q5.1: 如何减少Token消耗？</h3>
+<p><strong>A</strong>: 1. 使用更便宜的模型</p>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">providers</span><span class="kw">:</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">aliyun</span><span class="kw">:</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">model</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;qwen-turbo&quot;</span><span class="co">  # 比 qwen-max 便宜</span></span></code></pre></div>
+<ol start="2" type="1">
+<li>启用语义缓存</li>
+</ol>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># config/system.yaml</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cache</span><span class="kw">:</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div>
+<ol start="3" type="1">
+<li>设置预算限制</li>
+</ol>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">costControl</span><span class="kw">:</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">dailyBudget</span><span class="kw">:</span><span class="at"> </span><span class="dv">5</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">hardLimit</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div>
+<h3 id="q5.2-如何提升响应速度">Q5.2: 如何提升响应速度？</h3>
+<p><strong>A</strong>: 1. 使用更快的模型 2. 减少上下文长度 3. 启用缓存
+4. 使用本地LLM (Ollama)</p>
+<h3 id="q5.3-内存占用过高怎么办">Q5.3: 内存占用过高怎么办？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看内存使用</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pm2</span> monit</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 设置内存限制</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="ex">pm2</span> start dist/interaction/api.js <span class="at">--max-memory-restart</span> 500M</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 清理数据库</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize.db <span class="st">&quot;DELETE FROM episodic_memory WHERE id NOT IN (SELECT id FROM episodic_memory ORDER BY timestamp DESC LIMIT 1000);&quot;</span></span></code></pre></div>
+<h3 id="q5.4-如何优化数据库">Q5.4: 如何优化数据库？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 定期清理</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize.db <span class="st">&quot;DELETE FROM episodic_memory WHERE timestamp &lt; datetime(&#39;now&#39;, &#39;-30 days&#39;);&quot;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 优化数据库</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize.db <span class="st">&quot;VACUUM;&quot;</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 重建索引</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize.db <span class="st">&quot;REINDEX;&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="故障排查">6. 故障排查</h2>
+<h3 id="q6.1-服务无法启动">Q6.1: 服务无法启动？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查端口占用</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="ex">lsof</span> <span class="at">-i</span> :3000</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查Node版本</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> <span class="at">--version</span>  <span class="co"># 需要 &gt;= 18</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查依赖</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看错误日志</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a><span class="ex">pm2</span> logs baize <span class="at">--err</span></span></code></pre></div>
+<h3 id="q6.2-llm调用失败">Q6.2: LLM调用失败？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查API Key</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="va">$ALIYUN_API_KEY</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 测试API连接</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions <span class="dt">\</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Authorization: Bearer </span><span class="va">$ALIYUN_API_KEY</span><span class="st">&quot;</span> <span class="dt">\</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;model&quot;:&quot;qwen-max&quot;,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;hi&quot;}]}&#39;</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查网络</span></span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ping</span> dashscope.aliyuncs.com</span></code></pre></div>
+<h3 id="q6.3-技能执行失败">Q6.3: 技能执行失败？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb27"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查技能文件</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-la</span> skills/my_skill/</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查文件权限</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="fu">chmod</span> +x skills/my_skill/main.js</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查Python环境</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">--version</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 手动测试技能</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;{&quot;params&quot;:{}}&#39;</span> <span class="kw">|</span> <span class="ex">python3</span> skills/my_skill/main.py</span></code></pre></div>
+<h3 id="q6.4-数据库损坏">Q6.4: 数据库损坏？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查完整性</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize.db <span class="st">&quot;PRAGMA integrity_check;&quot;</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 恢复数据库</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize.db <span class="st">&quot;.recover&quot;</span> <span class="op">&gt;</span> recover.sql</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> data/baize_new.db <span class="op">&lt;</span> recover.sql</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="fu">mv</span> data/baize_new.db data/baize.db</span></code></pre></div>
+<h3 id="q6.5-中文乱码">Q6.5: 中文乱码？</h3>
+<p><strong>A</strong>:</p>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Windows设置编码</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="ex">chcp</span> 65001</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查终端编码</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="va">$LANG</span>  <span class="co"># Linux/macOS</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 确保文件UTF-8编码</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="fu">file</span> <span class="at">-i</span> skills/my_skill/main.js</span></code></pre></div>
+<hr />
+<h2 id="更多帮助">更多帮助</h2>
+<ul>
+<li><a href="./DEVELOPMENT.md">开发文档</a></li>
+<li><a href="./API.md">API文档</a></li>
+<li><a href="./DEPLOYMENT.md">部署文档</a></li>
+<li><a href="./architecture.md">架构设计</a></li>
+</ul>
+<p>如果问题未解决，请提交 <a
+href="https://github.com/your-repo/baize-nodejs/issues">Issue</a>。</p>
+</body>
+</html>

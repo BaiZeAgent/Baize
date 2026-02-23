@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 - CONTRIBUTING</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 - CONTRIBUTING</h1>
+</header>
+<h1 id="白泽3.0-贡献指南">白泽3.0 贡献指南</h1>
+<p><strong>版本</strong>: 3.0.2<br />
+<strong>适用对象</strong>: 开发者、贡献者<br />
+<strong>最后更新</strong>: 2025年2月</p>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#1-贡献概述">贡献概述</a></li>
+<li><a href="#2-开发流程">开发流程</a></li>
+<li><a href="#3-代码规范">代码规范</a></li>
+<li><a href="#4-提交规范">提交规范</a></li>
+<li><a href="#5-测试规范">测试规范</a></li>
+<li><a href="#6-文档规范">文档规范</a></li>
+<li><a href="#7-发布流程">发布流程</a></li>
+</ol>
+<hr />
+<h2 id="贡献概述">1. 贡献概述</h2>
+<h3 id="贡献方式">1.1 贡献方式</h3>
+<table>
+<thead>
+<tr class="header">
+<th>方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>提交代码</td>
+<td>修复Bug、添加功能</td>
+</tr>
+<tr class="even">
+<td>开发技能</td>
+<td>开发新的技能模块</td>
+</tr>
+<tr class="odd">
+<td>完善文档</td>
+<td>改进文档、翻译</td>
+</tr>
+<tr class="even">
+<td>报告问题</td>
+<td>提交Issue</td>
+</tr>
+<tr class="odd">
+<td>参与讨论</td>
+<td>参与功能讨论</td>
+</tr>
+</tbody>
+</table>
+<h3 id="行为准则">1.2 行为准则</h3>
+<ul>
+<li>尊重所有贡献者</li>
+<li>保持专业和友好的交流</li>
+<li>接受建设性批评</li>
+<li>关注对社区最有利的事情</li>
+</ul>
+<hr />
+<h2 id="开发流程">2. 开发流程</h2>
+<h3 id="fork和clone">2.1 Fork和Clone</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Fork仓库到你的账号</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Clone你的Fork</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/YOUR_USERNAME/baize-nodejs.git</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> baize-nodejs</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. 添加上游仓库</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> remote add upstream https://github.com/ORIGINAL_REPO/baize-nodejs.git</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. 同步上游更新</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> fetch upstream</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> checkout main</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> merge upstream/main</span></code></pre></div>
+<h3 id="创建分支">2.2 创建分支</h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 创建功能分支</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> checkout <span class="at">-b</span> feature/my-feature</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 或创建修复分支</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> checkout <span class="at">-b</span> fix/my-fix</span></code></pre></div>
+<h3 id="分支命名规范">2.3 分支命名规范</h3>
+<table>
+<thead>
+<tr class="header">
+<th>前缀</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>feature/</td>
+<td>新功能</td>
+<td>feature/add-weather-skill</td>
+</tr>
+<tr class="even">
+<td>fix/</td>
+<td>Bug修复</td>
+<td>fix/chat-response-error</td>
+</tr>
+<tr class="odd">
+<td>docs/</td>
+<td>文档更新</td>
+<td>docs/update-api-doc</td>
+</tr>
+<tr class="even">
+<td>refactor/</td>
+<td>代码重构</td>
+<td>refactor/thinking-engine</td>
+</tr>
+<tr class="odd">
+<td>test/</td>
+<td>测试相关</td>
+<td>test/add-unit-tests</td>
+</tr>
+</tbody>
+</table>
+<h3 id="开发和测试">2.4 开发和测试</h3>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 安装依赖</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 编译项目</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run build</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 运行测试</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> test</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 运行特定测试</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> test <span class="at">--</span> <span class="at">--grep</span> <span class="st">&quot;ThinkingEngine&quot;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 代码检查</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run lint</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 格式化代码</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run format</span></code></pre></div>
+<h3 id="提交pull-request">2.5 提交Pull Request</h3>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. 确保代码通过测试</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> test</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. 提交代码</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add .</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat: 添加天气技能&quot;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. 推送到Fork</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push origin feature/my-feature</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. 在GitHub上创建Pull Request</span></span></code></pre></div>
+<hr />
+<h2 id="代码规范">3. 代码规范</h2>
+<h3 id="typescript规范">3.1 TypeScript规范</h3>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// ✅ 好的实践</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用接口定义类型</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> UserConfig {</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  age<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用const/let，避免var</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> config<span class="op">:</span> UserConfig <span class="op">=</span> { name<span class="op">:</span> <span class="st">&#39;白泽&#39;</span><span class="op">,</span> age<span class="op">:</span> <span class="dv">1</span> }<span class="op">;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用箭头函数</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> greet <span class="op">=</span> (name<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">string</span> <span class="kw">=&gt;</span> <span class="vs">`你好，</span><span class="sc">${</span>name<span class="sc">}</span><span class="vs">`</span><span class="op">;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用可选链</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> value <span class="op">=</span> obj<span class="op">?.</span><span class="at">nested</span><span class="op">?.</span><span class="at">property</span><span class="op">;</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用空值合并</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> name <span class="op">=</span> user<span class="op">.</span><span class="at">name</span> <span class="op">??</span> <span class="st">&#39;未知&#39;</span><span class="op">;</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="co">// 添加类型注释</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">process</span>(input<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> Result {</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="co">// ❌ 不好的实践</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用any类型</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">process</span>(input<span class="op">:</span> <span class="dt">any</span>)<span class="op">:</span> <span class="dt">any</span> {  <span class="co">// 避免</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a><span class="co">// 忽略类型检查</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a><span class="co">// @ts-ignore  // 避免</span></span></code></pre></div>
+<h3 id="命名规范">3.2 命名规范</h3>
+<table>
+<thead>
+<tr class="header">
+<th>类型</th>
+<th>规范</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>类名</td>
+<td>PascalCase</td>
+<td><code>ThinkingEngine</code></td>
+</tr>
+<tr class="even">
+<td>函数名</td>
+<td>camelCase</td>
+<td><code>processInput</code></td>
+</tr>
+<tr class="odd">
+<td>变量名</td>
+<td>camelCase</td>
+<td><code>userName</code></td>
+</tr>
+<tr class="even">
+<td>常量名</td>
+<td>UPPER_SNAKE_CASE</td>
+<td><code>MAX_TOKENS</code></td>
+</tr>
+<tr class="odd">
+<td>文件名</td>
+<td>kebab-case</td>
+<td><code>thinking-engine.ts</code></td>
+</tr>
+<tr class="even">
+<td>接口名</td>
+<td>PascalCase</td>
+<td><code>UserConfig</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="注释规范">3.3 注释规范</h3>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"> * 思考引擎 - 实现六阶段思考协议</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"> * </span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"> * </span><span class="an">@example</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co"> * const engine = new ThinkingEngine();</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co"> * const thought = await engine.process(&#39;你好&#39;);</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">class</span> ThinkingEngine {</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="co">/**</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co">   * 处理用户输入</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="co">   * </span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="co">   * </span><span class="an">@param</span><span class="co"> </span><span class="cv">userInput</span><span class="co"> - 用户输入字符串</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co">   * </span><span class="an">@param</span><span class="co"> </span><span class="cv">context</span><span class="co"> - 可选的上下文信息</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="co">   * </span><span class="an">@returns</span><span class="co"> 思考过程结果</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="co">   * </span><span class="an">@throws</span><span class="co"> </span><span class="cv">{BaizeError}</span><span class="co"> 当处理失败时抛出</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co">   */</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="bu">process</span>(</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    userInput<span class="op">:</span> <span class="dt">string</span><span class="op">,</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    context<span class="op">?:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  )<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>ThoughtProcess<span class="op">&gt;</span> {</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 实现...</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="文件结构">3.4 文件结构</h3>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 标准文件结构</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">// 1. 导入语句（按类型分组）</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { native } <span class="im">from</span> <span class="st">&#39;module&#39;</span><span class="op">;</span>           <span class="co">// Node.js原生模块</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { external } <span class="im">from</span> <span class="st">&#39;package&#39;</span><span class="op">;</span>        <span class="co">// 外部包</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { internal } <span class="im">from</span> <span class="st">&#39;../internal&#39;</span><span class="op">;</span>    <span class="co">// 内部模块</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { types } <span class="im">from</span> <span class="st">&#39;../../types&#39;</span><span class="op">;</span>       <span class="co">// 类型定义</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co">// 2. 常量定义</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> MAX_RETRIES <span class="op">=</span> <span class="dv">3</span><span class="op">;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> DEFAULT_CONFIG <span class="op">=</span> { <span class="op">...</span> }<span class="op">;</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="co">// 3. 接口/类型定义</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> LocalConfig { <span class="op">...</span> }</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="co">// 4. 类定义</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">class</span> MyClass { <span class="op">...</span> }</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="co">// 5. 辅助函数</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">helper</span>() { <span class="op">...</span> }</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a><span class="co">// 6. 导出</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> { MyClass<span class="op">,</span> helper }<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="提交规范">4. 提交规范</h2>
+<h3 id="commit-message格式">4.1 Commit Message格式</h3>
+<pre><code>&lt;type&gt;(&lt;scope&gt;): &lt;subject&gt;
+
+&lt;body&gt;
+
+&lt;footer&gt;</code></pre>
+<h3 id="type类型">4.2 Type类型</h3>
+<table>
+<thead>
+<tr class="header">
+<th>类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>feat</td>
+<td>新功能</td>
+<td>feat: 添加天气技能</td>
+</tr>
+<tr class="even">
+<td>fix</td>
+<td>Bug修复</td>
+<td>fix: 修复对话响应错误</td>
+</tr>
+<tr class="odd">
+<td>docs</td>
+<td>文档更新</td>
+<td>docs: 更新API文档</td>
+</tr>
+<tr class="even">
+<td>style</td>
+<td>代码格式</td>
+<td>style: 格式化代码</td>
+</tr>
+<tr class="odd">
+<td>refactor</td>
+<td>重构</td>
+<td>refactor: 重构思考引擎</td>
+</tr>
+<tr class="even">
+<td>test</td>
+<td>测试</td>
+<td>test: 添加单元测试</td>
+</tr>
+<tr class="odd">
+<td>chore</td>
+<td>构建/工具</td>
+<td>chore: 更新依赖</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scope范围">4.3 Scope范围</h3>
+<table>
+<thead>
+<tr class="header">
+<th>范围</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>thinking</td>
+<td>思考引擎</td>
+</tr>
+<tr class="even">
+<td>skill</td>
+<td>技能系统</td>
+</tr>
+<tr class="odd">
+<td>memory</td>
+<td>记忆系统</td>
+</tr>
+<tr class="even">
+<td>api</td>
+<td>API接口</td>
+</tr>
+<tr class="odd">
+<td>cli</td>
+<td>CLI交互</td>
+</tr>
+<tr class="even">
+<td>docs</td>
+<td>文档</td>
+</tr>
+</tbody>
+</table>
+<h3 id="提交示例">4.4 提交示例</h3>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 新功能</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(skill): 添加天气查询技能&quot;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Bug修复</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;fix(thinking): 修复简单对话判断逻辑&quot;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 文档更新</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;docs(api): 更新WebSocket接口文档&quot;</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 多行提交</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(core): 添加语义缓存功能</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="st">- 实现SemanticCache类</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="st">- 支持相似度阈值配置</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="st">- 添加LRU淘汰策略</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a><span class="st">Closes #123&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="测试规范">5. 测试规范</h2>
+<h3 id="测试文件结构">5.1 测试文件结构</h3>
+<pre><code>tests/
+├── unit/              # 单元测试
+│   ├── thinking.test.ts
+│   └── memory.test.ts
+├── integration/       # 集成测试
+│   └── api.test.ts
+└── e2e/              # 端到端测试
+    └── chat.test.ts</code></pre>
+<h3 id="测试编写规范">5.2 测试编写规范</h3>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { describe<span class="op">,</span> it<span class="op">,</span> expect<span class="op">,</span> beforeEach } <span class="im">from</span> <span class="st">&#39;vitest&#39;</span><span class="op">;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { ThinkingEngine } <span class="im">from</span> <span class="st">&#39;../src/core/thinking/engine&#39;</span><span class="op">;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="fu">describe</span>(<span class="st">&#39;ThinkingEngine&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> engine<span class="op">:</span> ThinkingEngine<span class="op">;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">beforeEach</span>(() <span class="kw">=&gt;</span> {</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    engine <span class="op">=</span> <span class="kw">new</span> <span class="fu">ThinkingEngine</span>()<span class="op">;</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">describe</span>(<span class="st">&#39;process&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">it</span>(<span class="st">&#39;should return thought process for user input&#39;</span><span class="op">,</span> <span class="kw">async</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> result <span class="op">=</span> <span class="cf">await</span> engine<span class="op">.</span><span class="fu">process</span>(<span class="st">&#39;你好&#39;</span>)<span class="op">;</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">expect</span>(result)<span class="op">.</span><span class="fu">toBeDefined</span>()<span class="op">;</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">expect</span>(result<span class="op">.</span><span class="at">understanding</span>)<span class="op">.</span><span class="fu">toBeDefined</span>()<span class="op">;</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">expect</span>(result<span class="op">.</span><span class="at">duration</span>)<span class="op">.</span><span class="fu">toBeGreaterThan</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">it</span>(<span class="st">&#39;should handle simple chat without tasks&#39;</span><span class="op">,</span> <span class="kw">async</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> result <span class="op">=</span> <span class="cf">await</span> engine<span class="op">.</span><span class="fu">process</span>(<span class="st">&#39;你是谁&#39;</span>)<span class="op">;</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>      <span class="fu">expect</span>(result<span class="op">.</span><span class="at">understanding</span><span class="op">.</span><span class="at">isSimpleChat</span>)<span class="op">.</span><span class="fu">toBe</span>(<span class="kw">true</span>)<span class="op">;</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>      <span class="fu">expect</span>(result<span class="op">.</span><span class="at">decomposition</span><span class="op">.</span><span class="at">tasks</span>)<span class="op">.</span><span class="fu">toHaveLength</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">it</span>(<span class="st">&#39;should throw error for invalid input&#39;</span><span class="op">,</span> <span class="kw">async</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>      <span class="cf">await</span> <span class="fu">expect</span>(engine<span class="op">.</span><span class="fu">process</span>(<span class="st">&#39;&#39;</span>))<span class="op">.</span><span class="at">rejects</span><span class="op">.</span><span class="fu">toThrow</span>()<span class="op">;</span></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h3 id="测试覆盖率">5.3 测试覆盖率</h3>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 运行覆盖率测试</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run test:coverage</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 覆盖率目标</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># - 语句覆盖率: &gt; 80%</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="co"># - 分支覆盖率: &gt; 70%</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co"># - 函数覆盖率: &gt; 80%</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co"># - 行覆盖率: &gt; 80%</span></span></code></pre></div>
+<hr />
+<h2 id="文档规范">6. 文档规范</h2>
+<h3 id="文档类型">6.1 文档类型</h3>
+<table>
+<thead>
+<tr class="header">
+<th>文档</th>
+<th>位置</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>README.md</td>
+<td>根目录</td>
+<td>项目介绍</td>
+</tr>
+<tr class="even">
+<td>architecture.md</td>
+<td>docs/</td>
+<td>架构设计</td>
+</tr>
+<tr class="odd">
+<td>DEVELOPMENT.md</td>
+<td>docs/</td>
+<td>开发文档</td>
+</tr>
+<tr class="even">
+<td>API.md</td>
+<td>docs/</td>
+<td>API文档</td>
+</tr>
+<tr class="odd">
+<td>CHANGELOG.md</td>
+<td>根目录</td>
+<td>更新日志</td>
+</tr>
+</tbody>
+</table>
+<h3 id="markdown规范">6.2 Markdown规范</h3>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># 一级标题（文档标题）</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="fu">## 二级标题（章节）</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="fu">### 三级标题（小节）</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>**粗体** 用于强调重要内容</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>*斜体* 用于术语或引用</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>无序列表项1</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>无序列表项2</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>有序列表项1</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>有序列表项2</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 表头1 <span class="pp">|</span> 表头2 <span class="pp">|</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="pp">|-------|-------|</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 内容1 <span class="pp">|</span> 内容2 <span class="pp">|</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>```代码块```</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a><span class="co">[</span><span class="ot">链接文本</span><span class="co">](url)</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a><span class="al">![图片描述](image-url)</span></span></code></pre></div>
+<h3 id="代码示例规范">6.3 代码示例规范</h3>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co">// ✅ 好的代码示例</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"> * 使用思考引擎处理用户输入</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { ThinkingEngine } <span class="im">from</span> <span class="st">&#39;baize&#39;</span><span class="op">;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co">// 创建引擎实例</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> engine <span class="op">=</span> <span class="kw">new</span> <span class="fu">ThinkingEngine</span>()<span class="op">;</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="co">// 处理用户输入</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> thought <span class="op">=</span> <span class="cf">await</span> engine<span class="op">.</span><span class="fu">process</span>(<span class="st">&#39;你好&#39;</span>)<span class="op">;</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="co">// 输出结果</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(thought<span class="op">.</span><span class="at">understanding</span><span class="op">.</span><span class="at">coreNeed</span>)<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="发布流程">7. 发布流程</h2>
+<h3 id="版本号规范">7.1 版本号规范</h3>
+<p>使用语义化版本号：<code>MAJOR.MINOR.PATCH</code></p>
+<table>
+<thead>
+<tr class="header">
+<th>类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>MAJOR</td>
+<td>不兼容的API变更</td>
+<td>3.0.0 → 4.0.0</td>
+</tr>
+<tr class="even">
+<td>MINOR</td>
+<td>向后兼容的功能新增</td>
+<td>3.0.0 → 3.1.0</td>
+</tr>
+<tr class="odd">
+<td>PATCH</td>
+<td>向后兼容的问题修复</td>
+<td>3.0.0 → 3.0.1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="发布检查清单">7.2 发布检查清单</h3>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. 更新版本号</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> version minor  <span class="co"># 或 major/patch</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. 更新CHANGELOG</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 编辑 CHANGELOG.md</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. 运行测试</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> test</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. 编译项目</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run build</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. 创建标签</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> tag v3.1.0</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 6. 推送代码和标签</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push origin main <span class="at">--tags</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 7. 发布到npm（如果需要）</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> publish</span></code></pre></div>
+<h3 id="changelog格式">7.3 CHANGELOG格式</h3>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># 更新日志</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="fu">## [3.1.0] - 2025-02-24</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="fu">### 新增</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>添加语义缓存功能</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>添加能力缺口检测</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="fu">### 修复</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>修复简单对话处理逻辑</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>修复Windows下技能执行问题</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="fu">### 变更</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>优化Token预算分配</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>改进错误提示信息</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="fu">### 移除</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>移除废弃的API接口</span></code></pre></div>
+<hr />
+<h2 id="附录">附录</h2>
+<h3 id="a.-开发工具">A. 开发工具</h3>
+<table>
+<thead>
+<tr class="header">
+<th>工具</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>VS Code</td>
+<td>代码编辑</td>
+</tr>
+<tr class="even">
+<td>ESLint</td>
+<td>代码检查</td>
+</tr>
+<tr class="odd">
+<td>Prettier</td>
+<td>代码格式化</td>
+</tr>
+<tr class="even">
+<td>Vitest</td>
+<td>单元测试</td>
+</tr>
+<tr class="odd">
+<td>TypeScript</td>
+<td>类型检查</td>
+</tr>
+</tbody>
+</table>
+<h3 id="b.-相关链接">B. 相关链接</h3>
+<ul>
+<li><a href="./architecture.md">架构设计文档</a></li>
+<li><a href="./DEVELOPMENT.md">开发文档</a></li>
+<li><a href="./API.md">API文档</a></li>
+</ul>
+<h3 id="c.-联系方式">C. 联系方式</h3>
+<ul>
+<li>GitHub Issues: 提交问题和建议</li>
+<li>GitHub Discussions: 参与讨论</li>
+</ul>
+</body>
+</html>

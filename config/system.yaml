@@ -1,0 +1,38 @@
+# 白泽3.0 系统配置
+
+system:
+  name: "白泽"
+  version: "3.0.0"
+  debug: false
+
+paths:
+  dataDir: "data"
+  logDir: "logs"
+  skillDir: "skills"
+
+logging:
+  level: "info"
+  format: "simple"
+  file: "logs/baize.log"
+  maxSize: "10MB"
+  backupCount: 5
+
+database:
+  type: "sqlite"
+  path: "data/baize.db"
+
+thinking:
+  maxIterations: 3
+  timeout: 300
+
+scheduler:
+  maxConcurrentTasks: 10
+  taskTimeout: 600
+
+executor:
+  maxWorkers: 5
+  skillTimeout: 120
+
+confirmation:
+  autoTrustThreshold: 3
+  timeout: 300

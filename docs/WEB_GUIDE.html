@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 文档</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 文档</h1>
+</header>
+<h1 id="白泽3.0-web-前端开发指南">白泽3.0 Web 前端开发指南</h1>
+<p><strong>版本</strong>: 3.0.2<br />
+<strong>适用对象</strong>: Web 前端开发者、第三方开发者<br />
+<strong>最后更新</strong>: 2025年2月</p>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#1-架构概述">架构概述</a></li>
+<li><a href="#2-api-接口">API 接口</a></li>
+<li><a href="#3-websocket-实时通信">WebSocket 实时通信</a></li>
+<li><a href="#4-前端项目示例">前端项目示例</a></li>
+<li><a href="#5-部署方案">部署方案</a></li>
+</ol>
+<hr />
+<h2 id="架构概述">1. 架构概述</h2>
+<h3 id="系统架构">1.1 系统架构</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                    Web 前端 (独立项目)                           │
+│                   baize-web (React/Vue)                          │
+│                                                                 │
+│   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐              │
+│   │ 对话界面 │ │技能管理 │ │记忆管理 │ │成本管理 │              │
+│   └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘              │
+│        │           │           │           │                    │
+│        └───────────┴───────────┴───────────┘                    │
+│                          │                                      │
+│                    HTTP API / WebSocket                          │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    白泽 API 服务                                 │
+│                  (标准化 REST API)                               │
+│                                                                 │
+│   端口: 3000 (可配置)                                            │
+│   CORS: 已启用                                                   │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    核心服务层                                    │
+│   Brain / ThinkingEngine / Skills / Memory / Executor           │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="技术栈建议">1.2 技术栈建议</h3>
+<table>
+<thead>
+<tr class="header">
+<th>层级</th>
+<th>推荐技术</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>前端框架</td>
+<td>React 18+ / Vue 3+</td>
+</tr>
+<tr class="even">
+<td>UI 组件</td>
+<td>Ant Design / Element Plus / shadcn/ui</td>
+</tr>
+<tr class="odd">
+<td>状态管理</td>
+<td>Zustand / Pinia</td>
+</tr>
+<tr class="even">
+<td>HTTP 客户端</td>
+<td>Axios / Fetch</td>
+</tr>
+<tr class="odd">
+<td>WebSocket</td>
+<td>Socket.io-client</td>
+</tr>
+<tr class="even">
+<td>构建工具</td>
+<td>Vite / Next.js</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="api-接口">2. API 接口</h2>
+<h3 id="基础信息">2.1 基础信息</h3>
+<pre><code>Base URL: http://localhost:3000
+Content-Type: application/json</code></pre>
+<h3 id="健康检查">2.2 健康检查</h3>
+<pre class="http"><code>GET /health</code></pre>
+<p>响应：</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;healthy&quot;</span><span class="fu">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;3.0.2&quot;</span><span class="fu">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;uptime&quot;</span><span class="fu">:</span> <span class="dv">3600</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="对话接口">2.3 对话接口</h3>
+<h4 id="发送消息">发送消息</h4>
+<pre class="http"><code>POST /api/chat
+Content-Type: application/json
+
+{
+  &quot;message&quot;: &quot;你好&quot;
+}</code></pre>
+<p>响应：</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;reply&quot;</span><span class="fu">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;response&quot;</span><span class="fu">:</span> <span class="st">&quot;早上好！有什么我可以帮助你的吗？&quot;</span><span class="fu">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;intent&quot;</span><span class="fu">:</span> <span class="st">&quot;greeting&quot;</span><span class="fu">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;duration&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.001</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="获取对话历史">获取对话历史</h4>
+<pre class="http"><code>GET /api/chat/history</code></pre>
+<p>响应：</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;history&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span> <span class="dt">&quot;role&quot;</span><span class="fu">:</span> <span class="st">&quot;user&quot;</span><span class="fu">,</span> <span class="dt">&quot;content&quot;</span><span class="fu">:</span> <span class="st">&quot;你好&quot;</span> <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span> <span class="dt">&quot;role&quot;</span><span class="fu">:</span> <span class="st">&quot;assistant&quot;</span><span class="fu">,</span> <span class="dt">&quot;content&quot;</span><span class="fu">:</span> <span class="st">&quot;早上好！&quot;</span> <span class="fu">}</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="清空对话历史">清空对话历史</h4>
+<pre class="http"><code>DELETE /api/chat/history</code></pre>
+<h3 id="技能接口">2.4 技能接口</h3>
+<h4 id="获取技能列表">获取技能列表</h4>
+<pre class="http"><code>GET /api/skills</code></pre>
+<p>响应：</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;skills&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;time&quot;</span><span class="fu">,</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;获取当前时间&quot;</span><span class="fu">,</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;capabilities&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;time&quot;</span><span class="ot">,</span> <span class="st">&quot;datetime&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;riskLevel&quot;</span><span class="fu">:</span> <span class="st">&quot;low&quot;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;total&quot;</span><span class="fu">:</span> <span class="dv">4</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="执行技能">执行技能</h4>
+<pre class="http"><code>POST /api/skills/execute
+Content-Type: application/json
+
+{
+  &quot;skillName&quot;: &quot;time&quot;,
+  &quot;params&quot;: {}
+}</code></pre>
+<p>响应：</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;result&quot;</span><span class="fu">:</span> <span class="st">&quot;2026-02-23 10:30:00&quot;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;现在是 2026/2/23 10:30:00&quot;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="成本接口">2.5 成本接口</h3>
+<h4 id="获取成本统计">获取成本统计</h4>
+<pre class="http"><code>GET /api/cost/stats</code></pre>
+<p>响应：</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;todayCost&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.05</span><span class="fu">,</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;todayRequests&quot;</span><span class="fu">:</span> <span class="dv">100</span><span class="fu">,</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;monthCost&quot;</span><span class="fu">:</span> <span class="fl">1.5</span><span class="fu">,</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;budgetRemaining&quot;</span><span class="fu">:</span> <span class="fl">8.5</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h2 id="websocket-实时通信">3. WebSocket 实时通信</h2>
+<h3 id="连接">3.1 连接</h3>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { io } <span class="im">from</span> <span class="st">&#39;socket.io-client&#39;</span><span class="op">;</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> socket <span class="op">=</span> <span class="fu">io</span>(<span class="st">&#39;http://localhost:3000&#39;</span>)<span class="op">;</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>socket<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;connect&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;已连接&#39;</span>)<span class="op">;</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h3 id="发送消息-1">3.2 发送消息</h3>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>socket<span class="op">.</span><span class="fu">emit</span>(<span class="st">&#39;chat&#39;</span><span class="op">,</span> { <span class="dt">message</span><span class="op">:</span> <span class="st">&#39;你好&#39;</span> })<span class="op">;</span></span></code></pre></div>
+<h3 id="接收响应">3.3 接收响应</h3>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>socket<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;chat_response&#39;</span><span class="op">,</span> (data) <span class="kw">=&gt;</span> {</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (data<span class="op">.</span><span class="at">success</span>) {</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;回复:&#39;</span><span class="op">,</span> data<span class="op">.</span><span class="at">decision</span><span class="op">.</span><span class="at">response</span>)<span class="op">;</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="前端项目示例">4. 前端项目示例</h2>
+<h3 id="react-项目结构">4.1 React 项目结构</h3>
+<pre><code>baize-web/
+├── src/
+│   ├── components/
+│   │   ├── Chat/
+│   │   │   ├── ChatWindow.tsx
+│   │   │   ├── MessageList.tsx
+│   │   │   └── InputBox.tsx
+│   │   ├── Skills/
+│   │   │   ├── SkillList.tsx
+│   │   │   └── SkillCard.tsx
+│   │   └── Layout/
+│   │       └── Sidebar.tsx
+│   ├── hooks/
+│   │   ├── useChat.ts
+│   │   └── useSocket.ts
+│   ├── services/
+│   │   └── api.ts
+│   ├── stores/
+│   │   └── chatStore.ts
+│   └── App.tsx
+├── package.json
+└── vite.config.ts</code></pre>
+<h3 id="api-服务封装">4.2 API 服务封装</h3>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">// src/services/api.ts</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> API_BASE <span class="op">=</span> <span class="st">&#39;http://localhost:3000&#39;</span><span class="op">;</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> api <span class="op">=</span> {</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 对话</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">chat</span>(message<span class="op">:</span> <span class="dt">string</span>) {</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> res <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>API_BASE<span class="sc">}</span><span class="vs">/api/chat`</span><span class="op">,</span> {</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>      method<span class="op">:</span> <span class="st">&#39;POST&#39;</span><span class="op">,</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>      headers<span class="op">:</span> { <span class="st">&#39;Content-Type&#39;</span><span class="op">:</span> <span class="st">&#39;application/json&#39;</span> }<span class="op">,</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>      body<span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({ message })<span class="op">,</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> res<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 获取历史</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">getHistory</span>() {</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> res <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>API_BASE<span class="sc">}</span><span class="vs">/api/chat/history`</span>)<span class="op">;</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> res<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 清空历史</span></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">clearHistory</span>() {</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> res <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>API_BASE<span class="sc">}</span><span class="vs">/api/chat/history`</span><span class="op">,</span> {</span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>      method<span class="op">:</span> <span class="st">&#39;DELETE&#39;</span><span class="op">,</span></span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> res<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 获取技能</span></span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">getSkills</span>() {</span>
+<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> res <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>API_BASE<span class="sc">}</span><span class="vs">/api/skills`</span>)<span class="op">;</span></span>
+<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> res<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 执行技能</span></span>
+<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">executeSkill</span>(skillName<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> params<span class="op">:</span> <span class="dt">any</span>) {</span>
+<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> res <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>API_BASE<span class="sc">}</span><span class="vs">/api/skills/execute`</span><span class="op">,</span> {</span>
+<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a>      method<span class="op">:</span> <span class="st">&#39;POST&#39;</span><span class="op">,</span></span>
+<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a>      headers<span class="op">:</span> { <span class="st">&#39;Content-Type&#39;</span><span class="op">:</span> <span class="st">&#39;application/json&#39;</span> }<span class="op">,</span></span>
+<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a>      body<span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({ skillName<span class="op">,</span> params })<span class="op">,</span></span>
+<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> res<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 获取成本</span></span>
+<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">getCostStats</span>() {</span>
+<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> res <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>API_BASE<span class="sc">}</span><span class="vs">/api/cost/stats`</span>)<span class="op">;</span></span>
+<span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> res<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb20-49"><a href="#cb20-49" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb20-50"><a href="#cb20-50" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="对话组件示例">4.3 对话组件示例</h3>
+<pre class="tsx"><code>// src/components/Chat/ChatWindow.tsx
+import { useState } from &#39;react&#39;;
+import { api } from &#39;../../services/api&#39;;
+
+export function ChatWindow() {
+  const [messages, setMessages] = useState&lt;Array&lt;{
+    role: &#39;user&#39; | &#39;assistant&#39;;
+    content: string;
+  }&gt;&gt;([]);
+  const [input, setInput] = useState(&#39;&#39;);
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async () =&gt; {
+    if (!input.trim()) return;
+
+    const userMessage = { role: &#39;user&#39; as const, content: input };
+    setMessages(prev =&gt; [...prev, userMessage]);
+    setInput(&#39;&#39;);
+    setLoading(true);
+
+    try {
+      const response = await api.chat(input);
+      
+      if (response.success) {
+        const assistantMessage = {
+          role: &#39;assistant&#39; as const,
+          content: response.data.response || &#39;任务执行完成&#39;,
+        };
+        setMessages(prev =&gt; [...prev, assistantMessage]);
+      }
+    } catch (error) {
+      console.error(&#39;发送失败:&#39;, error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    &lt;div className=&quot;chat-window&quot;&gt;
+      &lt;div className=&quot;messages&quot;&gt;
+        {messages.map((msg, i) =&gt; (
+          &lt;div key={i} className={`message ${msg.role}`}&gt;
+            {msg.content}
+          &lt;/div&gt;
+        ))}
+        {loading &amp;&amp; &lt;div className=&quot;loading&quot;&gt;思考中...&lt;/div&gt;}
+      &lt;/div&gt;
+      
+      &lt;div className=&quot;input-area&quot;&gt;
+        &lt;input
+          value={input}
+          onChange={(e) =&gt; setInput(e.target.value)}
+          onKeyPress={(e) =&gt; e.key === &#39;Enter&#39; &amp;&amp; sendMessage()}
+          placeholder=&quot;输入消息...&quot;
+        /&gt;
+        &lt;button onClick={sendMessage} disabled={loading}&gt;
+          发送
+        &lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+<hr />
+<h2 id="部署方案">5. 部署方案</h2>
+<h3 id="开发环境">5.1 开发环境</h3>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 启动白泽 API</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> baize-nodejs</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> dist/interaction/api.js</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 启动前端开发服务器</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> baize-web</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run dev</span></code></pre></div>
+<h3 id="生产环境">5.2 生产环境</h3>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># docker-compose.yml</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;3&#39;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="fu">services</span><span class="kw">:</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">baize-api</span><span class="kw">:</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">build</span><span class="kw">:</span><span class="at"> ./baize-nodejs</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">ports</span><span class="kw">:</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="st">&quot;3000:3000&quot;</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">environment</span><span class="kw">:</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> ALIYUN_API_KEY=${ALIYUN_API_KEY}</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">volumes</span><span class="kw">:</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> ./data:/app/data</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">baize-web</span><span class="kw">:</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">build</span><span class="kw">:</span><span class="at"> ./baize-web</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">ports</span><span class="kw">:</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="st">&quot;80:80&quot;</span></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends_on</span><span class="kw">:</span></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> baize-api</span></span></code></pre></div>
+<h3 id="nginx-配置">5.3 Nginx 配置</h3>
+<pre class="nginx"><code>server {
+    listen 80;
+    server_name your-domain.com;
+
+    # 前端静态文件
+    location / {
+        root /var/www/baize-web;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API 代理
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection &quot;upgrade&quot;;
+    }
+
+    # WebSocket 代理
+    location /socket.io {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection &quot;upgrade&quot;;
+    }
+}</code></pre>
+<hr />
+<h2 id="附录">附录</h2>
+<h3 id="a.-api-错误码">A. API 错误码</h3>
+<table>
+<thead>
+<tr class="header">
+<th>状态码</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>200</td>
+<td>成功</td>
+</tr>
+<tr class="even">
+<td>400</td>
+<td>请求参数错误</td>
+</tr>
+<tr class="odd">
+<td>404</td>
+<td>资源不存在</td>
+</tr>
+<tr class="even">
+<td>500</td>
+<td>服务器内部错误</td>
+</tr>
+</tbody>
+</table>
+<h3 id="b.-前端项目模板">B. 前端项目模板</h3>
+<p>推荐使用以下模板快速开始：</p>
+<ul>
+<li>React: https://github.com/your-repo/baize-web-react</li>
+<li>Vue: https://github.com/your-repo/baize-web-vue</li>
+</ul>
+<h3 id="c.-相关文档">C. 相关文档</h3>
+<ul>
+<li><a href="./API.md">API 文档</a></li>
+<li><a href="./DEVELOPMENT.md">开发文档</a></li>
+<li><a href="./DEPLOYMENT.md">部署文档</a></li>
+</ul>
+</body>
+</html>

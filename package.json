@@ -1,0 +1,51 @@
+{
+  "name": "baize",
+  "version": "3.0.0",
+  "description": "白泽3.0 - JARVIS级AI助手",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "baize": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli/index.js",
+    "dev": "ts-node src/cli/index.ts",
+    "test": "node dist/cli/index.js test-all",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "jarvis",
+    "llm"
+  ],
+  "author": "baize",
+  "license": "MIT",
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.1",
+    "express": "^5.2.1",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1",
+    "socket.io": "^4.8.3",
+    "sql.js": "^1.10.3",
+    "uuid": "^9.0.0",
+    "winston": "^3.11.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.11.16",
+    "@types/uuid": "^9.0.8",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
