@@ -5,11 +5,13 @@
  * - 并行执行任务组
  * - step_by_step模式（逐步执行，每步与思考层通讯）
  * - 执行结果收集
+ * - LLM后处理（带记忆和经验）
  */
-import { Task, TaskResult, SkillResult, SkillContext } from '../types';
+import { Task, TaskResult, SkillResult, SkillContext, LLMMessage } from '../types';
 import { getSkillRegistry } from '../skills/registry';
 import { getLogger } from '../observability/logger';
 import { getMemory } from '../memory';
+import { getLLMManager } from '../llm';
 
 const logger = getLogger('executor');
 
@@ -22,6 +24,7 @@ export interface ExecutionResult {
   errors: string[];
   duration: number;
   finalMessage: string;
+  rawResult?: string; // 原始结果，用于调试
 }
 
 /**
@@ -41,6 +44,7 @@ export class ParallelExecutor {
   private maxWorkers: number;
   private skillRegistry = getSkillRegistry();
   private memory = getMemory();
+  private llm = getLLMManager();
 
   constructor(maxWorkers: number = 5) {
     this.maxWorkers = maxWorkers;
@@ -53,7 +57,8 @@ export class ParallelExecutor {
     tasks: Task[],
     parallelGroups: string[][],
     context: SkillContext = {},
-    stepCallback?: StepCallback
+    stepCallback?: StepCallback,
+    userIntent?: string
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
     const taskResults: TaskResult[] = [];
@@ -79,7 +84,7 @@ export class ParallelExecutor {
     if (hasStepByStep && stepCallback) {
       // 逐步执行模式
       logger.info('检测到step_by_step技能，启用逐步执行模式');
-      return await this.executeStepByStep(tasks, context, stepCallback);
+      return await this.executeStepByStep(tasks, context, stepCallback, userIntent);
     }
 
     // 按并行组执行
@@ -118,25 +123,27 @@ export class ParallelExecutor {
     const duration = (Date.now() - startTime) / 1000;
     const success = errors.length === 0;
 
-    // 构建最终消息
-    const finalMessage = messages.length > 0 
+    // 构建原始结果
+    const rawResult = messages.length > 0 
       ? messages.join('\n') 
       : (success ? '任务执行成功' : '任务执行失败');
 
+    // LLM后处理
+    const finalMessage = await this.postProcess(rawResult, tasks, userIntent);
+
     logger.info(`执行完成，耗时 ${duration.toFixed(2)}s`, { success, errorCount: errors.length });
 
-    return { success, taskResults, errors, duration, finalMessage };
+    return { success, taskResults, errors, duration, finalMessage, rawResult };
   }
 
   /**
    * 逐步执行模式
-   * 
-   * 每执行完一个任务，回调思考层决定下一步
    */
   private async executeStepByStep(
     tasks: Task[],
     context: SkillContext,
-    stepCallback: StepCallback
+    stepCallback: StepCallback,
+    userIntent?: string
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
     const taskResults: TaskResult[] = [];
@@ -190,11 +197,164 @@ export class ParallelExecutor {
 
     const duration = (Date.now() - startTime) / 1000;
     const success = errors.length === 0;
-    const finalMessage = messages.length > 0 
+    const rawResult = messages.length > 0 
       ? messages.join('\n') 
       : (success ? '任务执行成功' : '任务执行失败');
 
-    return { success, taskResults, errors, duration, finalMessage };
+    // LLM后处理
+    const finalMessage = await this.postProcess(rawResult, tasks, userIntent);
+
+    return { success, taskResults, errors, duration, finalMessage, rawResult };
+  }
+
+  /**
+   * LLM后处理
+   * 
+   * 优先级：
+   * 1. 用户明确指令（"总结一下"、"显示原始"）
+   * 2. 结果复杂度判断
+   * 3. 记忆和经验（用户偏好）
+   */
+  private async postProcess(
+    rawResult: string,
+    tasks: Task[],
+    userIntent?: string
+  ): Promise<string> {
+    // 检查用户是否有明确指令
+    const userCommand = this.parseUserCommand(userIntent);
+    
+    if (userCommand === 'raw') {
+      // 用户要求显示原始结果
+      logger.debug('用户要求显示原始结果');
+      return rawResult;
+    }
+
+    // 判断结果是否需要处理
+    const needsProcessing = this.shouldProcess(rawResult, userCommand);
+    
+    if (!needsProcessing) {
+      logger.debug('结果简单，无需处理');
+      return rawResult;
+    }
+
+    // LLM处理
+    logger.info('LLM后处理开始');
+    
+    try {
+      const processedResult = await this.processWithLLM(rawResult, tasks, userIntent, userCommand);
+      return processedResult;
+    } catch (error) {
+      logger.error('LLM后处理失败，返回原始结果', { error });
+      return rawResult;
+    }
+  }
+
+  /**
+   * 解析用户指令
+   */
+  private parseUserCommand(userIntent?: string): 'summarize' | 'raw' | null {
+    if (!userIntent) return null;
+    
+    const intent = userIntent.toLowerCase();
+    
+    // 用户要求总结
+    if (intent.includes('总结') || intent.includes('概括') || intent.includes('提取重点')) {
+      return 'summarize';
+    }
+    
+    // 用户要求原始结果
+    if (intent.includes('原始') || intent.includes('详细') || intent.includes('完整')) {
+      return 'raw';
+    }
+    
+    return null;
+  }
+
+  /**
+   * 判断结果是否需要处理
+   */
+  private shouldProcess(rawResult: string, userCommand: 'summarize' | 'raw' | null): boolean {
+    // 用户强制要求总结
+    if (userCommand === 'summarize') {
+      return true;
+    }
+    
+    // 结果很短，不需要处理
+    if (rawResult.length < 100) {
+      return false;
+    }
+    
+    // 结果包含大量特殊字符（如图表），需要处理
+    const specialCharCount = (rawResult.match(/[│┌┐└┘├┤┬┴┼─▼▲◀▶]/g) || []).length;
+    if (specialCharCount > 20) {
+      return true;
+    }
+    
+    // 结果是多行的结构化数据
+    const lineCount = rawResult.split('\n').length;
+    if (lineCount > 10) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * 使用LLM处理结果
+   */
+  private async processWithLLM(
+    rawResult: string,
+    tasks: Task[],
+    userIntent?: string,
+    userCommand?: 'summarize' | 'raw' | null
+  ): Promise<string> {
+    // 获取用户偏好
+    const userPreference = this.memory.getPreference('response_style') || 'balanced';
+    
+    // 获取相关记忆
+    const recentEpisodes = this.memory.getRecentConversation(5);
+    const conversationContext = recentEpisodes
+      .map(e => e.content)
+      .join('\n');
+
+    // 获取技能执行历史
+    const skillName = tasks[0]?.skillName || 'unknown';
+    const trustRecord = this.memory.getTrustRecord(skillName);
+
+    // 构建系统提示
+    let systemPrompt = `你是白泽，一个智能助手。你的任务是将技能执行结果转换为用户友好的回复。
+
+## 用户偏好
+- 回复风格: ${userPreference} (concise=简洁, detailed=详细, balanced=平衡)
+
+## 技能执行历史
+- 技能: ${skillName}
+- 成功次数: ${trustRecord?.successCount || 0}
+- 失败次数: ${trustRecord?.failureCount || 0}
+
+## 规则
+1. 如果结果是天气信息，提取温度、天气状况、建议
+2. 如果结果是邮件，提取发件人、主题、重点内容
+3. 如果结果是搜索结果，提取关键信息
+4. 如果结果本身很简单，直接返回
+5. 根据用户偏好调整回复风格
+6. 使用自然语言，不要说"根据结果"`;
+
+    if (userCommand === 'summarize') {
+      systemPrompt += '\n\n用户明确要求总结，请提取最重要的信息。';
+    }
+
+    const messages: LLMMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `请处理以下技能执行结果：\n\n${rawResult}` },
+    ];
+
+    const response = await this.llm.chat(messages, { temperature: 0.7 });
+    
+    // 记录这次处理
+    this.memory.recordEpisode('post_process', `处理技能结果: ${skillName}`);
+    
+    return response.content;
   }
 
   /**
@@ -304,11 +464,8 @@ export class ParallelExecutor {
     context: SkillContext,
     startTime: number
   ): Promise<TaskResult> {
-    const { getLLMManager } = require('../llm');
-    const llm = getLLMManager();
-
     try {
-      const response = await llm.chat([
+      const response = await this.llm.chat([
         { role: 'system', content: '你是一个智能助手，请完成用户指定的任务。如果任务涉及文件操作、系统操作等，请说明你无法直接执行，但可以提供指导。' },
         { role: 'user', content: `请完成以下任务: ${task.description}\n参数: ${JSON.stringify(task.params)}` },
       ]);

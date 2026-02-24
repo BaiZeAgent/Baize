@@ -155,12 +155,15 @@ export async function startInteractive(): Promise<void> {
                 console.log(chalk.gray(`  任务: ${decision.thoughtProcess.decomposition.tasks.map(t => `${t.description} [${t.skillName || 'LLM'}]`).join(' → ')}`));
               }
 
-              // 执行任务
+              // 执行任务（传入用户意图用于后处理）
               if (decision.thoughtProcess.decomposition.tasks.length > 0 && decision.thoughtProcess.scheduling) {
                 const executor = getExecutor();
                 const result = await executor.execute(
                   decision.thoughtProcess.decomposition.tasks,
-                  decision.thoughtProcess.scheduling.parallelGroups
+                  decision.thoughtProcess.scheduling.parallelGroups,
+                  {}, // context
+                  undefined, // stepCallback
+                  trimmed // userIntent - 传入用户原始意图
                 );
 
                 console.log(chalk.cyan('\n白泽:'), result.finalMessage);

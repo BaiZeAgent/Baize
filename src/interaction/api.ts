@@ -68,7 +68,7 @@ export class APIServer {
         success: true,
         data: {
           status: 'healthy',
-          version: '3.0.2',
+          version: '3.0.3',
           uptime: process.uptime(),
         },
       });
@@ -114,7 +114,14 @@ export class APIServer {
             logger.info('执行任务', { taskCount: tasks.length });
             
             const executor = getExecutor();
-            const result = await executor.execute(tasks, scheduling.parallelGroups);
+            // 传入用户意图用于LLM后处理
+            const result = await executor.execute(
+              tasks, 
+              scheduling.parallelGroups,
+              {}, // context
+              undefined, // stepCallback
+              message // userIntent
+            );
             
             // 记录结果到大脑
             brain.recordTaskResult(result.finalMessage);
@@ -124,6 +131,7 @@ export class APIServer {
               data: {
                 type: 'result',
                 response: result.finalMessage,
+                rawResult: result.rawResult,
                 tasks: tasks.map(t => ({
                   description: t.description,
                   skill: t.skillName,
