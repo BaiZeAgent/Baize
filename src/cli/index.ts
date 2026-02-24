@@ -13,7 +13,7 @@ import { getLogger } from '../observability/logger';
 import { initDatabase, getDatabase } from '../memory/database';
 import { SkillLoader } from '../skills/loader';
 import { getSkillRegistry } from '../skills/registry';
-import { getMarketClient } from '../skills/market';
+import { getClawHubClient } from '../skills/market';
 import { startWebServer } from '../interaction/webServer';
 import { createAPIServer } from '../interaction/api';
 
@@ -399,15 +399,19 @@ async function handleSkillCommand(skillArgs: string[]): Promise<void> {
     case 'install':
       await installSkill(skillArgs[1]);
       break;
+    case 'uninstall':
+      await uninstallSkill(skillArgs[1]);
+      break;
     case 'info':
       await showSkillInfo(skillArgs[1]);
       break;
     default:
       console.log(chalk.cyan('\n技能命令:'));
-      console.log(chalk.gray('  baize skill list          列出已安装技能'));
-      console.log(chalk.gray('  baize skill search <name>  搜索技能市场'));
-      console.log(chalk.gray('  baize skill install <id>   安装技能'));
-      console.log(chalk.gray('  baize skill info <id>      查看技能详情'));
+      console.log(chalk.gray('  baize skill list              列出已安装技能'));
+      console.log(chalk.gray('  baize skill search <name>     搜索 ClawHub 技能市场'));
+      console.log(chalk.gray('  baize skill install <slug>    从 ClawHub 安装技能'));
+      console.log(chalk.gray('  baize skill uninstall <slug>  卸载技能'));
+      console.log(chalk.gray('  baize skill info <slug>       查看技能详情'));
       console.log();
   }
 }
@@ -435,7 +439,7 @@ async function listSkills(): Promise<void> {
 }
 
 /**
- * 搜索技能市场
+ * 搜索 ClawHub 技能市场
  */
 async function searchSkills(query: string): Promise<void> {
   if (!query) {
@@ -443,11 +447,11 @@ async function searchSkills(query: string): Promise<void> {
     return;
   }
   
-  const spinner = ora('搜索中...').start();
+  const spinner = ora('搜索 ClawHub...').start();
   
   try {
-    const market = getMarketClient();
-    const results = await market.search(query);
+    const client = getClawHubClient();
+    const results = await client.search(query);
     
     spinner.succeed(`找到 ${results.length} 个结果`);
     
@@ -456,16 +460,17 @@ async function searchSkills(query: string): Promise<void> {
       return;
     }
     
-    console.log(chalk.cyan('\n搜索结果:'));
+    console.log(chalk.cyan('\n搜索结果 (来自 ClawHub):'));
     console.log(chalk.gray('─'.repeat(50)));
     
     for (const skill of results) {
-      console.log(chalk.white(`  ${skill.id}`) + chalk.gray(` - ${skill.description}`));
-      console.log(chalk.gray(`    下载: ${skill.downloads} | 评分: ${skill.rating} | 作者: ${skill.author || '未知'}`));
+      console.log(chalk.white(`  ${skill.slug}`) + chalk.gray(` - ${skill.displayName}`));
+      console.log(chalk.gray(`    ${skill.summary.substring(0, 60)}...`));
+      console.log(chalk.gray(`    版本: ${skill.version} | 相关度: ${skill.score.toFixed(2)}`));
     }
     
     console.log(chalk.gray('─'.repeat(50)));
-    console.log(chalk.gray('使用 "baize skill install <id>" 安装技能\n'));
+    console.log(chalk.gray('使用 "baize skill install <slug>" 安装技能\n'));
     
   } catch (error) {
     spinner.fail('搜索失败');
@@ -474,23 +479,25 @@ async function searchSkills(query: string): Promise<void> {
 }
 
 /**
- * 安装技能
+ * 从 ClawHub 安装技能
  */
-async function installSkill(skillId: string): Promise<void> {
-  if (!skillId) {
-    console.log(chalk.red('请提供技能ID'));
+async function installSkill(slug: string): Promise<void> {
+  if (!slug) {
+    console.log(chalk.red('请提供技能 slug'));
+    console.log(chalk.gray('使用 "baize skill search <关键词>" 搜索技能'));
     return;
   }
   
-  const spinner = ora(`安装 ${skillId}...`).start();
+  const spinner = ora(`从 ClawHub 安装 ${slug}...`).start();
   
   try {
-    const market = getMarketClient();
-    const result = await market.install(skillId);
+    const client = getClawHubClient();
+    const result = await client.install(slug);
     
     if (result.success) {
-      spinner.succeed(`技能 ${skillId} 安装成功`);
+      spinner.succeed(`技能 ${slug} 安装成功`);
       console.log(chalk.gray(`路径: ${result.path}`));
+      console.log(chalk.gray('重启白泽后生效\n'));
     } else {
       spinner.fail(`安装失败: ${result.error}`);
     }
@@ -502,19 +509,46 @@ async function installSkill(skillId: string): Promise<void> {
 }
 
 /**
+ * 卸载技能
+ */
+async function uninstallSkill(slug: string): Promise<void> {
+  if (!slug) {
+    console.log(chalk.red('请提供技能 slug'));
+    return;
+  }
+  
+  const spinner = ora(`卸载 ${slug}...`).start();
+  
+  try {
+    const client = getClawHubClient();
+    const result = await client.uninstall(slug);
+    
+    if (result.success) {
+      spinner.succeed(`技能 ${slug} 已卸载`);
+    } else {
+      spinner.fail(`卸载失败: ${result.error}`);
+    }
+    
+  } catch (error) {
+    spinner.fail('卸载失败');
+    console.error(chalk.red(`错误: ${error}`));
+  }
+}
+
+/**
  * 显示技能详情
  */
-async function showSkillInfo(skillId: string): Promise<void> {
-  if (!skillId) {
-    console.log(chalk.red('请提供技能ID'));
+async function showSkillInfo(slug: string): Promise<void> {
+  if (!slug) {
+    console.log(chalk.red('请提供技能 slug'));
     return;
   }
   
   const spinner = ora('获取详情...').start();
   
   try {
-    const market = getMarketClient();
-    const details = await market.getSkillDetails(skillId);
+    const client = getClawHubClient();
+    const details = await client.getSkillDetails(slug);
     
     if (!details) {
       spinner.fail('未找到技能');
@@ -523,16 +557,19 @@ async function showSkillInfo(skillId: string): Promise<void> {
     
     spinner.succeed();
     
-    console.log(chalk.cyan('\n技能详情:'));
+    console.log(chalk.cyan('\n技能详情 (来自 ClawHub):'));
     console.log(chalk.gray('─'.repeat(50)));
-    console.log(chalk.white(`  名称: ${details.name}`));
-    console.log(chalk.gray(`  描述: ${details.description}`));
-    console.log(chalk.gray(`  作者: ${details.author}`));
-    console.log(chalk.gray(`  版本: ${details.versions?.join(', ')}`));
-    console.log(chalk.gray(`  下载: ${details.downloads} | 评分: ${details.rating}`));
-    console.log(chalk.gray(`  能力: ${details.capabilities?.join(', ')}`));
+    console.log(chalk.white(`  名称: ${details.skill.displayName}`));
+    console.log(chalk.gray(`  Slug: ${details.skill.slug}`));
+    console.log(chalk.gray(`  描述: ${details.skill.summary || '无'}`));
+    console.log(chalk.gray(`  作者: ${details.owner?.handle || '未知'}`));
+    if (details.latestVersion) {
+      console.log(chalk.gray(`  版本: ${details.latestVersion.version}`));
+      console.log(chalk.gray(`  更新: ${new Date(details.latestVersion.createdAt).toLocaleDateString()}`));
+    }
+    console.log(chalk.gray(`  下载: ${details.skill.stats.downloads} | 星标: ${details.skill.stats.stars}`));
     console.log(chalk.gray('─'.repeat(50)));
-    console.log(chalk.gray('使用 "baize skill install ' + skillId + '" 安装此技能\n'));
+    console.log(chalk.gray(`使用 "baize skill install ${slug}" 安装此技能\n`));
     
   } catch (error) {
     spinner.fail('获取详情失败');
@@ -554,11 +591,12 @@ function showHelp(): void {
   console.log(chalk.gray('  baize web                启动 Web 服务'));
   console.log(chalk.gray('  baize api [port]         启动 API 服务'));
   console.log(chalk.gray('  baize help               显示帮助'));
-  console.log(chalk.gray('\n技能命令:'));
-  console.log(chalk.gray('  baize skill list         列出已安装技能'));
-  console.log(chalk.gray('  baize skill search <q>   搜索技能市场'));
-  console.log(chalk.gray('  baize skill install <id> 安装技能'));
-  console.log(chalk.gray('  baize skill info <id>    查看技能详情'));
+  console.log(chalk.gray('\n技能命令 (连接 ClawHub 技能市场):'));
+  console.log(chalk.gray('  baize skill list              列出已安装技能'));
+  console.log(chalk.gray('  baize skill search <query>    搜索技能'));
+  console.log(chalk.gray('  baize skill install <slug>    安装技能'));
+  console.log(chalk.gray('  baize skill uninstall <slug>  卸载技能'));
+  console.log(chalk.gray('  baize skill info <slug>       查看技能详情'));
   console.log();
 }
 
