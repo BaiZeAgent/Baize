@@ -3,6 +3,7 @@
  * 
  * 从 ClawHub (https://clawhub.ai) 搜索和安装技能
  * 自动转换为白泽格式
+ * 如果技能没有 input_schema，使用 LLM 自动提取
  */
 
 import * as fs from 'fs';
@@ -10,6 +11,7 @@ import * as path from 'path';
 import * as https from 'https';
 import * as zlib from 'zlib';
 import { getLogger } from '../../observability/logger';
+import { getLLMManager } from '../../llm';
 
 const logger = getLogger('skill:clawhub');
 
@@ -70,6 +72,18 @@ export interface ClawHubInstallResult {
   path?: string;
   message?: string;
   error?: string;
+}
+
+/**
+ * 提取的 input_schema
+ */
+interface ExtractedInputSchema {
+  type: string;
+  properties: Record<string, {
+    type: string;
+    description: string;
+  }>;
+  required: string[];
 }
 
 /**
@@ -174,7 +188,6 @@ export class ClawHubClient {
 
   /**
    * 解析 ZIP 文件
-   * 简单的 ZIP 解析，不依赖外部库
    */
   private parseZip(buffer: Buffer): Map<string, Buffer> {
     const files = new Map<string, Buffer>();
@@ -182,52 +195,41 @@ export class ClawHubClient {
     try {
       let offset = 0;
       
-      // 查找中央目录结束标记
       const endOfCentralDir = buffer.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
       if (endOfCentralDir === -1) {
         logger.error('无效的 ZIP 文件');
         return files;
       }
 
-      // 读取中央目录偏移
       const centralDirOffset = buffer.readUInt32LE(endOfCentralDir + 16);
       const centralDirSize = buffer.readUInt32LE(endOfCentralDir + 12);
       
-      // 遍历中央目录
       offset = centralDirOffset;
       const centralDirEnd = centralDirOffset + centralDirSize;
       
       while (offset < centralDirEnd) {
-        // 检查中央目录文件头标记
         if (buffer.readUInt32LE(offset) !== 0x02014b50) break;
         
-        // 读取文件信息
         const compressionMethod = buffer.readUInt16LE(offset + 10);
         const compressedSize = buffer.readUInt32LE(offset + 20);
-        const uncompressedSize = buffer.readUInt32LE(offset + 24);
         const filenameLength = buffer.readUInt16LE(offset + 28);
         const extraFieldLength = buffer.readUInt16LE(offset + 30);
         const fileCommentLength = buffer.readUInt16LE(offset + 32);
         const localHeaderOffset = buffer.readUInt32LE(offset + 42);
         
-        // 读取文件名
         const filename = buffer.toString('utf8', offset + 46, offset + 46 + filenameLength);
         
-        // 读取本地文件头
         const localOffset = localHeaderOffset;
         const localFilenameLength = buffer.readUInt16LE(localOffset + 26);
         const localExtraLength = buffer.readUInt16LE(localOffset + 28);
         const dataOffset = localOffset + 30 + localFilenameLength + localExtraLength;
         
-        // 提取文件数据
         const compressedData = buffer.slice(dataOffset, dataOffset + compressedSize);
         
         let fileData: Buffer;
         if (compressionMethod === 0) {
-          // 无压缩
           fileData = compressedData;
         } else if (compressionMethod === 8) {
-          // Deflate 压缩
           fileData = zlib.inflateRawSync(compressedData);
         } else {
           logger.warn('不支持的压缩方法', { compressionMethod, filename });
@@ -237,7 +239,6 @@ export class ClawHubClient {
         
         files.set(filename, fileData);
         
-        // 移动到下一个条目
         offset += 46 + filenameLength + extraFieldLength + fileCommentLength;
       }
     } catch (error) {
@@ -248,9 +249,73 @@ export class ClawHubClient {
   }
 
   /**
+   * 使用 LLM 从文档中提取 input_schema
+   */
+  private async extractInputSchema(skillDoc: string, skillName: string): Promise<ExtractedInputSchema | null> {
+    try {
+      const llm = getLLMManager();
+      
+      const response = await llm.chat([
+        {
+          role: 'system',
+          content: `你是一个技能参数分析器。分析技能文档，提取输入参数的 JSON Schema。
+
+输出格式（只输出 JSON，不要其他内容）：
+{
+  "type": "object",
+  "properties": {
+    "参数名": {
+      "type": "string|number|boolean",
+      "description": "参数描述"
+    }
+  },
+  "required": ["必需参数列表"]
+}
+
+规则：
+1. 从 curl 命令中识别可变部分作为参数
+2. 例如 curl -s "wttr.in/London" 中的 London 是城市参数，参数名用 city
+3. URL 参数如 ?format=3 中的 format 也是参数
+4. 如果文档中没有明确的参数，返回空对象 {"type": "object", "properties": {}, "required": []}
+5. 只输出 JSON，不要其他内容`
+        },
+        {
+          role: 'user',
+          content: `请分析以下技能文档，提取 input_schema：
+
+技能名称: ${skillName}
+
+${skillDoc}`
+        }
+      ], { temperature: 0.1 });
+
+      // 解析 JSON
+      const content = response.content.trim();
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        logger.warn('LLM 未返回有效的 JSON', { skillName });
+        return null;
+      }
+
+      const schema = JSON.parse(jsonMatch[0]) as ExtractedInputSchema;
+      logger.info('LLM 提取 input_schema 成功', { 
+        skillName, 
+        properties: Object.keys(schema.properties || {}),
+        required: schema.required 
+      });
+      
+      return schema;
+    } catch (error) {
+      logger.error('LLM 提取 input_schema 失败', { error, skillName });
+      return null;
+    }
+  }
+
+  /**
    * 转换 ClawHub 格式为白泽格式
    */
-  private convertToBaizeFormat(content: string, slug: string): string {
+  private async convertToBaizeFormat(content: string, slug: string): Promise<string> {
     // 解析 YAML frontmatter
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
 
@@ -269,6 +334,31 @@ ${content}`;
     }
 
     const [, frontmatter, body] = frontmatterMatch;
+
+    // 检查是否已有 input_schema
+    const hasInputSchema = frontmatter.includes('input_schema:');
+    let inputSchema: ExtractedInputSchema | null = null;
+
+    if (hasInputSchema) {
+      // 提取现有的 input_schema
+      const schemaMatch = frontmatter.match(/input_schema:\s*\n([\s\S]*?)(?=\n\w+:|\n---)/);
+      if (schemaMatch) {
+        try {
+          // 尝试解析 YAML 格式的 schema
+          const YAML = require('yaml');
+          inputSchema = YAML.parse(`input_schema:\n${schemaMatch[1]}`).input_schema;
+          logger.debug('使用现有的 input_schema', { slug });
+        } catch (e) {
+          logger.warn('解析现有 input_schema 失败', { slug });
+        }
+      }
+    }
+
+    // 如果没有 input_schema，使用 LLM 提取
+    if (!inputSchema) {
+      logger.info('技能没有 input_schema，使用 LLM 提取', { slug });
+      inputSchema = await this.extractInputSchema(content, slug);
+    }
 
     // 提取 metadata.openclaw 中的环境变量
     const envMatch = frontmatter.match(/env:\s*\n(\s+-\s+.+\n)+/);
@@ -298,6 +388,26 @@ ${content}`;
       `  - ${slug}`,
       'risk_level: low',
     ];
+
+    // 添加 input_schema
+    if (inputSchema && Object.keys(inputSchema.properties || {}).length > 0) {
+      lines.push('input_schema:');
+      lines.push('  type: object');
+      lines.push('  properties:');
+      
+      for (const [propName, propDef] of Object.entries(inputSchema.properties)) {
+        lines.push(`    ${propName}:`);
+        lines.push(`      type: ${propDef.type}`);
+        lines.push(`      description: ${propDef.description}`);
+      }
+      
+      if (inputSchema.required && inputSchema.required.length > 0) {
+        lines.push('  required:');
+        for (const req of inputSchema.required) {
+          lines.push(`    - ${req}`);
+        }
+      }
+    }
 
     // 添加环境变量要求
     if (requiredEnv.length > 0) {
@@ -365,7 +475,7 @@ ${content}`;
         // 转换 SKILL.md 格式
         let fileContent = content.toString('utf-8');
         if (filename.toLowerCase() === 'skill.md') {
-          fileContent = this.convertToBaizeFormat(fileContent, slug);
+          fileContent = await this.convertToBaizeFormat(fileContent, slug);
         }
 
         fs.writeFileSync(filePath, fileContent, 'utf-8');
@@ -448,7 +558,6 @@ module.exports = { main };
     }
 
     try {
-      // 递归删除目录
       fs.rmSync(skillDir, { recursive: true, force: true });
       logger.info('技能已卸载', { slug });
 
