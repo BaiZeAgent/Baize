@@ -10,6 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
+import * as http from 'http';
 import * as zlib from 'zlib';
 import { spawn, exec } from 'child_process';
 import { getLogger } from '../../observability/logger';
@@ -168,25 +169,78 @@ export class ClawHubClient {
   }
 
   /**
-   * 下载技能 ZIP 包
+   * 下载技能 ZIP 包（支持重定向）
    */
   private async downloadZip(slug: string, version: string): Promise<Buffer | null> {
     const url = `${this.endpoint}/api/v1/download?slug=${slug}&version=${version}`;
+    logger.debug('下载 ZIP', { url });
 
     return new Promise((resolve) => {
-      https.get(url, {
-        headers: {
-          'Accept': 'application/zip, */*',
-          'User-Agent': 'Baize/3.0',
-        },
-      }, (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', chunk => chunks.push(chunk));
-        res.on('end', () => resolve(Buffer.concat(chunks)));
-      }).on('error', (error) => {
-        logger.error('下载 ZIP 失败', { error });
-        resolve(null);
+      this.downloadWithRedirect(url, 0, (result) => {
+        resolve(result);
       });
+    });
+  }
+
+  /**
+   * 支持重定向的下载
+   */
+  private downloadWithRedirect(
+    url: string, 
+    redirectCount: number, 
+    callback: (result: Buffer | null) => void
+  ): void {
+    if (redirectCount > 5) {
+      logger.error('重定向次数过多');
+      callback(null);
+      return;
+    }
+
+    const urlObj = new URL(url);
+    const protocol = urlObj.protocol === 'https:' ? https : http;
+
+    protocol.get(url, {
+      headers: {
+        'Accept': 'application/zip, */*',
+        'User-Agent': 'Baize/3.0',
+      },
+    }, (res) => {
+      // 处理重定向
+      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+        const location = res.headers.location;
+        if (location) {
+          logger.debug('跟随重定向', { location });
+          this.downloadWithRedirect(location, redirectCount + 1, callback);
+          return;
+        }
+      }
+
+      if (res.statusCode !== 200) {
+        logger.error('下载失败', { statusCode: res.statusCode });
+        callback(null);
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      res.on('data', chunk => {
+        if (Buffer.isBuffer(chunk)) {
+          chunks.push(chunk);
+        } else {
+          chunks.push(Buffer.from(chunk));
+        }
+      });
+      res.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        logger.debug('下载完成', { size: buffer.length });
+        callback(buffer);
+      });
+      res.on('error', (error) => {
+        logger.error('下载响应错误', { error });
+        callback(null);
+      });
+    }).on('error', (error) => {
+      logger.error('下载请求错误', { error });
+      callback(null);
     });
   }
 
@@ -197,18 +251,29 @@ export class ClawHubClient {
     const files = new Map<string, Buffer>();
     
     try {
-      let offset = 0;
+      logger.debug('解析 ZIP', { size: buffer.length });
       
+      // 检查 ZIP 签名
+      if (buffer.length < 4 || buffer.readUInt32LE(0) !== 0x04034b50) {
+        logger.error('无效的 ZIP 文件签名', { 
+          first4bytes: buffer.slice(0, 4).toString('hex') 
+        });
+        return files;
+      }
+      
+      // 查找中央目录结束标记
       const endOfCentralDir = buffer.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
       if (endOfCentralDir === -1) {
-        logger.error('无效的 ZIP 文件');
+        logger.error('未找到中央目录结束标记');
         return files;
       }
 
       const centralDirOffset = buffer.readUInt32LE(endOfCentralDir + 16);
       const centralDirSize = buffer.readUInt32LE(endOfCentralDir + 12);
       
-      offset = centralDirOffset;
+      logger.debug('中央目录', { offset: centralDirOffset, size: centralDirSize });
+      
+      let offset = centralDirOffset;
       const centralDirEnd = centralDirOffset + centralDirSize;
       
       while (offset < centralDirEnd) {
@@ -242,9 +307,12 @@ export class ClawHubClient {
         }
         
         files.set(filename, fileData);
+        logger.debug('提取文件', { filename, size: fileData.length });
         
         offset += 46 + filenameLength + extraFieldLength + fileCommentLength;
       }
+      
+      logger.debug('ZIP 解析完成', { fileCount: files.size });
     } catch (error) {
       logger.error('解析 ZIP 失败', { error });
     }
@@ -592,7 +660,7 @@ ${content}`;
       '---',
       `name: ${nameMatch ? nameMatch[1].trim() : slug}`,
       `version: ${versionMatch ? versionMatch[1].trim() : '1.0.0'}`,
-      `description: ${descMatch ? descMatch[1].trim() : `${slug} skill`}`,
+      `description: "${(descMatch ? descMatch[1].trim() : `${slug} skill`).replace(/"/g, '\\"')}"`,
       'capabilities:',
       `  - ${slug}`,
       'risk_level: low',
@@ -607,7 +675,7 @@ ${content}`;
       for (const [propName, propDef] of Object.entries(inputSchema.properties)) {
         lines.push(`    ${propName}:`);
         lines.push(`      type: ${propDef.type}`);
-        lines.push(`      description: "${propDef.description.replace(/"/g, '\"')}"`);
+        lines.push(`      description: "${propDef.description.replace(/"/g, '\\"')}"`);
       }
       
       if (inputSchema.required && inputSchema.required.length > 0) {
