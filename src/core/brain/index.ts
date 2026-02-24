@@ -3,8 +3,9 @@
  * 
  * 分层决策架构：
  * 第1层：规则快速匹配（0ms）
- * 第2层：上下文检查
- * 第3层：LLM意图分类
+ * 第2层：技能匹配
+ * 第3层：上下文检查
+ * 第4层：LLM意图分类
  */
 
 import { ThoughtProcess, Task, RiskLevel, LLMMessage } from '../../types';
@@ -12,6 +13,7 @@ import { ThinkingEngine } from '../thinking/engine';
 import { getConfirmationManager } from '../confirmation';
 import { getMemory } from '../../memory';
 import { getLLMManager } from '../../llm';
+import { getSkillRegistry } from '../../skills/registry';
 import { getLogger } from '../../observability/logger';
 
 const logger = getLogger('core:brain');
@@ -33,6 +35,7 @@ export interface Decision {
   reason: string;
   needConfirm?: boolean;
   confirmMessage?: string;
+  matchedSkill?: string;
 }
 
 /**
@@ -92,7 +95,30 @@ export class Brain {
       return ruleResult;
     }
 
-    // 第2层：上下文检查
+    // 第2层：技能匹配（新增）
+    const skillResult = await this.matchSkill(userInput);
+    if (skillResult) {
+      logger.debug(`技能匹配: ${skillResult.matchedSkill}`, { duration: `${Date.now() - startTime}ms` });
+      // 直接执行技能
+      const thoughtProcess = await this.thinkingEngine.process(userInput, {
+        history: this.getChatHistory(),
+        matchedSkill: skillResult.matchedSkill,
+      });
+      
+      this.context.lastIntent = 'task';
+      this.context.lastTopic = thoughtProcess.understanding.coreNeed;
+      
+      return {
+        intent: 'task',
+        action: 'execute',
+        thoughtProcess,
+        confidence: 0.95,
+        reason: `匹配技能: ${skillResult.matchedSkill}`,
+        matchedSkill: skillResult.matchedSkill,
+      };
+    }
+
+    // 第3层：上下文检查
     const contextResult = this.checkContext(userInput);
     if (contextResult) {
       logger.debug(`上下文匹配: ${contextResult.intent}`, { duration: `${Date.now() - startTime}ms` });
@@ -108,7 +134,7 @@ export class Brain {
       };
     }
 
-    // 第3层：LLM意图分类
+    // 第4层：LLM意图分类
     const llmResult = await this.classifyIntent(userInput);
     logger.debug(`LLM分类: ${llmResult.intent}`, { duration: `${Date.now() - startTime}ms` });
 
@@ -220,7 +246,7 @@ export class Brain {
       return {
         intent: 'chat',
         action: 'reply',
-        response: '我是白泽，你的智能助手。我可以帮你处理各种任务，比如文件操作、查询信息等。有什么我可以帮助你的吗？',
+        response: '我是白泽，你的智能助手。我可以帮你处理各种任务，比如文件操作、查询信息、天气查询等。有什么我可以帮助你的吗？',
         confidence: 1.0,
         reason: '规则匹配：自我介绍',
       };
@@ -241,7 +267,69 @@ export class Brain {
     return '晚上好！有什么我可以帮助你的吗？';
   }
 
-  // ==================== 第2层：上下文检查 ====================
+  // ==================== 第2层：技能匹配（新增） ====================
+
+  private async matchSkill(input: string): Promise<{ matchedSkill: string } | null> {
+    const registry = getSkillRegistry();
+    const skills = registry.getAll();
+    
+    if (skills.length === 0) {
+      return null;
+    }
+
+    // 构建技能能力描述
+    const skillDescriptions = skills.map(s => {
+      const caps = s.capabilities.join(', ');
+      return `- ${s.name}: ${s.description} (能力: ${caps})`;
+    }).join('\n');
+
+    // 使用 LLM 判断是否匹配某个技能
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个技能匹配器。根据用户输入，判断是否应该调用某个技能。
+
+## 可用技能
+${skillDescriptions}
+
+## 输出格式
+如果匹配技能，输出JSON：
+{"matched": true, "skill": "技能名称"}
+
+如果不匹配任何技能，输出：
+{"matched": false}
+
+## 匹配规则
+- 天气查询 -> weather 技能
+- 搜索 -> brave-search 技能
+- 文件操作 -> file 技能
+- 时间查询 -> time 技能
+- 文件系统操作 -> fs 技能
+
+只输出JSON，不要其他内容。`,
+      },
+      { role: 'user', content: input },
+    ];
+
+    try {
+      const response = await this.llm.chat(messages, { temperature: 0.1 });
+      const result = this.parseJSON(response.content);
+      
+      if (result.matched && result.skill) {
+        // 验证技能是否存在
+        const skill = skills.find(s => s.name === result.skill);
+        if (skill) {
+          return { matchedSkill: result.skill as string };
+        }
+      }
+    } catch (error) {
+      logger.warn('技能匹配失败', { error });
+    }
+
+    return null;
+  }
+
+  // ==================== 第3层：上下文检查 ====================
 
   private checkContext(input: string): { intent: IntentType; type: string } | null {
     const trimmed = input.trim().toLowerCase();
@@ -276,7 +364,6 @@ export class Brain {
     const chatHistory = this.getChatHistory();
 
     if (contextResult.type === 'reference') {
-      // 查找之前的对话（只查聊天记录）
       if (chatHistory.length > 0) {
         const lastUserMsg = [...chatHistory].reverse().find(h => h.role === 'user');
         const lastAssistantMsg = [...chatHistory].reverse().find(h => h.role === 'assistant');
@@ -292,14 +379,12 @@ export class Brain {
     }
 
     if (contextResult.type === 'confirm') {
-      // 确认类回复
       if (input.startsWith('不') || input.includes('算') || input.includes('取消')) {
         return '好的，已取消。';
       }
       return '好的，请告诉我接下来需要做什么？';
     }
 
-    // 使用LLM生成上下文相关回复（只用聊天历史）
     const messages: LLMMessage[] = [
       {
         role: 'system',
@@ -316,7 +401,7 @@ export class Brain {
     return response.content;
   }
 
-  // ==================== 第3层：LLM意图分类 ====================
+  // ==================== 第4层：LLM意图分类 ====================
 
   private async classifyIntent(input: string): Promise<{ intent: IntentType; confidence: number }> {
     const messages: LLMMessage[] = [
@@ -362,7 +447,6 @@ intent = "task"（任务）：
   }
 
   private async generateChatResponse(input: string): Promise<string> {
-    // 只使用聊天历史，不包括任务执行结果
     const chatHistory = this.getChatHistory();
 
     const messages: LLMMessage[] = [
@@ -413,7 +497,6 @@ intent = "task"（任务）：
 
   private addToHistory(role: 'user' | 'assistant', content: string, type: MessageType): void {
     this.context.history.push({ role, content, type });
-    // 保持历史长度
     if (this.context.history.length > this.maxHistoryLength) {
       this.context.history = this.context.history.slice(-this.maxHistoryLength);
     }
