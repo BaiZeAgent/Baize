@@ -454,7 +454,9 @@ async function main(params) {
     const param1 = params.param1 || 'default';
     
     // 执行请求或操作
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'curl/7.68.0' }
+    });
     const result = await response.text();
     
     return {
@@ -469,6 +471,31 @@ async function main(params) {
       message: error.message
     };
   }
+}
+
+// 自动执行：从环境变量或命令行参数读取
+if (require.main === module) {
+  let params = {};
+  if (process.env.BAIZE_PARAMS) {
+    try {
+      const parsed = JSON.parse(process.env.BAIZE_PARAMS);
+      params = parsed.params || parsed;
+    } catch (e) {}
+  }
+  if (process.argv.length > 2) {
+    try {
+      params = JSON.parse(process.argv[2]);
+    } catch (e) {
+      params = { query: process.argv[2] };
+    }
+  }
+  main(params).then(result => {
+    console.log(JSON.stringify(result));
+    process.exit(result.success ? 0 : 1);
+  }).catch(error => {
+    console.log(JSON.stringify({ success: false, message: error.message }));
+    process.exit(1);
+  });
 }
 
 module.exports = { main };
