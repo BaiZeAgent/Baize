@@ -7,7 +7,7 @@
  * 3. JavaScript技能
  * 4. Shell脚本
  * 5. MD格式定义文件（SKILL.md）
- * 6. 文档型技能（从SKILL.md提取命令执行）
+ * 6. 文档型技能（从SKILL.md提取命令执行，使用原生fetch）
  */
 import fs from 'fs';
 import path from 'path';
@@ -181,6 +181,7 @@ class DynamicSkill extends Skill {
 
   /**
    * 从文档中提取并执行命令（文档型技能）
+   * 使用 Node.js 原生 fetch 替代 curl
    */
   private async runFromDocs(params: Record<string, unknown>, context: SkillContext): Promise<SkillResult> {
     const mdContent = this.definition.mdContent;
@@ -195,16 +196,6 @@ class DynamicSkill extends Skill {
       }
     }
     
-    // 如果参数为空，尝试从上下文推断
-    if (!query) {
-      // 尝试从用户输入中提取城市名
-      const contextInput = params.lastUserInput as string || '';
-      const cityMatch = contextInput.match(/(?:查询|查看|搜索|找|在)\s*([^\s,，。！？]+)(?:的|今天|明天|天气)/);
-      if (cityMatch) {
-        query = cityMatch[1];
-      }
-    }
-    
     // 默认城市
     if (!query) {
       query = 'Beijing';
@@ -213,46 +204,108 @@ class DynamicSkill extends Skill {
     
     logger.debug(`文档型技能参数: query=${query}`);
 
-    // 从文档中提取 curl 命令模板
-    const curlMatch = mdContent.match(/```bash\n(curl -s "[^"]+")\n```/);
+    // 从文档中提取 URL 模板
+    const curlMatch = mdContent.match(/```bash\ncurl -s "([^"]+)"\n```/);
     
     if (!curlMatch) {
       return {
         success: false,
         data: {},
-        message: '文档型技能未找到可执行的命令',
+        message: '文档型技能未找到可执行的URL',
         error: 'SKILL.md 中没有找到 curl 命令模板',
       };
     }
 
-    let command = curlMatch[1];
+    let url = curlMatch[1];
     
     // 替换占位符
     // wttr.in/London -> wttr.in/{query}
-    command = command.replace(/wttr\.in\/[A-Za-z+]+/i, `wttr.in/${encodeURIComponent(query)}`);
-    command = command.replace(/api\.open-meteo\.com\/v1\/forecast\?[^"]+/i, 
+    url = url.replace(/wttr\.in\/[A-Za-z+]+/i, `wttr.in/${encodeURIComponent(query)}`);
+    url = url.replace(/api\.open-meteo\.com\/v1\/forecast\?[^"]+/i, 
       `api.open-meteo.com/v1/forecast?latitude=30.25&longitude=120.17&current_weather=true`);
     
     // 替换其他常见占位符
-    command = command.replace(/\$\{?query\}?/gi, encodeURIComponent(query));
-    command = command.replace(/\$\{?city\}?/gi, encodeURIComponent(query));
-    command = command.replace(/\$\{?location\}?/gi, encodeURIComponent(query));
+    url = url.replace(/\$\{?query\}?/gi, encodeURIComponent(query));
+    url = url.replace(/\$\{?city\}?/gi, encodeURIComponent(query));
+    url = url.replace(/\$\{?location\}?/gi, encodeURIComponent(query));
 
-    logger.info(`执行文档命令: ${command}`);
+    // 移除 curl 前缀（如果有的话）
+    url = url.replace(/^curl -s "?/, '').replace(/"$/, '');
 
+    // 确保 URL 有协议
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+
+    logger.info(`执行文档请求: ${url}`);
+
+    try {
+      // 使用 Node.js 原生 fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'curl/7.68.0', // wttr.in 需要这个
+          'Accept': '*/*',
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return {
+          success: false,
+          data: { status: response.status },
+          message: `HTTP 请求失败: ${response.status}`,
+          error: `HTTP ${response.status}`,
+        };
+      }
+
+      const output = await response.text();
+      logger.debug(`请求成功，响应长度: ${output.length}`);
+
+      return {
+        success: true,
+        data: { output },
+        message: output,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`请求失败: ${errorMsg}`);
+      
+      // 如果 fetch 失败，尝试使用 curl 作为备选
+      logger.info('尝试使用 curl 作为备选');
+      return this.runFromDocsFallback(url, query);
+    }
+  }
+
+  /**
+   * 使用 curl 作为备选方案
+   */
+  private runFromDocsFallback(url: string, query: string): Promise<SkillResult> {
     return new Promise((resolve) => {
-      exec(command, { timeout: 15000 }, (error, stdout, stderr) => {
+      // Windows 下需要使用 shell: true
+      const command = process.platform === 'win32' 
+        ? `curl -s "${url}"`
+        : `curl -s "${url}"`;
+
+      exec(command, { 
+        timeout: 15000,
+        shell: process.platform === 'win32' ? 'cmd.exe' : undefined
+      }, (error, stdout, stderr) => {
         if (error) {
-          logger.error(`命令执行失败: ${error.message}`, { stderr });
+          logger.error(`curl 执行失败: ${error.message}`, { stderr });
           resolve({
             success: false,
             data: { error: error.message, stderr },
-            message: `命令执行失败: ${error.message}`,
+            message: `请求失败: ${error.message}`,
             error: stderr || error.message,
           });
         } else {
           const output = stdout.trim();
-          logger.debug(`命令执行成功，输出长度: ${output.length}`);
+          logger.debug(`curl 成功，输出长度: ${output.length}`);
           resolve({
             success: true,
             data: { output },
