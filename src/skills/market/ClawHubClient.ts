@@ -170,79 +170,125 @@ export class ClawHubClient {
   }
 
   /**
-   * 下载技能 ZIP 包（支持重定向）
+   * 下载技能 ZIP 包（支持重定向、重试、速率限制）
    */
-  private async downloadZip(slug: string, version: string): Promise<Buffer | null> {
+  private async downloadZip(slug: string, version: string): Promise<{ buffer: Buffer | null; error?: string }> {
     const url = `${this.endpoint}/api/v1/download?slug=${slug}&version=${version}`;
     logger.debug('下载 ZIP', { url });
 
+    // 最多重试 3 次
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (attempt > 1) {
+        // 重试前等待
+        const delay = attempt * 2000; // 2秒、4秒、6秒
+        logger.info(`等待 ${delay/1000} 秒后重试...`, { attempt });
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      const result = await this.downloadOnce(url, 0);
+      
+      if (result.buffer) {
+        return { buffer: result.buffer };
+      }
+      
+      if (result.rateLimited) {
+        logger.warn(`速率限制，第 ${attempt} 次重试`);
+        continue;
+      }
+      
+      // 其他错误，不重试
+      return { buffer: null, error: result.error };
+    }
+
+    return { buffer: null, error: '下载失败：请求过于频繁，请稍后再试' };
+  }
+
+  /**
+   * 单次下载尝试
+   */
+  private downloadOnce(
+    url: string, 
+    redirectCount: number
+  ): Promise<{ buffer: Buffer | null; rateLimited?: boolean; error?: string }> {
     return new Promise((resolve) => {
-      this.downloadWithRedirect(url, 0, (result) => {
-        resolve(result);
+      if (redirectCount > 5) {
+        resolve({ buffer: null, error: '重定向次数过多' });
+        return;
+      }
+
+      const urlObj = new URL(url);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
+
+      protocol.get(url, {
+        headers: {
+          'Accept': 'application/zip, */*',
+          'User-Agent': 'Baize/3.0',
+        },
+      }, (res) => {
+        // 处理速率限制
+        if (res.statusCode === 429) {
+          const retryAfter = res.headers['retry-after'];
+          logger.warn('速率限制 (429)', { retryAfter });
+          resolve({ buffer: null, rateLimited: true, error: '请求过于频繁' });
+          return;
+        }
+
+        // 处理重定向
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+          const location = res.headers.location;
+          if (location) {
+            logger.debug('跟随重定向', { location });
+            this.downloadOnce(location, redirectCount + 1).then(resolve);
+            return;
+          }
+        }
+
+        if (res.statusCode !== 200) {
+          const errorMsg = this.getStatusErrorMessage(res.statusCode || 0);
+          logger.error('下载失败', { statusCode: res.statusCode });
+          resolve({ buffer: null, error: errorMsg });
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        res.on('data', chunk => {
+          if (Buffer.isBuffer(chunk)) {
+            chunks.push(chunk);
+          } else {
+            chunks.push(Buffer.from(chunk));
+          }
+        });
+        res.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          logger.debug('下载完成', { size: buffer.length });
+          resolve({ buffer });
+        });
+        res.on('error', (error) => {
+          logger.error('下载响应错误', { error });
+          resolve({ buffer: null, error: error.message });
+        });
+      }).on('error', (error) => {
+        logger.error('下载请求错误', { error });
+        resolve({ buffer: null, error: error.message });
       });
     });
   }
 
   /**
-   * 支持重定向的下载
+   * 获取状态码对应的错误消息
    */
-  private downloadWithRedirect(
-    url: string, 
-    redirectCount: number, 
-    callback: (result: Buffer | null) => void
-  ): void {
-    if (redirectCount > 5) {
-      logger.error('重定向次数过多');
-      callback(null);
-      return;
+  private getStatusErrorMessage(statusCode: number): string {
+    switch (statusCode) {
+      case 400: return '请求参数错误';
+      case 401: return '未授权';
+      case 403: return '禁止访问';
+      case 404: return '技能不存在';
+      case 429: return '请求过于频繁，请稍后再试';
+      case 500: return '服务器内部错误';
+      case 502: return '网关错误';
+      case 503: return '服务暂时不可用';
+      default: return `下载失败 (HTTP ${statusCode})`;
     }
-
-    const urlObj = new URL(url);
-    const protocol = urlObj.protocol === 'https:' ? https : http;
-
-    protocol.get(url, {
-      headers: {
-        'Accept': 'application/zip, */*',
-        'User-Agent': 'Baize/3.0',
-      },
-    }, (res) => {
-      // 处理重定向
-      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
-        const location = res.headers.location;
-        if (location) {
-          logger.debug('跟随重定向', { location });
-          this.downloadWithRedirect(location, redirectCount + 1, callback);
-          return;
-        }
-      }
-
-      if (res.statusCode !== 200) {
-        logger.error('下载失败', { statusCode: res.statusCode });
-        callback(null);
-        return;
-      }
-
-      const chunks: Buffer[] = [];
-      res.on('data', chunk => {
-        if (Buffer.isBuffer(chunk)) {
-          chunks.push(chunk);
-        } else {
-          chunks.push(Buffer.from(chunk));
-        }
-      });
-      res.on('end', () => {
-        const buffer = Buffer.concat(chunks);
-        logger.debug('下载完成', { size: buffer.length });
-        callback(buffer);
-      });
-      res.on('error', (error) => {
-        logger.error('下载响应错误', { error });
-        callback(null);
-      });
-    }).on('error', (error) => {
-      logger.error('下载请求错误', { error });
-      callback(null);
-    });
   }
 
   /**
@@ -874,13 +920,13 @@ ${content}`;
       }
 
       // 下载 ZIP
-      const zipBuffer = await this.downloadZip(slug, targetVersion);
-      if (!zipBuffer) {
-        return { success: false, error: '下载失败' };
+      const downloadResult = await this.downloadZip(slug, targetVersion);
+      if (!downloadResult.buffer) {
+        return { success: false, error: downloadResult.error || '下载失败' };
       }
 
       // 解析 ZIP
-      const files = this.parseZip(zipBuffer);
+      const files = this.parseZip(downloadResult.buffer);
       if (files.size === 0) {
         return { success: false, error: 'ZIP 解析失败' };
       }
