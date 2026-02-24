@@ -4,6 +4,7 @@
  * 从 ClawHub (https://clawhub.ai) 搜索和安装技能
  * 自动转换为白泽格式
  * 如果技能没有 input_schema，使用 LLM 自动提取
+ * 自动将平台相关命令转换为跨平台 Node.js 代码
  * 自动处理技能初始化（依赖安装、环境配置）
  */
 
@@ -321,6 +322,156 @@ export class ClawHubClient {
   }
 
   /**
+   * 检测技能是否需要转换为 Node.js
+   */
+  private needsConversion(skillDoc: string, files: Map<string, Buffer>): {
+    needed: boolean;
+    reason: string;
+    commands: string[];
+  } {
+    const commands: string[] = [];
+    
+    // 检查是否有 main.js 或 main.py
+    if (files.has('main.js') || files.has('main.py')) {
+      return { needed: false, reason: '已有跨平台实现', commands: [] };
+    }
+    
+    // 检查是否有 curl 命令
+    const curlMatches = skillDoc.matchAll(/```bash\n([\s\S]*?curl[\s\S]*?)```/g);
+    for (const match of curlMatches) {
+      commands.push(match[1].trim());
+    }
+    
+    // 检查是否有 shell 脚本
+    if (files.has('run.sh')) {
+      const shContent = files.get('run.sh')?.toString('utf-8') || '';
+      commands.push(shContent);
+    }
+    
+    // 检查是否有其他 .sh 文件
+    for (const [filename, content] of files) {
+      if (filename.endsWith('.sh') && filename !== 'run.sh') {
+        commands.push(content.toString('utf-8'));
+      }
+    }
+    
+    if (commands.length > 0) {
+      return { 
+        needed: true, 
+        reason: '检测到平台相关命令（curl/shell）', 
+        commands 
+      };
+    }
+    
+    return { needed: false, reason: '无需转换', commands: [] };
+  }
+
+  /**
+   * 使用 LLM 将命令转换为 Node.js 代码
+   */
+  private async convertToNodeJS(
+    skillDoc: string,
+    commands: string[],
+    inputSchema: ExtractedInputSchema | null,
+    skillName: string
+  ): Promise<string | null> {
+    try {
+      const llm = getLLMManager();
+      
+      const response = await llm.chat([
+        {
+          role: 'system',
+          content: `你是一个代码转换专家。将平台相关的命令（curl、shell脚本）转换为跨平台的 Node.js 代码。
+
+输出要求：
+1. 只输出 JavaScript 代码，不要其他内容
+2. 代码必须是完整的、可执行的
+3. 使用 Node.js 原生 fetch API（不需要额外依赖）
+4. 导出一个 async main(params) 函数
+5. params 是一个对象，包含用户传入的参数
+6. 返回格式: { success: true/false, data: {...}, message: "..." }
+
+代码模板：
+\`\`\`javascript
+/**
+ * ${skillName} skill - 自动生成的跨平台实现
+ */
+
+/**
+ * 执行技能
+ * @param {Object} params - 参数对象
+ * @returns {Promise<{success: boolean, data: any, message: string}>}
+ */
+async function main(params) {
+  try {
+    // 从 params 中获取参数
+    const param1 = params.param1 || 'default';
+    
+    // 执行请求或操作
+    const response = await fetch(url);
+    const result = await response.text();
+    
+    return {
+      success: true,
+      data: { result },
+      message: result
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: {},
+      message: error.message
+    };
+  }
+}
+
+module.exports = { main };
+\`\`\`
+
+规则：
+1. 使用 encodeURIComponent 处理 URL 参数
+2. 设置合适的 User-Agent（如 'Baize/3.0'）
+3. 处理超时（使用 AbortController）
+4. 错误处理要完善
+5. 只输出代码，不要 markdown 代码块标记`
+        },
+        {
+          role: 'user',
+          content: `请将以下技能转换为跨平台的 Node.js 代码：
+
+技能名称: ${skillName}
+
+参数定义:
+${inputSchema ? JSON.stringify(inputSchema, null, 2) : '无参数定义'}
+
+原始命令:
+${commands.join('\n\n---\n\n')}
+
+技能文档:
+${skillDoc.substring(0, 3000)}
+
+请生成完整的 main.js 代码：`
+        }
+      ], { temperature: 0.1 });
+
+      let code = response.content.trim();
+      
+      // 移除可能的 markdown 代码块标记
+      code = code.replace(/^```javascript\n?/i, '').replace(/^```\n?/i, '').replace(/\n?```$/i, '');
+      
+      logger.info('LLM 生成 Node.js 代码成功', { 
+        skillName, 
+        codeLength: code.length 
+      });
+      
+      return code;
+    } catch (error) {
+      logger.error('LLM 生成 Node.js 代码失败', { error, skillName });
+      return null;
+    }
+  }
+
+  /**
    * 使用 LLM 从文档和脚本中提取 input_schema
    */
   private async extractInputSchema(
@@ -415,12 +566,12 @@ ${analysisContent}`
     if (setupMatch) {
       const setupSection = setupMatch[0];
       
-      // 提取 bash 命令
+      // 提取 bash 命令（排除 curl 命令，因为会被转换）
       const bashMatches = setupSection.matchAll(/```bash\n([\s\S]*?)```/g);
       for (const match of bashMatches) {
         const cmd = match[1].trim();
-        // 过滤掉一些不需要自动执行的命令
-        if (!cmd.includes('sudo') && !cmd.includes('rm ')) {
+        // 过滤掉 curl 命令和危险命令
+        if (!cmd.includes('curl ') && !cmd.includes('sudo') && !cmd.includes('rm ')) {
           commands.push(cmd);
         }
       }
@@ -764,9 +915,43 @@ ${content}`;
         requiredEnv = setup.requiredEnv;
       }
 
+      // 提取 input_schema
+      let inputSchema: ExtractedInputSchema | null = null;
+      if (skillDoc) {
+        inputSchema = await this.extractInputSchema(skillDoc, slug, scriptContents);
+      }
+
+      // 检测是否需要转换为 Node.js
+      const conversion = this.needsConversion(skillDoc, files);
+      let generatedMainJs: string | null = null;
+      
+      if (conversion.needed) {
+        logger.info('检测到平台相关命令，转换为 Node.js', { 
+          slug, 
+          reason: conversion.reason,
+          commandCount: conversion.commands.length 
+        });
+        
+        generatedMainJs = await this.convertToNodeJS(
+          skillDoc, 
+          conversion.commands, 
+          inputSchema,
+          slug
+        );
+        
+        if (generatedMainJs) {
+          warnings.push('已将平台相关命令转换为跨平台 Node.js 代码');
+        }
+      }
+
       // 写入文件
       for (const [filename, content] of files) {
         if (filename === '_meta.json') continue;
+        
+        // 跳过 shell 脚本（已转换为 Node.js）
+        if (generatedMainJs && filename.endsWith('.sh')) {
+          continue;
+        }
         
         const filePath = path.join(skillDir, filename);
         const dir = path.dirname(filePath);
@@ -784,6 +969,13 @@ ${content}`;
         logger.debug('写入文件', { path: filePath, size: content.length });
       }
 
+      // 写入生成的 main.js
+      if (generatedMainJs) {
+        const mainJsPath = path.join(skillDir, 'main.js');
+        fs.writeFileSync(mainJsPath, generatedMainJs, 'utf-8');
+        logger.info('生成跨平台 main.js', { path: mainJsPath });
+      }
+
       // 安装依赖
       const depWarnings = await this.installDependencies(skillDir, files);
       warnings.push(...depWarnings);
@@ -797,8 +989,8 @@ ${content}`;
         }
       }
 
-      // 如果没有 main.js，尝试创建入口文件
-      const hasMainJs = files.has('main.js');
+      // 如果没有 main.js 且有其他 .js 文件，创建入口
+      const hasMainJs = files.has('main.js') || generatedMainJs;
       const hasMainPy = files.has('main.py');
       const jsFiles = Array.from(files.keys()).filter(f => f.endsWith('.js') && f !== 'main.js');
 
@@ -830,7 +1022,7 @@ module.exports = { main };
       // 构建结果消息
       let message = `技能 ${slug}@${targetVersion} 安装成功 (${files.size} 个文件)`;
       if (warnings.length > 0) {
-        message += `\n\n警告:\n${warnings.map(w => `- ${w}`).join('\n')}`;
+        message += `\n\n提示:\n${warnings.map(w => `- ${w}`).join('\n')}`;
       }
       if (requiredEnv.length > 0) {
         message += `\n\n需要配置环境变量:\n${requiredEnv.map(e => `- ${e}`).join('\n')}`;
