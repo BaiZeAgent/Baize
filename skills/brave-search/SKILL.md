@@ -5,6 +5,20 @@ description: Web search and content extraction via Brave Search API. Use for sea
 capabilities:
   - brave-search
 risk_level: low
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: The search query to be used for the web search.
+    numResults:
+      type: number
+      description: The number of results to return (default: 5).
+    fetchContent:
+      type: boolean
+      description: Whether to fetch and include the readable content as markdown (default: false).
+  required:
+    - query
 ---
 
 # Brave Search

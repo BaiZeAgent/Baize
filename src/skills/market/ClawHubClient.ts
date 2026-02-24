@@ -4,12 +4,14 @@
  * 从 ClawHub (https://clawhub.ai) 搜索和安装技能
  * 自动转换为白泽格式
  * 如果技能没有 input_schema，使用 LLM 自动提取
+ * 自动处理技能初始化（依赖安装、环境配置）
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
 import * as zlib from 'zlib';
+import { spawn, exec } from 'child_process';
 import { getLogger } from '../../observability/logger';
 import { getLLMManager } from '../../llm';
 
@@ -72,6 +74,8 @@ export interface ClawHubInstallResult {
   path?: string;
   message?: string;
   error?: string;
+  warnings?: string[];
+  requiredEnv?: string[];
 }
 
 /**
@@ -249,16 +253,30 @@ export class ClawHubClient {
   }
 
   /**
-   * 使用 LLM 从文档中提取 input_schema
+   * 使用 LLM 从文档和脚本中提取 input_schema
    */
-  private async extractInputSchema(skillDoc: string, skillName: string): Promise<ExtractedInputSchema | null> {
+  private async extractInputSchema(
+    skillDoc: string, 
+    skillName: string,
+    scriptContents: string[]
+  ): Promise<ExtractedInputSchema | null> {
     try {
       const llm = getLLMManager();
+      
+      // 构建分析内容
+      let analysisContent = skillDoc;
+      if (scriptContents.length > 0) {
+        analysisContent += `\n\n## 脚本代码\n\n`;
+        for (let i = 0; i < scriptContents.length; i++) {
+          const ext = scriptContents[i].includes('def ') ? 'python' : 'javascript';
+          analysisContent += `### 脚本 ${i + 1}\n\`\`\`${ext}\n${scriptContents[i]}\n\`\`\`\n\n`;
+        }
+      }
       
       const response = await llm.chat([
         {
           role: 'system',
-          content: `你是一个技能参数分析器。分析技能文档，提取输入参数的 JSON Schema。
+          content: `你是一个技能参数分析器。分析技能文档和代码，提取输入参数的 JSON Schema。
 
 输出格式（只输出 JSON，不要其他内容）：
 {
@@ -274,18 +292,20 @@ export class ClawHubClient {
 
 规则：
 1. 从 curl 命令中识别可变部分作为参数
-2. 例如 curl -s "wttr.in/London" 中的 London 是城市参数，参数名用 city
-3. URL 参数如 ?format=3 中的 format 也是参数
-4. 如果文档中没有明确的参数，返回空对象 {"type": "object", "properties": {}, "required": []}
-5. 只输出 JSON，不要其他内容`
+2. 从 JavaScript/Python 代码中识别函数参数
+3. 例如 main(params) 中的 params 解构出的变量就是参数
+4. 例如 const { action, path } = params 表示 action 和 path 是参数
+5. 从命令行参数中识别，如 ./search.js "query" -n 10 中的 query 和 n
+6. 如果文档中没有明确的参数，返回空对象 {"type": "object", "properties": {}, "required": []}
+7. 只输出 JSON，不要其他内容`
         },
         {
           role: 'user',
-          content: `请分析以下技能文档，提取 input_schema：
+          content: `请分析以下技能文档和代码，提取 input_schema：
 
 技能名称: ${skillName}
 
-${skillDoc}`
+${analysisContent}`
         }
       ], { temperature: 0.1 });
 
@@ -313,9 +333,196 @@ ${skillDoc}`
   }
 
   /**
+   * 从文档中提取初始化说明
+   */
+  private extractSetupInstructions(skillDoc: string): {
+    commands: string[];
+    requiredEnv: string[];
+  } {
+    const commands: string[] = [];
+    const requiredEnv: string[] = [];
+
+    // 提取 Setup 部分
+    const setupMatch = skillDoc.match(/##\s*Setup[\s\S]*?(?=##|$)/i);
+    if (setupMatch) {
+      const setupSection = setupMatch[0];
+      
+      // 提取 bash 命令
+      const bashMatches = setupSection.matchAll(/```bash\n([\s\S]*?)```/g);
+      for (const match of bashMatches) {
+        const cmd = match[1].trim();
+        // 过滤掉一些不需要自动执行的命令
+        if (!cmd.includes('sudo') && !cmd.includes('rm ')) {
+          commands.push(cmd);
+        }
+      }
+    }
+
+    // 提取环境变量要求
+    const envMatch = skillDoc.match(/Needs?\s*env:\s*`([^`]+)`/i);
+    if (envMatch) {
+      requiredEnv.push(envMatch[1]);
+    }
+
+    // 从 frontmatter 提取 required_env
+    const frontmatterEnv = skillDoc.match(/required_env:\s*\n(\s+-\s+.+\n)+/);
+    if (frontmatterEnv) {
+      const envLines = frontmatterEnv[0].match(/-\s+(.+)/g);
+      if (envLines) {
+        for (const line of envLines) {
+          const envName = line.replace(/-\s+/, '').trim();
+          if (!requiredEnv.includes(envName)) {
+            requiredEnv.push(envName);
+          }
+        }
+      }
+    }
+
+    return { commands, requiredEnv };
+  }
+
+  /**
+   * 执行初始化命令
+   */
+  private async runSetupCommands(skillDir: string, commands: string[]): Promise<string[]> {
+    const warnings: string[] = [];
+
+    for (const cmd of commands) {
+      logger.info('执行初始化命令', { cmd });
+      
+      try {
+        await new Promise<void>((resolve, reject) => {
+          exec(cmd, { 
+            cwd: skillDir,
+            timeout: 120000 // 2分钟超时
+          }, (error, stdout, stderr) => {
+            if (error) {
+              logger.warn('初始化命令失败', { cmd, error: error.message });
+              warnings.push(`初始化命令失败: ${cmd} - ${error.message}`);
+              resolve(); // 不中断，继续
+            } else {
+              logger.debug('初始化命令完成', { cmd, stdout: stdout.substring(0, 100) });
+              resolve();
+            }
+          });
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        warnings.push(`初始化命令异常: ${cmd} - ${errorMsg}`);
+      }
+    }
+
+    return warnings;
+  }
+
+  /**
+   * 安装技能依赖
+   */
+  private async installDependencies(skillDir: string, files: Map<string, Buffer>): Promise<string[]> {
+    const warnings: string[] = [];
+
+    // 检查 package.json
+    if (files.has('package.json')) {
+      logger.info('检测到 package.json，安装 Node.js 依赖');
+      
+      try {
+        await new Promise<void>((resolve) => {
+          const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+          const proc = spawn(npmCmd, ['install'], {
+            cwd: skillDir,
+            stdio: 'pipe',
+            shell: process.platform === 'win32',
+          });
+
+          let stderr = '';
+          proc.stderr?.on('data', (data) => {
+            stderr += data.toString();
+          });
+
+          proc.on('close', (code) => {
+            if (code !== 0) {
+              logger.warn('npm install 失败', { code, stderr });
+              warnings.push(`npm install 失败 (退出码: ${code})`);
+            } else {
+              logger.info('npm install 完成');
+            }
+            resolve();
+          });
+
+          proc.on('error', (error) => {
+            logger.warn('npm install 异常', { error: error.message });
+            warnings.push(`npm install 异常: ${error.message}`);
+            resolve();
+          });
+
+          // 60秒超时
+          setTimeout(() => {
+            proc.kill();
+            warnings.push('npm install 超时');
+            resolve();
+          }, 60000);
+        });
+      } catch (error) {
+        warnings.push(`npm install 异常: ${error}`);
+      }
+    }
+
+    // 检查 requirements.txt
+    if (files.has('requirements.txt')) {
+      logger.info('检测到 requirements.txt，安装 Python 依赖');
+      
+      try {
+        await new Promise<void>((resolve) => {
+          const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+          const proc = spawn(pythonCmd, ['-m', 'pip', 'install', '-r', 'requirements.txt'], {
+            cwd: skillDir,
+            stdio: 'pipe',
+          });
+
+          let stderr = '';
+          proc.stderr?.on('data', (data) => {
+            stderr += data.toString();
+          });
+
+          proc.on('close', (code) => {
+            if (code !== 0) {
+              logger.warn('pip install 失败', { code, stderr });
+              warnings.push(`pip install 失败 (退出码: ${code})`);
+            } else {
+              logger.info('pip install 完成');
+            }
+            resolve();
+          });
+
+          proc.on('error', (error) => {
+            logger.warn('pip install 异常', { error: error.message });
+            warnings.push(`pip install 异常: ${error.message}`);
+            resolve();
+          });
+
+          // 60秒超时
+          setTimeout(() => {
+            proc.kill();
+            warnings.push('pip install 超时');
+            resolve();
+          }, 60000);
+        });
+      } catch (error) {
+        warnings.push(`pip install 异常: ${error}`);
+      }
+    }
+
+    return warnings;
+  }
+
+  /**
    * 转换 ClawHub 格式为白泽格式
    */
-  private async convertToBaizeFormat(content: string, slug: string): Promise<string> {
+  private async convertToBaizeFormat(
+    content: string, 
+    slug: string,
+    scriptContents: string[]
+  ): Promise<string> {
     // 解析 YAML frontmatter
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
 
@@ -344,7 +551,6 @@ ${content}`;
       const schemaMatch = frontmatter.match(/input_schema:\s*\n([\s\S]*?)(?=\n\w+:|\n---)/);
       if (schemaMatch) {
         try {
-          // 尝试解析 YAML 格式的 schema
           const YAML = require('yaml');
           inputSchema = YAML.parse(`input_schema:\n${schemaMatch[1]}`).input_schema;
           logger.debug('使用现有的 input_schema', { slug });
@@ -356,11 +562,14 @@ ${content}`;
 
     // 如果没有 input_schema，使用 LLM 提取
     if (!inputSchema) {
-      logger.info('技能没有 input_schema，使用 LLM 提取', { slug });
-      inputSchema = await this.extractInputSchema(content, slug);
+      logger.info('技能没有 input_schema，使用 LLM 提取', { 
+        slug, 
+        scriptCount: scriptContents.length 
+      });
+      inputSchema = await this.extractInputSchema(content, slug, scriptContents);
     }
 
-    // 提取 metadata.openclaw 中的环境变量
+    // 提取环境变量要求
     const envMatch = frontmatter.match(/env:\s*\n(\s+-\s+.+\n)+/);
     const requiredEnv: string[] = [];
     if (envMatch) {
@@ -429,6 +638,9 @@ ${content}`;
   async install(slug: string, version?: string): Promise<ClawHubInstallResult> {
     logger.info('安装技能', { slug, version });
 
+    const warnings: string[] = [];
+    let requiredEnv: string[] = [];
+
     try {
       // 获取技能信息
       const details = await this.getSkillDetails(slug);
@@ -460,9 +672,32 @@ ${content}`;
         fs.mkdirSync(skillDir, { recursive: true });
       }
 
+      // 收集所有脚本文件内容
+      const scriptContents: string[] = [];
+      const scriptExtensions = ['.js', '.ts', '.py', '.sh'];
+      
+      for (const [filename, content] of files) {
+        const ext = path.extname(filename).toLowerCase();
+        if (scriptExtensions.includes(ext) && !filename.includes('node_modules')) {
+          const scriptContent = content.toString('utf-8');
+          // 只取前 5000 字符，避免太长
+          scriptContents.push(scriptContent.substring(0, 5000));
+        }
+      }
+
+      // 获取 SKILL.md 内容
+      let skillDoc = '';
+      const skillMdFile = files.get('SKILL.md') || files.get('skill.md');
+      if (skillMdFile) {
+        skillDoc = skillMdFile.toString('utf-8');
+        
+        // 提取初始化说明
+        const setup = this.extractSetupInstructions(skillDoc);
+        requiredEnv = setup.requiredEnv;
+      }
+
       // 写入文件
       for (const [filename, content] of files) {
-        // 跳过元数据文件
         if (filename === '_meta.json') continue;
         
         const filePath = path.join(skillDir, filename);
@@ -472,14 +707,26 @@ ${content}`;
           fs.mkdirSync(dir, { recursive: true });
         }
 
-        // 转换 SKILL.md 格式
         let fileContent = content.toString('utf-8');
         if (filename.toLowerCase() === 'skill.md') {
-          fileContent = await this.convertToBaizeFormat(fileContent, slug);
+          fileContent = await this.convertToBaizeFormat(fileContent, slug, scriptContents);
         }
 
         fs.writeFileSync(filePath, fileContent, 'utf-8');
         logger.debug('写入文件', { path: filePath, size: content.length });
+      }
+
+      // 安装依赖
+      const depWarnings = await this.installDependencies(skillDir, files);
+      warnings.push(...depWarnings);
+
+      // 执行初始化命令
+      if (skillDoc) {
+        const setup = this.extractSetupInstructions(skillDoc);
+        if (setup.commands.length > 0) {
+          const setupWarnings = await this.runSetupCommands(skillDir, setup.commands);
+          warnings.push(...setupWarnings);
+        }
       }
 
       // 如果没有 main.js，尝试创建入口文件
@@ -488,17 +735,12 @@ ${content}`;
       const jsFiles = Array.from(files.keys()).filter(f => f.endsWith('.js') && f !== 'main.js');
 
       if (!hasMainJs && !hasMainPy && jsFiles.length > 0) {
-        // 创建 main.js 作为入口
         const mainJsContent = `/**
  * ${slug} skill - 自动生成的入口文件
  */
 
-// 导入原始实现
 const impl = require('./${jsFiles[0].replace('.js', '')}');
 
-/**
- * 执行技能
- */
 async function main(params) {
   if (typeof impl.main === 'function') {
     return impl.main(params);
@@ -517,10 +759,21 @@ module.exports = { main };
 
       logger.info('技能安装成功', { slug, version: targetVersion, path: skillDir, fileCount: files.size });
 
+      // 构建结果消息
+      let message = `技能 ${slug}@${targetVersion} 安装成功 (${files.size} 个文件)`;
+      if (warnings.length > 0) {
+        message += `\n\n警告:\n${warnings.map(w => `- ${w}`).join('\n')}`;
+      }
+      if (requiredEnv.length > 0) {
+        message += `\n\n需要配置环境变量:\n${requiredEnv.map(e => `- ${e}`).join('\n')}`;
+      }
+
       return {
         success: true,
         path: skillDir,
-        message: `技能 ${slug}@${targetVersion} 安装成功 (${files.size} 个文件)`,
+        message,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        requiredEnv: requiredEnv.length > 0 ? requiredEnv : undefined,
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -528,6 +781,7 @@ module.exports = { main };
       return {
         success: false,
         error: errorMsg,
+        warnings: warnings.length > 0 ? warnings : undefined,
       };
     }
   }
