@@ -1,7 +1,7 @@
 ---
 name: brave-search
 version: 1.0.0
-description: Web search and content extraction via Brave Search API. Use for searching documentation, facts, or any web content. Lightweight, no browser required.
+description: "Web search and content extraction via Brave Search API. Use for searching documentation, facts, or any web content. Lightweight, no browser required."
 capabilities:
   - brave-search
 risk_level: low
@@ -10,13 +10,13 @@ input_schema:
   properties:
     query:
       type: string
-      description: The search query to be used for the web search.
+      description: "The search query to be used for the web search."
     numResults:
       type: number
-      description: The number of results to return (default: 5).
+      description: "The number of results to return. Default is 5."
     fetchContent:
       type: boolean
-      description: Whether to fetch and include the readable content as markdown (default: false).
+      description: "Whether to fetch and include the readable content as markdown. Default is false."
   required:
     - query
 ---

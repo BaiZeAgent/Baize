@@ -607,7 +607,7 @@ ${content}`;
       for (const [propName, propDef] of Object.entries(inputSchema.properties)) {
         lines.push(`    ${propName}:`);
         lines.push(`      type: ${propDef.type}`);
-        lines.push(`      description: ${propDef.description}`);
+        lines.push(`      description: "${propDef.description.replace(/"/g, '\"')}"`);
       }
       
       if (inputSchema.required && inputSchema.required.length > 0) {
