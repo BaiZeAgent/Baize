@@ -144,8 +144,7 @@ npm run build
 npm test
 ```
 
-## 许可证
 
-MIT
+
 
 
