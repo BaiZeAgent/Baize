@@ -55,13 +55,13 @@
 
 ## 快速开始
 
-### 安装依赖
+### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-### 配置
+### 2. 配置环境变量
 
 复制环境变量模板：
 
@@ -72,30 +72,73 @@ cp .env.example .env
 编辑 `.env` 文件，填入你的API Key：
 
 ```
+# 阿里云百炼（推荐）
 ALIYUN_API_KEY=your_api_key
+
+# 智谱清言
 ZHIPU_API_KEY=your_api_key
+
+# Ollama（本地运行，无需Key）
+# 确保Ollama服务已启动: ollama serve
 ```
 
-### 启动
+### 3. 编译
 
 ```bash
-# 编译
+# 编译TypeScript
 npm run build
 
-# 启动交互模式
+# 或者使用tsc
+npx tsc
+```
+
+### 4. 启动
+
+#### 交互模式（推荐）
+
+```bash
+# 方式1: 使用npm
 npm start
 
-# 或直接运行
+# 方式2: 直接运行
 node dist/cli/index.js start
+
+# 方式3: 开发模式（需要ts-node）
+npm run dev
+```
+
+#### Web服务模式
+
+```bash
+# 启动Web服务（API + Web界面）
+node dist/cli/index.js web
+
+# 只启动API服务
+node dist/cli/index.js api
+
+# 指定端口
+node dist/cli/index.js api 8080
+```
+
+#### 单次对话模式
+
+```bash
+node dist/cli/index.js chat "你好"
+```
+
+#### 运行测试
+
+```bash
+node dist/cli/index.js test
 ```
 
 ## 支持的LLM
 
-| 提供商 | 类型 | 配置 |
-|--------|------|------|
-| 阿里云百炼 | OpenAI兼容 | ALIYUN_API_KEY |
-| 智谱清言 | OpenAI兼容 | ZHIPU_API_KEY |
-| Ollama | 本地 | 无需Key |
+| 提供商 | 类型 | 配置 | 说明 |
+|--------|------|------|------|
+| 阿里云百炼 | OpenAI兼容 | ALIYUN_API_KEY | 推荐，稳定 |
+| 智谱清言 | OpenAI兼容 | ZHIPU_API_KEY | 备选 |
+| Ollama | 本地 | 无需Key | 需要本地运行Ollama |
 
 ## 技能市场
 
@@ -110,48 +153,54 @@ node dist/cli/index.js skill install weather
 
 # 列出已安装技能
 node dist/cli/index.js skill list
+
+# 查看技能详情
+node dist/cli/index.js skill info weather
+
+# 卸载技能
+node dist/cli/index.js skill uninstall weather
 ```
 
 ### 可用技能示例
 
-| 技能 | 说明 |
-|------|------|
-| weather | 天气查询（无需API Key） |
-| brave-search | Brave搜索 |
-| file | 文件操作 |
-| fs | 文件系统操作 |
-| time | 时间查询 |
+| 技能 | 说明 | 类型 |
+|------|------|------|
+| weather | 天气查询（无需API Key） | 文档型 |
+| brave-search | Brave搜索 | 脚本型 |
+| file | 文件操作 | 脚本型 |
+| fs | 文件系统操作 | 脚本型 |
+| time | 时间查询 | 脚本型 |
 
 ## 项目结构
 
 ```
-src/
-├── cli/               # CLI入口
-├── core/              # 核心层
-│   ├── brain/         # 大脑决策
-│   ├── thinking/      # 思考引擎（六阶段）
-│   ├── confirmation/  # 确认策略
-│   └── error.ts       # 错误处理
-├── llm/               # LLM适配器
-│   ├── base.ts        # 基类
-│   ├── index.ts       # 管理器
-│   └── providers/     # 提供商实现
-├── memory/            # 记忆系统
-│   ├── database.ts    # SQLite数据库
-│   └── index.ts       # 三层记忆
-├── skills/            # 技能系统
-│   ├── base.ts        # 技能基类
-│   ├── registry.ts    # 技能注册表
-│   ├── loader.ts      # 技能加载器
-│   └── market/        # ClawHub客户端
-├── scheduler/         # 调度层
-│   ├── index.ts       # 任务调度器
-│   └── proactive.ts   # 主动任务
-├── executor/          # 执行层（含LLM后处理）
-├── evolution/         # 自进化模块
-├── observability/     # 可观测层
-├── types/             # 类型定义
-└── index.ts           # 主入口
+Baize/
+├── src/                    # 源代码
+│   ├── cli/               # CLI入口
+│   ├── core/              # 核心层
+│   │   ├── brain/         # 大脑决策
+│   │   ├── thinking/      # 思考引擎（六阶段）
+│   │   ├── confirmation/  # 确认策略
+│   │   └── error.ts       # 错误处理
+│   ├── llm/               # LLM适配器
+│   ├── memory/            # 记忆系统
+│   ├── skills/            # 技能系统
+│   │   ├── base.ts        # 技能基类
+│   │   ├── registry.ts    # 技能注册表
+│   │   ├── loader.ts      # 技能加载器
+│   │   └── market/        # ClawHub客户端
+│   ├── executor/          # 执行层
+│   ├── evolution/         # 自进化模块
+│   ├── interaction/       # 交互层（API/Web）
+│   ├── observability/     # 可观测层
+│   └── types/             # 类型定义
+├── dist/                   # 编译输出
+├── skills/                 # 技能目录
+├── data/                   # 数据目录
+├── web/                    # Web界面
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
 
 ## 核心功能
@@ -194,42 +243,116 @@ LLM后处理: "杭州今天有雾，气温9°C，下午可能有小雨，建议�
 - 角色化思考（产品经理、开发者、测试、用户）
 - 安全沙箱机制
 - 权限分级管理
+- 能力差距检测
+
+## API接口
+
+启动API服务后，可以通过以下接口调用：
+
+### 对话接口
+
+```bash
+# 对话
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "今天杭州天气怎么样"}'
+
+# 获取对话历史
+curl http://localhost:3000/api/chat/history
+
+# 清空对话历史
+curl -X DELETE http://localhost:3000/api/chat/history
+```
+
+### 技能接口
+
+```bash
+# 获取技能列表
+curl http://localhost:3000/api/skills
+
+# 执行技能
+curl -X POST http://localhost:3000/api/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"skillName": "time", "params": {}}'
+```
+
+### 其他接口
+
+```bash
+# 健康检查
+curl http://localhost:3000/health
+
+# 成本统计
+curl http://localhost:3000/api/cost/stats
+
+# LLM配置
+curl http://localhost:3000/api/config/llm
+```
 
 ## 开发
 
 ```bash
-# 开发模式
+# 开发模式（热重载）
 npm run dev
 
-# 构建
+# 编译
 npm run build
 
 # 测试
 npm test
+
+# 清理编译文件
+npm run clean
 ```
 
-## 命令行工具
+## 命令行工具完整列表
 
 ```bash
-# 启动交互模式
+# 交互模式
 baize start
+baize                    # 同上
 
 # 单次对话
 baize chat "你好"
 
-# 运行测试
+# 测试
 baize test
 
 # 技能管理
-baize skill search weather
-baize skill install weather
-baize skill list
+baize skill list              # 列出已安装技能
+baize skill search weather    # 搜索技能
+baize skill install weather   # 安装技能
+baize skill uninstall weather # 卸载技能
+baize skill info weather      # 查看技能详情
 
-# 启动Web服务
-baize web
+# Web服务
+baize web                     # 启动Web服务
+baize api                     # 启动API服务
+baize api 8080                # 指定端口
 
-# 启动API服务
-baize api 3000
+# 帮助
+baize help
+baize --help
+```
+
+## 常见问题
+
+### 1. LLM调用失败
+
+检查 `.env` 文件中的API Key是否正确配置。
+
+### 2. 技能执行失败
+
+- 检查技能是否正确安装
+- 检查网络连接（文档型技能需要访问外部API）
+- 查看日志获取详细错误信息
+
+### 3. 编译错误
+
+```bash
+# 清理后重新编译
+rm -rf dist
+npm run build
 ```
 
 ## 许可证

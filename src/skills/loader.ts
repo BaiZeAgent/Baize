@@ -162,7 +162,8 @@ class DynamicSkill extends Skill {
       const duration = (Date.now() - startTime) / 1000;
       logger.info(`技能执行完成: ${this.name}`, { 
         success: result.success, 
-        duration: `${duration.toFixed(2)}s` 
+        duration: `${duration.toFixed(2)}s`,
+        message: result.message?.substring(0, 100)
       });
 
       return result;
@@ -184,9 +185,34 @@ class DynamicSkill extends Skill {
   private async runFromDocs(params: Record<string, unknown>, context: SkillContext): Promise<SkillResult> {
     const mdContent = this.definition.mdContent;
     
-    // 提取查询参数
-    const query = (params.query as string) || (params.city as string) || (params.location as string) || '';
+    // 提取查询参数 - 支持多种参数名
+    let query = '';
+    const possibleKeys = ['query', 'city', 'location', 'place', 'name', 'keyword', 'q'];
+    for (const key of possibleKeys) {
+      if (params[key] && typeof params[key] === 'string') {
+        query = params[key] as string;
+        break;
+      }
+    }
     
+    // 如果参数为空，尝试从上下文推断
+    if (!query) {
+      // 尝试从用户输入中提取城市名
+      const contextInput = params.lastUserInput as string || '';
+      const cityMatch = contextInput.match(/(?:查询|查看|搜索|找|在)\s*([^\s,，。！？]+)(?:的|今天|明天|天气)/);
+      if (cityMatch) {
+        query = cityMatch[1];
+      }
+    }
+    
+    // 默认城市
+    if (!query) {
+      query = 'Beijing';
+      logger.debug('未指定城市，使用默认城市: Beijing');
+    }
+    
+    logger.debug(`文档型技能参数: query=${query}`);
+
     // 从文档中提取 curl 命令模板
     const curlMatch = mdContent.match(/```bash\n(curl -s "[^"]+")\n```/);
     
@@ -203,7 +229,7 @@ class DynamicSkill extends Skill {
     
     // 替换占位符
     // wttr.in/London -> wttr.in/{query}
-    command = command.replace(/wttr\.in\/[A-Za-z]+/i, `wttr.in/${encodeURIComponent(query)}`);
+    command = command.replace(/wttr\.in\/[A-Za-z+]+/i, `wttr.in/${encodeURIComponent(query)}`);
     command = command.replace(/api\.open-meteo\.com\/v1\/forecast\?[^"]+/i, 
       `api.open-meteo.com/v1/forecast?latitude=30.25&longitude=120.17&current_weather=true`);
     
@@ -212,22 +238,25 @@ class DynamicSkill extends Skill {
     command = command.replace(/\$\{?city\}?/gi, encodeURIComponent(query));
     command = command.replace(/\$\{?location\}?/gi, encodeURIComponent(query));
 
-    logger.debug(`执行文档命令: ${command}`);
+    logger.info(`执行文档命令: ${command}`);
 
     return new Promise((resolve) => {
-      exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
+      exec(command, { timeout: 15000 }, (error, stdout, stderr) => {
         if (error) {
+          logger.error(`命令执行失败: ${error.message}`, { stderr });
           resolve({
             success: false,
-            data: {},
-            message: '命令执行失败',
+            data: { error: error.message, stderr },
+            message: `命令执行失败: ${error.message}`,
             error: stderr || error.message,
           });
         } else {
+          const output = stdout.trim();
+          logger.debug(`命令执行成功，输出长度: ${output.length}`);
           resolve({
             success: true,
-            data: { output: stdout.trim() },
-            message: stdout.trim(),
+            data: { output },
+            message: output,
           });
         }
       });
