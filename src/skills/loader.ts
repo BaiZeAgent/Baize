@@ -7,10 +7,11 @@
  * 3. JavaScript技能
  * 4. Shell脚本
  * 5. MD格式定义文件（SKILL.md）
+ * 6. 文档型技能（从SKILL.md提取命令执行）
  */
 import fs from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import YAML from 'yaml';
 import { Skill, SkillContext } from './base';
 import { SkillResult, RiskLevel, SkillInfo } from '../types';
@@ -136,8 +137,7 @@ class DynamicSkill extends Skill {
     try {
       let result: SkillResult;
 
-      // 优先级：Python > JavaScript > Shell
-      // 但需要检测命令是否可用，不可用则fallback
+      // 优先级：Python > JavaScript > Shell > 文档型
       if (this.definition.hasPython) {
         const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
         if (await this.isCommandAvailable(pythonCmd)) {
@@ -148,24 +148,15 @@ class DynamicSkill extends Skill {
         } else if (this.definition.hasShell) {
           result = await this.runShell(params, context);
         } else {
-          result = {
-            success: false,
-            data: {},
-            message: '技能没有可用实现',
-            error: 'python不可用且缺少其他实现',
-          };
+          result = await this.runFromDocs(params, context);
         }
       } else if (this.definition.hasJavaScript) {
         result = await this.runJavaScript(params, context);
       } else if (this.definition.hasShell) {
         result = await this.runShell(params, context);
       } else {
-        result = {
-          success: false,
-          data: {},
-          message: '技能没有实现文件',
-          error: '缺少 main.py 或 main.js 或 run.sh',
-        };
+        // 文档型技能：从SKILL.md提取命令执行
+        result = await this.runFromDocs(params, context);
       }
 
       const duration = (Date.now() - startTime) / 1000;
@@ -188,20 +179,74 @@ class DynamicSkill extends Skill {
   }
 
   /**
+   * 从文档中提取并执行命令（文档型技能）
+   */
+  private async runFromDocs(params: Record<string, unknown>, context: SkillContext): Promise<SkillResult> {
+    const mdContent = this.definition.mdContent;
+    
+    // 提取查询参数
+    const query = (params.query as string) || (params.city as string) || (params.location as string) || '';
+    
+    // 从文档中提取 curl 命令模板
+    const curlMatch = mdContent.match(/```bash\n(curl -s "[^"]+")\n```/);
+    
+    if (!curlMatch) {
+      return {
+        success: false,
+        data: {},
+        message: '文档型技能未找到可执行的命令',
+        error: 'SKILL.md 中没有找到 curl 命令模板',
+      };
+    }
+
+    let command = curlMatch[1];
+    
+    // 替换占位符
+    // wttr.in/London -> wttr.in/{query}
+    command = command.replace(/wttr\.in\/[A-Za-z]+/i, `wttr.in/${encodeURIComponent(query)}`);
+    command = command.replace(/api\.open-meteo\.com\/v1\/forecast\?[^"]+/i, 
+      `api.open-meteo.com/v1/forecast?latitude=30.25&longitude=120.17&current_weather=true`);
+    
+    // 替换其他常见占位符
+    command = command.replace(/\$\{?query\}?/gi, encodeURIComponent(query));
+    command = command.replace(/\$\{?city\}?/gi, encodeURIComponent(query));
+    command = command.replace(/\$\{?location\}?/gi, encodeURIComponent(query));
+
+    logger.debug(`执行文档命令: ${command}`);
+
+    return new Promise((resolve) => {
+      exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
+        if (error) {
+          resolve({
+            success: false,
+            data: {},
+            message: '命令执行失败',
+            error: stderr || error.message,
+          });
+        } else {
+          resolve({
+            success: true,
+            data: { output: stdout.trim() },
+            message: stdout.trim(),
+          });
+        }
+      });
+    });
+  }
+
+  /**
    * 检测命令是否可用
    */
   private isCommandAvailable(command: string): Promise<boolean> {
     return new Promise((resolve) => {
       const proc = spawn(command, ['--version'], { 
         timeout: 3000,
-        // Windows下可能需要shell
         shell: process.platform === 'win32',
       });
       
       proc.on('error', () => resolve(false));
       proc.on('close', (code) => resolve(code === 0));
       
-      // 超时处理
       setTimeout(() => {
         proc.kill();
         resolve(false);
@@ -222,7 +267,6 @@ class DynamicSkill extends Skill {
    */
   private async runJavaScript(params: Record<string, unknown>, context: SkillContext): Promise<SkillResult> {
     const scriptPath = path.join(this.definition.skillPath, 'main.js');
-    // 使用当前Node.js进程的可执行文件路径，确保跨平台兼容
     return this.executeCommand(process.execPath, [scriptPath], params, context);
   }
 
@@ -246,7 +290,6 @@ class DynamicSkill extends Skill {
     return new Promise((resolve) => {
       const timeout = this.definition.timeout || 60000;
       
-      // 构建输入数据
       const inputData = JSON.stringify({ 
         params, 
         context: {
@@ -257,7 +300,6 @@ class DynamicSkill extends Skill {
       
       logger.debug(`执行命令: ${command} ${args.join(' ')}`);
       
-      // Windows下设置UTF-8编码
       const isWindows = process.platform === 'win32';
       const shellEnv = isWindows ? { ...process.env, PYTHONIOENCODING: 'utf-8' } : process.env;
       
@@ -287,7 +329,6 @@ class DynamicSkill extends Skill {
         
         if (code === 0) {
           try {
-            // 尝试解析JSON输出
             const result = JSON.parse(stdout.trim());
             resolve({
               success: result.success !== false,
@@ -295,7 +336,6 @@ class DynamicSkill extends Skill {
               message: result.message || '执行成功',
             });
           } catch {
-            // 不是JSON，直接返回输出
             resolve({
               success: true,
               data: { output: stdout.trim() },
@@ -323,7 +363,6 @@ class DynamicSkill extends Skill {
         });
       });
 
-      // 写入stdin
       proc.stdin?.write(inputData);
       proc.stdin?.end();
     });
@@ -357,14 +396,12 @@ export class SkillLoader {
   async loadAll(): Promise<DynamicSkill[]> {
     const skills: DynamicSkill[] = [];
 
-    // 确保skills目录存在
     if (!fs.existsSync(this.skillsDir)) {
       logger.warn(`技能目录不存在: ${this.skillsDir}，将创建`);
       fs.mkdirSync(this.skillsDir, { recursive: true });
       return skills;
     }
 
-    // 遍历skills目录
     const entries = fs.readdirSync(this.skillsDir, { withFileTypes: true });
     
     for (const entry of entries) {
@@ -386,11 +423,9 @@ export class SkillLoader {
    * 加载单个技能
    */
   private async loadSkill(skillPath: string): Promise<DynamicSkill | null> {
-    // 转换为绝对路径，确保跨平台兼容
     const absoluteSkillPath = path.resolve(skillPath);
     const skillName = path.basename(absoluteSkillPath);
     
-    // 查找定义文件，优先级：SKILL.md > skill.yaml > skill.json
     const mdPath = path.join(absoluteSkillPath, 'SKILL.md');
     const yamlPath = path.join(absoluteSkillPath, 'skill.yaml');
     const jsonPath = path.join(absoluteSkillPath, 'skill.json');
@@ -415,18 +450,28 @@ export class SkillLoader {
     definition.hasJavaScript = fs.existsSync(path.join(absoluteSkillPath, 'main.js'));
     definition.hasShell = fs.existsSync(path.join(absoluteSkillPath, 'run.sh'));
 
-    if (!definition.hasPython && !definition.hasJavaScript && !definition.hasShell) {
-      logger.warn(`技能 ${definition.name} 没有实现文件 (main.py/main.js/run.sh)`);
+    // 检查是否是文档型技能（有curl命令但没有实现文件）
+    const isDocSkill = !definition.hasPython && !definition.hasJavaScript && !definition.hasShell;
+    const hasCurlCommand = definition.mdContent.includes('curl -s');
+    
+    if (isDocSkill && hasCurlCommand) {
+      logger.info(`加载文档型技能: ${definition.name}`, {
+        capabilities: definition.capabilities,
+        riskLevel: definition.riskLevel,
+        type: 'doc-based',
+      });
+    } else if (isDocSkill) {
+      logger.warn(`技能 ${definition.name} 没有实现文件且不是文档型技能`);
+    } else {
+      logger.info(`加载技能: ${definition.name}`, {
+        capabilities: definition.capabilities,
+        riskLevel: definition.riskLevel,
+        stepByStep: definition.stepByStep,
+        hasPython: definition.hasPython,
+        hasJavaScript: definition.hasJavaScript,
+        hasShell: definition.hasShell,
+      });
     }
-
-    logger.info(`加载技能: ${definition.name}`, {
-      capabilities: definition.capabilities,
-      riskLevel: definition.riskLevel,
-      stepByStep: definition.stepByStep,
-      hasPython: definition.hasPython,
-      hasJavaScript: definition.hasJavaScript,
-      hasShell: definition.hasShell,
-    });
 
     return new DynamicSkill(definition);
   }
@@ -437,11 +482,7 @@ export class SkillLoader {
   private parseMdFile(mdPath: string, skillPath: string): LoadedSkillDefinition | null {
     try {
       const content = fs.readFileSync(mdPath, 'utf-8');
-      
-      // 统一换行符（Windows使用\r\n，Linux/Mac使用\n）
       const contentNormalized = content.replace(/\r\n/g, '\n');
-      
-      // 提取YAML前置配置 (---包围的部分)
       const frontMatterMatch = contentNormalized.match(/^---\n([\s\S]*?)\n---/);
       
       if (!frontMatterMatch) {
@@ -450,7 +491,6 @@ export class SkillLoader {
       }
 
       const frontMatter = YAML.parse(frontMatterMatch[1]) as SkillFrontMatter;
-      
       return this.createDefinition(frontMatter, skillPath, content);
     } catch (error) {
       logger.error(`解析MD文件失败: ${mdPath}`, { error });
