@@ -11,9 +11,9 @@
 <p align="center">
   <a href="#特性">特性</a> •
   <a href="#快速开始">快速开始</a> •
+  <a href="#部署">部署</a> •
   <a href="#架构">架构</a> •
-  <a href="#核心功能">核心功能</a> •
-  <a href="#技能市场">技能市场</a>
+  <a href="CHANGELOG.md">更新日志</a>
 </p>
 
 ---
@@ -94,23 +94,123 @@ npx tsc
 
 ### 4. 启动
 
-#### 交互模式（推荐）
-
 ```bash
-# 方式1: 使用npm
+# 交互模式（推荐）
 npm start
 
-# 方式2: 直接运行
+# 或直接运行
 node dist/cli/index.js start
-
-# 方式3: 开发模式（需要ts-node）
-npm run dev
 ```
 
-#### Web服务模式
+## 部署
+
+### 本地开发
 
 ```bash
-# 启动Web服务（API + Web界面）
+# 开发模式（热重载）
+npm run dev
+
+# 编译
+npm run build
+
+# 测试
+npm test
+```
+
+### 生产部署
+
+#### 方式1: 直接运行
+
+```bash
+# 编译
+npm run build
+
+# 启动交互模式
+node dist/cli/index.js start
+
+# 启动API服务
+node dist/cli/index.js api 3000
+
+# 启动Web服务
+node dist/cli/index.js web
+```
+
+#### 方式2: Docker（推荐）
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --production
+
+COPY dist ./dist
+COPY skills ./skills
+COPY web ./web
+
+ENV NODE_ENV=production
+
+EXPOSE 3000 8080
+
+CMD ["node", "dist/cli/index.js", "web"]
+```
+
+```bash
+# 构建镜像
+docker build -t baize:3.0 .
+
+# 运行容器
+docker run -d \
+  -p 3000:3000 \
+  -p 8080:8080 \
+  -e ALIYUN_API_KEY=your_key \
+  -v $(pwd)/data:/app/data \
+  baize:3.0
+```
+
+#### 方式3: PM2（进程管理）
+
+```bash
+# 安装 PM2
+npm install -g pm2
+
+# 启动API服务
+pm2 start dist/cli/index.js --name baize-api -- api 3000
+
+# 启动Web服务
+pm2 start dist/cli/index.js --name baize-web -- web
+
+# 查看状态
+pm2 status
+
+# 查看日志
+pm2 logs
+
+# 开机自启
+pm2 startup
+pm2 save
+```
+
+### 环境变量配置
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `ALIYUN_API_KEY` | 阿里云百炼 API Key | 推荐 |
+| `ZHIPU_API_KEY` | 智谱清言 API Key | 可选 |
+| `OLLAMA_HOST` | Ollama 服务地址 | 可选，默认 localhost:11434 |
+| `BAIZE_DATA_DIR` | 数据目录 | 可选，默认 ./data |
+| `BAIZE_LOG_LEVEL` | 日志级别 | 可选，默认 info |
+
+## 运行
+
+### 启动方式
+
+```bash
+# 交互模式
+node dist/cli/index.js start
+
+# Web服务（API + Web界面）
 node dist/cli/index.js web
 
 # 只启动API服务
@@ -118,27 +218,62 @@ node dist/cli/index.js api
 
 # 指定端口
 node dist/cli/index.js api 8080
-```
 
-#### 单次对话模式
-
-```bash
+# 单次对话
 node dist/cli/index.js chat "你好"
-```
 
-#### 运行测试
-
-```bash
+# 运行测试
 node dist/cli/index.js test
 ```
 
-## 支持的LLM
+### 服务地址
 
-| 提供商 | 类型 | 配置 | 说明 |
-|--------|------|------|------|
-| 阿里云百炼 | OpenAI兼容 | ALIYUN_API_KEY | 推荐，稳定 |
-| 智谱清言 | OpenAI兼容 | ZHIPU_API_KEY | 备选 |
-| Ollama | 本地 | 无需Key | 需要本地运行Ollama |
+| 服务 | 地址 | 说明 |
+|-----|------|------|
+| API 服务 | http://localhost:3000 | REST API |
+| Web 界面 | http://localhost:8080 | Web UI |
+
+### API 接口
+
+#### 对话接口
+
+```bash
+# 对话
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "今天杭州天气怎么样"}'
+
+# 获取对话历史
+curl http://localhost:3000/api/chat/history
+
+# 清空对话历史
+curl -X DELETE http://localhost:3000/api/chat/history
+```
+
+#### 技能接口
+
+```bash
+# 获取技能列表
+curl http://localhost:3000/api/skills
+
+# 执行技能
+curl -X POST http://localhost:3000/api/skills/execute \
+  -H "Content-Type: application/json" \
+  -d '{"skillName": "time", "params": {}}'
+```
+
+#### 其他接口
+
+```bash
+# 健康检查
+curl http://localhost:3000/health
+
+# 成本统计
+curl http://localhost:3000/api/cost/stats
+
+# LLM配置
+curl http://localhost:3000/api/config/llm
+```
 
 ## 技能市场
 
@@ -161,14 +296,22 @@ node dist/cli/index.js skill info weather
 node dist/cli/index.js skill uninstall weather
 ```
 
+### 安装流程
+
+安装技能时会自动：
+1. 下载技能包
+2. 分析文档和脚本，提取参数定义
+3. 安装依赖（npm install / pip install）
+4. 执行初始化命令
+5. 提示需要配置的环境变量
+
 ### 可用技能示例
 
 | 技能 | 说明 | 类型 |
 |------|------|------|
 | weather | 天气查询（无需API Key） | 文档型 |
 | brave-search | Brave搜索 | 脚本型 |
-| file | 文件操作 | 脚本型 |
-| fs | 文件系统操作 | 脚本型 |
+| file-search | 文件搜索 | 文档型 |
 | time | 时间查询 | 脚本型 |
 
 ## 项目结构
@@ -198,6 +341,7 @@ Baize/
 ├── skills/                 # 技能目录
 ├── data/                   # 数据目录
 ├── web/                    # Web界面
+├── CHANGELOG.md            # 更新日志
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -245,66 +389,6 @@ LLM后处理: "杭州今天有雾，气温9°C，下午可能有小雨，建议�
 - 权限分级管理
 - 能力差距检测
 
-## API接口
-
-启动API服务后，可以通过以下接口调用：
-
-### 对话接口
-
-```bash
-# 对话
-curl -X POST http://localhost:3000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "今天杭州天气怎么样"}'
-
-# 获取对话历史
-curl http://localhost:3000/api/chat/history
-
-# 清空对话历史
-curl -X DELETE http://localhost:3000/api/chat/history
-```
-
-### 技能接口
-
-```bash
-# 获取技能列表
-curl http://localhost:3000/api/skills
-
-# 执行技能
-curl -X POST http://localhost:3000/api/skills/execute \
-  -H "Content-Type: application/json" \
-  -d '{"skillName": "time", "params": {}}'
-```
-
-### 其他接口
-
-```bash
-# 健康检查
-curl http://localhost:3000/health
-
-# 成本统计
-curl http://localhost:3000/api/cost/stats
-
-# LLM配置
-curl http://localhost:3000/api/config/llm
-```
-
-## 开发
-
-```bash
-# 开发模式（热重载）
-npm run dev
-
-# 编译
-npm run build
-
-# 测试
-npm test
-
-# 清理编译文件
-npm run clean
-```
-
 ## 命令行工具完整列表
 
 ```bash
@@ -335,6 +419,14 @@ baize help
 baize --help
 ```
 
+## 支持的LLM
+
+| 提供商 | 类型 | 配置 | 说明 |
+|--------|------|------|------|
+| 阿里云百炼 | OpenAI兼容 | ALIYUN_API_KEY | 推荐，稳定 |
+| 智谱清言 | OpenAI兼容 | ZHIPU_API_KEY | 备选 |
+| Ollama | 本地 | 无需Key | 需要本地运行Ollama |
+
 ## 常见问题
 
 ### 1. LLM调用失败
@@ -354,6 +446,11 @@ baize --help
 rm -rf dist
 npm run build
 ```
+
+### 4. 技能依赖安装失败
+
+- 检查是否安装了 Node.js 和 Python
+- 手动进入技能目录执行 `npm install` 或 `pip install -r requirements.txt`
 
 ## 许可证
 
