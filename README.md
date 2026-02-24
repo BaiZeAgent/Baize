@@ -1,5 +1,5 @@
 # 白泽 3.0
-
+https://github.com/BaiZeAgent/Baize/blob/main/web/logo.png
 JARVIS级AI助手 - Node.js/TypeScript实现 - OpenClaw
 
 联系我：baizehub@163.com
@@ -147,4 +147,5 @@ npm test
 ## 许可证
 
 MIT
+
 
