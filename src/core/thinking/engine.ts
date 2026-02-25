@@ -236,7 +236,7 @@ isSimpleChat 为 false 的情况（需要拆解任务）：
     originalInput: string,
     context: Record<string, unknown>
   ): Promise<Decomposition> {
-    // 获取技能列表（排除chat技能，因为对话是核心功能）
+    // 获取技能列表
     const skills = this.skillRegistry.getAll().filter(s => s.name !== 'chat');
     
     if (skills.length === 0) {
@@ -248,28 +248,21 @@ isSimpleChat 为 false 的情况（需要拆解任务）：
       };
     }
 
-    // 构建技能描述
-    const skillsDescription = skills.map(skill => {
-      const schemaInfo = Object.keys(skill.inputSchema?.properties || {})
-        .map(key => {
-          const props = skill.inputSchema?.properties as Record<string, Record<string, unknown>> | undefined;
-          const prop = props?.[key];
-          return `    - ${key}: ${prop?.description || prop?.type || '未知'}`;
-        })
-        .join('\n');
-
-      return `### ${skill.name}
-- 描述: ${skill.description}
-- 能力: ${skill.capabilities.join(', ')}
-- 风险: ${skill.riskLevel}
-- 参数:
-${schemaInfo || '    无参数'}`;
-    }).join('\n\n');
+    // 构建详细的技能描述
+    const skillsDescription = this.buildSkillsDescription(skills);
 
     const messages: LLMMessage[] = [
       {
         role: 'system',
         content: `你是一个任务拆解专家。将用户需求拆解为原子任务。
+
+## 核心原则
+
+你正在使用工具来完成任务，就像人使用工具一样：
+1. 每个工具都有特定的功能和参数
+2. 只能使用工具定义中列出的参数，不能"发明"新参数
+3. 如果工具只需要"城市名"，就不要添加"格式"、"样式"等参数
+4. 根据用户需求选择最合适的工具
 
 ## 可用技能
 
@@ -283,7 +276,7 @@ ${skillsDescription}
     {
       "id": "task_1",
       "description": "任务描述",
-      "skillName": "技能名称（必须从上面列表选择）",
+      "skillName": "技能名称",
       "params": {"参数名": "参数值"},
       "riskLevel": "low",
       "dependencies": []
@@ -293,15 +286,30 @@ ${skillsDescription}
   "parallelGroups": [["task_1"]]
 }
 
-## 重要规则
+## 参数规则（非常重要）
 
-1. skillName 必须从上面的技能列表中选择
-2. 如果用户需求不需要任何技能，返回空任务列表 {"tasks": [], "dependencies": {}, "parallelGroups": []}
-3. 文件操作使用 file 或 fs 技能
-4. 时间查询使用 time 技能
-5. 不要使用 chat 技能，对话是核心功能不是技能
-6. **非常重要**: 必须使用用户提供的具体内容，不要使用模板或占位符！
-7. 如果用户要求写入特定内容，必须原样使用用户提供的内容`,
+1. params 中只能包含该技能"参数定义"中列出的参数
+2. 如果技能的参数定义中没有某个参数名，绝对不要添加它
+3. 必需参数必须提供，可选参数可以不提供
+4. 不要根据技能描述"猜测"或"推断"额外参数
+
+## 示例
+
+假设有一个天气查询技能：
+### weather
+- 参数定义:
+  - location (string, 必需): 城市名称
+
+正确: { "skillName": "weather", "params": { "location": "北京" } }
+错误: { "skillName": "weather", "params": { "location": "北京", "format": "xxx" } }
+错误: { "skillName": "weather", "params": { "location": "北京", "unit": "celsius" } }
+// format 和 unit 不在参数定义中，不能添加！
+
+## 其他规则
+
+1. 如果用户需求不需要任何技能，返回空任务列表
+2. 必须使用用户提供的具体内容，不要使用模板或占位符
+3. 根据技能的"能力"标签判断是否适合当前任务`,
       },
       {
         role: 'user',
@@ -310,7 +318,7 @@ ${skillsDescription}
 核心需求: ${understanding.coreNeed}
 约束条件: ${understanding.constraints.join(', ') || '无'}
 
-**注意**: 请使用用户原始输入中的具体内容，不要使用模板或占位符！`,
+请根据用户需求选择合适的技能，并严格按照技能的参数定义填写参数。`,
       },
     ];
 
@@ -338,6 +346,36 @@ ${skillsDescription}
         ? result.parallelGroups as string[][]
         : [tasks.map(t => t.id)],
     };
+  }
+
+  /**
+   * 构建详细的技能描述
+   */
+  private buildSkillsDescription(skills: Array<{ name: string; description: string; capabilities: string[]; riskLevel: string; inputSchema?: Record<string, unknown> }>): string {
+    return skills.map(skill => {
+      const props = skill.inputSchema?.properties as Record<string, Record<string, unknown>> | undefined;
+      const required = (skill.inputSchema?.required as string[]) || [];
+      
+      // 构建参数说明
+      let paramsSection = '无参数';
+      if (props && Object.keys(props).length > 0) {
+        paramsSection = Object.entries(props)
+          .map(([key, prop]) => {
+            const isRequired = required.includes(key);
+            const type = prop.type || 'unknown';
+            const desc = prop.description || '';
+            return `  - ${key} (${type}, ${isRequired ? '必需' : '可选'}): ${desc}`;
+          })
+          .join('\n');
+      }
+
+      return `### ${skill.name}
+- 描述: ${skill.description}
+- 能力标签: ${skill.capabilities.join(', ')}
+- 风险等级: ${skill.riskLevel}
+- 参数定义（只能使用以下参数）:
+${paramsSection}`;
+    }).join('\n\n');
   }
 
   // ==================== 阶段3: 规划 ====================

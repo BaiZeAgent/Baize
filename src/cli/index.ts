@@ -201,16 +201,59 @@ export async function chatOnce(message: string): Promise<void> {
   await initialize();
 
   const brain = getBrain();
+  const memory = getMemory();
   const spinner = ora('思考中...').start();
 
   try {
     const decision = await brain.process(message);
-    spinner.succeed();
+    spinner.succeed('思考完成');
 
-    if (decision.response) {
-      console.log(decision.response);
-    } else if (decision.thoughtProcess) {
-      console.log(JSON.stringify(decision.thoughtProcess, null, 2));
+    switch (decision.action) {
+      case 'reply':
+        // 直接回复
+        console.log(chalk.cyan('\n白泽:'), decision.response);
+        break;
+
+      case 'execute':
+        // 执行任务
+        if (decision.thoughtProcess) {
+          console.log(chalk.gray('\n【思考过程】'));
+          console.log(chalk.gray(`  理解: ${decision.thoughtProcess.understanding.coreNeed}`));
+
+          if (decision.thoughtProcess.decomposition.tasks.length > 0) {
+            console.log(chalk.gray(`  任务: ${decision.thoughtProcess.decomposition.tasks.map(t => `${t.description} [${t.skillName || 'LLM'}]`).join(' → ')}`));
+
+            // 执行任务
+            if (decision.thoughtProcess.scheduling) {
+              const executor = getExecutor();
+              const result = await executor.execute(
+                decision.thoughtProcess.decomposition.tasks,
+                decision.thoughtProcess.scheduling.parallelGroups,
+                {},
+                undefined,
+                message
+              );
+
+              console.log(chalk.cyan('\n白泽:'), result.finalMessage);
+              memory.recordEpisode('conversation', `白泽: ${result.finalMessage}`);
+            }
+          } else {
+            console.log(chalk.cyan('\n白泽:'), decision.response || '我理解了您的需求，但暂时无法执行相关操作。');
+          }
+        }
+        break;
+
+      case 'clarify':
+      case 'confirm':
+        console.log(chalk.cyan('\n白泽:'), decision.response || decision.confirmMessage);
+        break;
+
+      default:
+        if (decision.response) {
+          console.log(chalk.cyan('\n白泽:'), decision.response);
+        } else if (decision.thoughtProcess) {
+          console.log(JSON.stringify(decision.thoughtProcess, null, 2));
+        }
     }
 
   } catch (error) {
@@ -491,18 +534,65 @@ async function installSkill(slug: string): Promise<void> {
     return;
   }
   
-  const spinner = ora(`从 ClawHub 安装 ${slug}...`).start();
+  console.log(chalk.cyan(`\n📦 安装技能: ${slug}`));
+  console.log(chalk.gray('─'.repeat(50)));
+  
+  const steps = ['获取技能信息', '下载技能包', '解压文件', '检查依赖', '完成安装'];
+  let currentStep = 0;
+  
+  const spinner = ora(steps[0]).start();
+  
+  const updateProgress = (step: number) => {
+    currentStep = step;
+    spinner.text = `${steps[step]} [${step + 1}/${steps.length}]`;
+  };
   
   try {
     const client = getClawHubClient();
+    
+    // 模拟进度更新（实际进度由 install 方法内部处理）
+    const progressInterval = setInterval(() => {
+      if (currentStep < steps.length - 2) {
+        updateProgress(currentStep + 1);
+      }
+    }, 500);
+    
     const result = await client.install(slug);
     
+    clearInterval(progressInterval);
+    
     if (result.success) {
-      spinner.succeed(`技能 ${slug} 安装成功`);
-      console.log(chalk.gray(`路径: ${result.path}`));
-      console.log(chalk.gray('重启白泽后生效\n'));
+      spinner.succeed(`${steps[4]} [${steps.length}/${steps.length}]`);
+      console.log(chalk.gray('─'.repeat(50)));
+      console.log(chalk.green(`\n✓ 技能 ${slug} 安装成功`));
+      console.log(chalk.gray(`  路径: ${result.path}`));
+      
+      // 显示警告和提示
+      if (result.warnings && result.warnings.length > 0) {
+        console.log(chalk.yellow('\n提示:'));
+        for (const w of result.warnings) {
+          console.log(chalk.yellow(`  ${w}`));
+        }
+      }
+      
+      // 显示环境变量要求
+      if (result.requiredEnv && result.requiredEnv.length > 0) {
+        console.log(chalk.cyan('\n需要配置环境变量:'));
+        for (const env of result.requiredEnv) {
+          console.log(chalk.cyan(`  - ${env}`));
+        }
+      }
+      
+      console.log(chalk.gray('\n重启白泽后生效\n'));
     } else {
       spinner.fail(`安装失败: ${result.error}`);
+      
+      if (result.warnings && result.warnings.length > 0) {
+        console.log(chalk.yellow('\n提示:'));
+        for (const w of result.warnings) {
+          console.log(chalk.yellow(`  ${w}`));
+        }
+      }
     }
     
   } catch (error) {

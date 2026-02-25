@@ -230,7 +230,7 @@ export class ParallelExecutor {
     }
 
     // 判断结果是否需要处理
-    const needsProcessing = this.shouldProcess(rawResult, userCommand);
+    const needsProcessing = this.shouldProcess(rawResult, userCommand, userIntent);
     
     if (!needsProcessing) {
       logger.debug('结果简单，无需处理');
@@ -273,10 +273,18 @@ export class ParallelExecutor {
   /**
    * 判断结果是否需要处理
    */
-  private shouldProcess(rawResult: string, userCommand: 'summarize' | 'raw' | null): boolean {
+  private shouldProcess(rawResult: string, userCommand: 'summarize' | 'raw' | null, userIntent?: string): boolean {
     // 用户强制要求总结
     if (userCommand === 'summarize') {
       return true;
+    }
+    
+    // 如果用户意图需要解释性回答（如穿衣建议），需要处理
+    if (userIntent) {
+      const intentKeywords = ['穿什么', '带什么', '适合', '建议', '推荐', '怎么样', '如何'];
+      if (intentKeywords.some(kw => userIntent.includes(kw))) {
+        return true;
+      }
     }
     
     // 结果很短，不需要处理
@@ -322,7 +330,7 @@ export class ParallelExecutor {
     const trustRecord = this.memory.getTrustRecord(skillName);
 
     // 构建系统提示
-    let systemPrompt = `你是白泽，一个智能助手。你的任务是将技能执行结果转换为用户友好的回复。
+    let systemPrompt = `你是白泽，一个智能助手。你的任务是根据技能执行结果回答用户的问题。
 
 ## 用户偏好
 - 回复风格: ${userPreference} (concise=简洁, detailed=详细, balanced=平衡)
@@ -333,12 +341,11 @@ export class ParallelExecutor {
 - 失败次数: ${trustRecord?.failureCount || 0}
 
 ## 规则
-1. 如果结果是天气信息，提取温度、天气状况、建议
-2. 如果结果是邮件，提取发件人、主题、重点内容
-3. 如果结果是搜索结果，提取关键信息
-4. 如果结果本身很简单，直接返回
-5. 根据用户偏好调整回复风格
-6. 使用自然语言，不要说"根据结果"`;
+1. 根据用户的原始问题来回答，不要只是复述技能结果
+2. 如果用户问的是穿衣建议，根据天气温度给出具体的穿衣建议
+3. 如果用户问的是天气，简洁地报告天气情况
+4. 如果用户问的是其他问题，根据结果智能回答
+5. 使用自然语言，像朋友一样交流`;
 
     if (userCommand === 'summarize') {
       systemPrompt += '\n\n用户明确要求总结，请提取最重要的信息。';
@@ -346,7 +353,11 @@ export class ParallelExecutor {
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `请处理以下技能执行结果：\n\n${rawResult}` },
+      { role: 'user', content: `用户问题: ${userIntent || '未知'}
+
+技能执行结果: ${rawResult}
+
+请根据用户的问题，给出合适的回答：` },
     ];
 
     const response = await this.llm.chat(messages, { temperature: 0.7 });

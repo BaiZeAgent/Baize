@@ -2,10 +2,14 @@
  * ClawHub 技能市场客户端
  * 
  * 从 ClawHub (https://clawhub.ai) 搜索和安装技能
- * 自动转换为白泽格式
- * 如果技能没有 input_schema，使用 LLM 自动提取
- * 自动将平台相关命令转换为跨平台 Node.js 代码
- * 自动处理技能初始化（依赖安装、环境配置）
+ * 
+ * 功能：
+ * 1. 搜索技能
+ * 2. 下载技能包
+ * 3. 解压到 skills 目录
+ * 4. 安全验证
+ * 
+ * 注意：不进行代码转换，技能必须包含实现文件 (main.js/main.py/run.sh)
  */
 
 import * as fs from 'fs';
@@ -15,7 +19,6 @@ import * as http from 'http';
 import * as zlib from 'zlib';
 import { spawn, exec } from 'child_process';
 import { getLogger } from '../../observability/logger';
-import { getLLMManager } from '../../llm';
 
 const logger = getLogger('skill:clawhub');
 
@@ -81,71 +84,39 @@ export interface ClawHubInstallResult {
 }
 
 /**
- * 提取的 input_schema
- */
-interface ExtractedInputSchema {
-  type: string;
-  properties: Record<string, {
-    type: string;
-    description: string;
-  }>;
-  required: string[];
-}
-
-/**
  * ClawHub 客户端
  */
 export class ClawHubClient {
   private endpoint: string;
   private skillsDir: string;
 
-  constructor(options: { endpoint?: string; skillsDir?: string } = {}) {
-    this.endpoint = options.endpoint || 'https://clawhub.ai';
-    this.skillsDir = options.skillsDir || 'skills';
-    logger.info('ClawHub 客户端初始化', { endpoint: this.endpoint });
-  }
-
-  /**
-   * 发送 HTTP 请求
-   */
-  private async request<T>(url: string): Promise<T> {
-    return new Promise((resolve, reject) => {
-      https.get(url, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Baize/3.0',
-        },
-      }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data) as T);
-          } catch (e) {
-            reject(new Error(`解析响应失败: ${data.substring(0, 100)}`));
-          }
-        });
-      }).on('error', reject);
-    });
+  constructor(skillsDir: string = 'skills', endpoint: string = 'https://clawhub.ai') {
+    this.endpoint = endpoint;
+    this.skillsDir = skillsDir;
+    
+    // 确保 skills 目录存在
+    if (!fs.existsSync(skillsDir)) {
+      fs.mkdirSync(skillsDir, { recursive: true });
+    }
   }
 
   /**
    * 搜索技能
    */
   async search(query: string, limit: number = 10): Promise<ClawHubSearchResult[]> {
-    logger.debug('搜索技能', { query });
-
-    const url = `${this.endpoint}/api/v1/search?q=${encodeURIComponent(query)}`;
+    logger.info('搜索技能', { query, limit });
 
     try {
-      const response = await this.request<ClawHubSearchResponse>(url);
+      const url = `${this.endpoint}/api/v1/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+      const response = await this.httpGet(url);
+      const data = JSON.parse(response) as ClawHubSearchResponse;
 
-      return response.results.slice(0, limit).map(result => ({
-        slug: result.slug,
-        displayName: result.displayName,
-        summary: result.summary || '',
-        version: result.version || '',
-        score: result.score,
+      return (data.results || []).map(item => ({
+        slug: item.slug,
+        displayName: item.displayName,
+        summary: item.summary || '',
+        version: item.version || 'unknown',
+        score: item.score,
       }));
     } catch (error) {
       logger.error('搜索失败', { error });
@@ -157,20 +128,230 @@ export class ClawHubClient {
    * 获取技能详情
    */
   async getSkillDetails(slug: string): Promise<ClawHubSkillResponse | null> {
-    logger.debug('获取技能详情', { slug });
-
-    const url = `${this.endpoint}/api/v1/skills/${slug}`;
-
     try {
-      return await this.request<ClawHubSkillResponse>(url);
+      const url = `${this.endpoint}/api/v1/skills/${slug}`;
+      const response = await this.httpGet(url);
+      return JSON.parse(response) as ClawHubSkillResponse;
     } catch (error) {
-      logger.error('获取详情失败', { error });
+      logger.error('获取技能详情失败', { slug, error });
       return null;
     }
   }
 
   /**
-   * 下载技能 ZIP 包（支持重定向、重试、速率限制）
+   * 安装技能
+   * 
+   * 流程：
+   * 1. 获取技能信息
+   * 2. 下载技能包
+   * 3. 解压到 skills 目录
+   * 4. 检查是否有实现文件
+   * 5. 安装依赖
+   */
+  async install(slug: string, version?: string): Promise<ClawHubInstallResult> {
+    logger.info('安装技能', { slug, version });
+
+    const warnings: string[] = [];
+    const requiredEnv: string[] = [];
+
+    try {
+      // 1. 获取技能信息
+      const details = await this.getSkillDetails(slug);
+      if (!details) {
+        return { success: false, error: '技能不存在' };
+      }
+
+      // 2. 确定版本
+      const targetVersion = version || details.latestVersion?.version;
+      if (!targetVersion) {
+        return { success: false, error: '无法确定版本' };
+      }
+
+      // 3. 下载技能包
+      const downloadResult = await this.downloadZip(slug, targetVersion);
+      if (!downloadResult.buffer) {
+        return { success: false, error: downloadResult.error || '下载失败' };
+      }
+
+      // 4. 解析 ZIP
+      const files = this.parseZip(downloadResult.buffer);
+      if (files.size === 0) {
+        return { success: false, error: 'ZIP 解析失败：文件为空' };
+      }
+
+      // 5. 检查技能类型
+      const hasMainJs = files.has('main.js');
+      const hasMainPy = files.has('main.py');
+      const hasRunSh = files.has('run.sh');
+      const hasImplementation = hasMainJs || hasMainPy || hasRunSh;
+
+      // 获取 SKILL.md 内容
+      const skillMdFile = files.get('SKILL.md') || files.get('skill.md');
+      const skillDoc = skillMdFile ? skillMdFile.toString('utf-8') : '';
+      
+      // 检查是否有 curl 命令（文档型技能）
+      const hasCurlCommand = /```bash\n[\s\S]*curl[\s\S]*```/.test(skillDoc);
+
+      // 根据技能类型给出提示
+      if (!hasImplementation && !hasCurlCommand) {
+        warnings.push('⚠️ 此技能缺少实现文件，可能无法正常工作');
+        warnings.push('建议：联系技能作者或等待更新');
+      } else if (!hasImplementation && hasCurlCommand) {
+        warnings.push('📄 文档型技能：通过 curl 命令执行');
+        warnings.push('适用场景：简单的 API 调用');
+        warnings.push('风险：依赖外部 API 可用性');
+      } else if (hasRunSh && !hasMainJs && !hasMainPy) {
+        warnings.push('🔧 Shell 技能：需要 bash 环境');
+        warnings.push('风险：平台相关，Windows 可能需要 WSL');
+      } else if (hasMainPy) {
+        warnings.push('🐍 Python 技能：需要 Python 环境');
+        warnings.push('风险：依赖 Python 版本和包');
+      }
+
+      // 6. 创建技能目录
+      const skillDir = path.join(this.skillsDir, slug);
+      if (fs.existsSync(skillDir)) {
+        // 删除旧版本
+        fs.rmSync(skillDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(skillDir, { recursive: true });
+
+      // 7. 写入文件
+      for (const [filename, content] of files) {
+        if (filename === '_meta.json') continue;
+
+        const filePath = path.join(skillDir, filename);
+        const dir = path.dirname(filePath);
+
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        fs.writeFileSync(filePath, content);
+        logger.debug('写入文件', { path: filePath, size: content.length });
+      }
+
+      // 8. 检查 SKILL.md
+      const skillMdPath = path.join(skillDir, 'SKILL.md');
+      if (!fs.existsSync(skillMdPath)) {
+        // 检查是否有小写的 skill.md
+        const skillMdLower = path.join(skillDir, 'skill.md');
+        if (fs.existsSync(skillMdLower)) {
+          // 重命名为大写
+          fs.renameSync(skillMdLower, skillMdPath);
+        } else {
+          warnings.push('技能缺少 SKILL.md 定义文件');
+        }
+      }
+
+      // 9. 提取环境变量要求
+      const skillMdContent = this.readFileIfExists(skillMdPath);
+      if (skillMdContent) {
+        const envMatch = skillMdContent.match(/required_env:\s*\n([\s\S]*?)(?=\n\w+:|\n---|$)/);
+        if (envMatch) {
+          const envLines = envMatch[1].match(/-\s+(\S+)/g);
+          if (envLines) {
+            for (const line of envLines) {
+              const env = line.replace(/-\s+/, '').trim();
+              if (env) requiredEnv.push(env);
+            }
+          }
+        }
+      }
+
+      // 10. 安装依赖
+      const depWarnings = await this.installDependencies(skillDir, files);
+      warnings.push(...depWarnings);
+
+      // 11. 执行初始化命令
+      if (skillMdContent) {
+        const setup = this.extractSetupInstructions(skillMdContent);
+        if (setup.commands.length > 0) {
+          const setupWarnings = await this.runSetupCommands(skillDir, setup.commands);
+          warnings.push(...setupWarnings);
+        }
+      }
+
+      logger.info('技能安装成功', {
+        slug,
+        version: targetVersion,
+        path: skillDir,
+        fileCount: files.size,
+        hasMainJs,
+        hasMainPy,
+        hasRunSh,
+        hasCurlCommand,
+      });
+
+      // 构建结果消息
+      let message = `技能 ${slug}@${targetVersion} 安装成功`;
+      message += `\n- 文件数: ${files.size}`;
+      
+      if (hasImplementation) {
+        message += `\n- 实现: ${hasMainJs ? 'JavaScript' : hasMainPy ? 'Python' : 'Shell'}`;
+      } else if (hasCurlCommand) {
+        message += `\n- 实现: 文档型 (curl 命令)`;
+      }
+      
+      if (warnings.length > 0) {
+        message += `\n\n提示:\n${warnings.map(w => `- ${w}`).join('\n')}`;
+      }
+      if (requiredEnv.length > 0) {
+        message += `\n\n需要配置环境变量:\n${requiredEnv.map(e => `- ${e}`).join('\n')}`;
+      }
+
+      return {
+        success: true,
+        path: skillDir,
+        message,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        requiredEnv: requiredEnv.length > 0 ? requiredEnv : undefined,
+      };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error('技能安装失败', { slug, error: errorMsg });
+      return {
+        success: false,
+        error: errorMsg,
+        warnings: warnings.length > 0 ? warnings : undefined,
+      };
+    }
+  }
+
+  /**
+   * 卸载技能
+   */
+  async uninstall(slug: string): Promise<ClawHubInstallResult> {
+    logger.info('卸载技能', { slug });
+
+    try {
+      const skillDir = path.join(this.skillsDir, slug);
+
+      if (!fs.existsSync(skillDir)) {
+        return { success: false, error: '技能未安装' };
+      }
+
+      // 删除技能目录
+      fs.rmSync(skillDir, { recursive: true, force: true });
+
+      logger.info('技能卸载成功', { slug, path: skillDir });
+
+      return {
+        success: true,
+        path: skillDir,
+        message: `技能 ${slug} 已卸载`,
+      };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error('技能卸载失败', { slug, error: errorMsg });
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * 下载技能 ZIP 包
    */
   private async downloadZip(slug: string, version: string): Promise<{ buffer: Buffer | null; error?: string }> {
     const url = `${this.endpoint}/api/v1/download?slug=${slug}&version=${version}`;
@@ -179,24 +360,22 @@ export class ClawHubClient {
     // 最多重试 3 次
     for (let attempt = 1; attempt <= 3; attempt++) {
       if (attempt > 1) {
-        // 重试前等待
-        const delay = attempt * 2000; // 2秒、4秒、6秒
-        logger.info(`等待 ${delay/1000} 秒后重试...`, { attempt });
+        const delay = attempt * 2000;
+        logger.info(`等待 ${delay / 1000} 秒后重试...`, { attempt });
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
       const result = await this.downloadOnce(url, 0);
-      
+
       if (result.buffer) {
         return { buffer: result.buffer };
       }
-      
+
       if (result.rateLimited) {
         logger.warn(`速率限制，第 ${attempt} 次重试`);
         continue;
       }
-      
-      // 其他错误，不重试
+
       return { buffer: null, error: result.error };
     }
 
@@ -207,7 +386,7 @@ export class ClawHubClient {
    * 单次下载尝试
    */
   private downloadOnce(
-    url: string, 
+    url: string,
     redirectCount: number
   ): Promise<{ buffer: Buffer | null; rateLimited?: boolean; error?: string }> {
     return new Promise((resolve) => {
@@ -227,8 +406,6 @@ export class ClawHubClient {
       }, (res) => {
         // 处理速率限制
         if (res.statusCode === 429) {
-          const retryAfter = res.headers['retry-after'];
-          logger.warn('速率限制 (429)', { retryAfter });
           resolve({ buffer: null, rateLimited: true, error: '请求过于频繁' });
           return;
         }
@@ -237,16 +414,13 @@ export class ClawHubClient {
         if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
           const location = res.headers.location;
           if (location) {
-            logger.debug('跟随重定向', { location });
             this.downloadOnce(location, redirectCount + 1).then(resolve);
             return;
           }
         }
 
         if (res.statusCode !== 200) {
-          const errorMsg = this.getStatusErrorMessage(res.statusCode || 0);
-          logger.error('下载失败', { statusCode: res.statusCode });
-          resolve({ buffer: null, error: errorMsg });
+          resolve({ buffer: null, error: `HTTP ${res.statusCode}` });
           return;
         }
 
@@ -264,31 +438,12 @@ export class ClawHubClient {
           resolve({ buffer });
         });
         res.on('error', (error) => {
-          logger.error('下载响应错误', { error });
           resolve({ buffer: null, error: error.message });
         });
       }).on('error', (error) => {
-        logger.error('下载请求错误', { error });
         resolve({ buffer: null, error: error.message });
       });
     });
-  }
-
-  /**
-   * 获取状态码对应的错误消息
-   */
-  private getStatusErrorMessage(statusCode: number): string {
-    switch (statusCode) {
-      case 400: return '请求参数错误';
-      case 401: return '未授权';
-      case 403: return '禁止访问';
-      case 404: return '技能不存在';
-      case 429: return '请求过于频繁，请稍后再试';
-      case 500: return '服务器内部错误';
-      case 502: return '网关错误';
-      case 503: return '服务暂时不可用';
-      default: return `下载失败 (HTTP ${statusCode})`;
-    }
   }
 
   /**
@@ -296,381 +451,109 @@ export class ClawHubClient {
    */
   private parseZip(buffer: Buffer): Map<string, Buffer> {
     const files = new Map<string, Buffer>();
-    
+
     try {
-      logger.debug('解析 ZIP', { size: buffer.length });
-      
       // 检查 ZIP 签名
       if (buffer.length < 4 || buffer.readUInt32LE(0) !== 0x04034b50) {
-        logger.error('无效的 ZIP 文件签名', { 
-          first4bytes: buffer.slice(0, 4).toString('hex') 
-        });
-        return files;
-      }
-      
-      // 查找中央目录结束标记
-      const endOfCentralDir = buffer.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-      if (endOfCentralDir === -1) {
-        logger.error('未找到中央目录结束标记');
+        logger.error('无效的 ZIP 文件签名');
         return files;
       }
 
-      const centralDirOffset = buffer.readUInt32LE(endOfCentralDir + 16);
-      const centralDirSize = buffer.readUInt32LE(endOfCentralDir + 12);
-      
-      logger.debug('中央目录', { offset: centralDirOffset, size: centralDirSize });
-      
-      let offset = centralDirOffset;
-      const centralDirEnd = centralDirOffset + centralDirSize;
-      
-      while (offset < centralDirEnd) {
-        if (buffer.readUInt32LE(offset) !== 0x02014b50) break;
-        
-        const compressionMethod = buffer.readUInt16LE(offset + 10);
-        const compressedSize = buffer.readUInt32LE(offset + 20);
-        const filenameLength = buffer.readUInt16LE(offset + 28);
-        const extraFieldLength = buffer.readUInt16LE(offset + 30);
-        const fileCommentLength = buffer.readUInt16LE(offset + 32);
-        const localHeaderOffset = buffer.readUInt32LE(offset + 42);
-        
-        const filename = buffer.toString('utf8', offset + 46, offset + 46 + filenameLength);
-        
-        const localOffset = localHeaderOffset;
-        const localFilenameLength = buffer.readUInt16LE(localOffset + 26);
-        const localExtraLength = buffer.readUInt16LE(localOffset + 28);
-        const dataOffset = localOffset + 30 + localFilenameLength + localExtraLength;
-        
-        const compressedData = buffer.slice(dataOffset, dataOffset + compressedSize);
-        
-        let fileData: Buffer;
+      // 简单的 ZIP 解析（支持 deflate 和 store）
+      let offset = 0;
+
+      while (offset < buffer.length - 4) {
+        const signature = buffer.readUInt32LE(offset);
+
+        if (signature !== 0x04034b50) {
+          break;
+        }
+
+        const compressionMethod = buffer.readUInt16LE(offset + 8);
+        const compressedSize = buffer.readUInt32LE(offset + 18);
+        const uncompressedSize = buffer.readUInt32LE(offset + 22);
+        const filenameLength = buffer.readUInt16LE(offset + 26);
+        const extraFieldLength = buffer.readUInt16LE(offset + 28);
+
+        const filename = buffer.toString('utf8', offset + 30, offset + 30 + filenameLength);
+        const dataStart = offset + 30 + filenameLength + extraFieldLength;
+        const dataEnd = dataStart + compressedSize;
+
+        if (dataEnd > buffer.length) {
+          break;
+        }
+
+        const compressedData = buffer.slice(dataStart, dataEnd);
+
+        let content: Buffer;
         if (compressionMethod === 0) {
-          fileData = compressedData;
+          // Store (无压缩)
+          content = compressedData;
         } else if (compressionMethod === 8) {
-          fileData = zlib.inflateRawSync(compressedData);
+          // Deflate
+          content = zlib.inflateRawSync(compressedData);
         } else {
-          logger.warn('不支持的压缩方法', { compressionMethod, filename });
-          offset += 46 + filenameLength + extraFieldLength + fileCommentLength;
+          logger.warn('不支持的压缩方法', { filename, compressionMethod });
+          offset = dataEnd;
           continue;
         }
-        
-        files.set(filename, fileData);
-        logger.debug('提取文件', { filename, size: fileData.length });
-        
-        offset += 46 + filenameLength + extraFieldLength + fileCommentLength;
+
+        // 只保留文件，跳过目录
+        if (!filename.endsWith('/')) {
+          files.set(filename, content);
+        }
+
+        offset = dataEnd;
       }
-      
-      logger.debug('ZIP 解析完成', { fileCount: files.size });
+
+      logger.info('ZIP 解析完成', { fileCount: files.size });
+
     } catch (error) {
-      logger.error('解析 ZIP 失败', { error });
+      logger.error('ZIP 解析失败', { error });
     }
-    
+
     return files;
   }
 
   /**
-   * 检测技能是否需要转换为 Node.js
+   * 安装依赖
    */
-  private needsConversion(skillDoc: string, files: Map<string, Buffer>): {
-    needed: boolean;
-    reason: string;
-    commands: string[];
-  } {
-    const commands: string[] = [];
-    
-    // 检查是否有 main.js 或 main.py
-    if (files.has('main.js') || files.has('main.py')) {
-      return { needed: false, reason: '已有跨平台实现', commands: [] };
-    }
-    
-    // 检查是否有 curl 命令
-    const curlMatches = skillDoc.matchAll(/```bash\n([\s\S]*?curl[\s\S]*?)```/g);
-    for (const match of curlMatches) {
-      commands.push(match[1].trim());
-    }
-    
-    // 检查是否有 shell 脚本
-    if (files.has('run.sh')) {
-      const shContent = files.get('run.sh')?.toString('utf-8') || '';
-      commands.push(shContent);
-    }
-    
-    // 检查是否有其他 .sh 文件
-    for (const [filename, content] of files) {
-      if (filename.endsWith('.sh') && filename !== 'run.sh') {
-        commands.push(content.toString('utf-8'));
-      }
-    }
-    
-    if (commands.length > 0) {
-      return { 
-        needed: true, 
-        reason: '检测到平台相关命令（curl/shell）', 
-        commands 
-      };
-    }
-    
-    return { needed: false, reason: '无需转换', commands: [] };
-  }
+  private async installDependencies(skillDir: string, files: Map<string, Buffer>): Promise<string[]> {
+    const warnings: string[] = [];
 
-  /**
-   * 使用 LLM 将命令转换为 Node.js 代码
-   */
-  private async convertToNodeJS(
-    skillDoc: string,
-    commands: string[],
-    inputSchema: ExtractedInputSchema | null,
-    skillName: string
-  ): Promise<string | null> {
-    try {
-      const llm = getLLMManager();
-      
-      const response = await llm.chat([
-        {
-          role: 'system',
-          content: `你是一个代码转换专家。将平台相关的命令（curl、shell脚本）转换为跨平台的 Node.js 代码。
+    // 检查 package.json
+    if (files.has('package.json')) {
+      const packageJsonPath = path.join(skillDir, 'package.json');
+      if (fs.existsSync(packageJsonPath)) {
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+          if (packageJson.dependencies && Object.keys(packageJson.dependencies).length > 0) {
+            logger.info('安装 npm 依赖', { skillDir });
+            
+            await new Promise<void>((resolve) => {
+              const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+              const proc = spawn(npm, ['install', '--production'], {
+                cwd: skillDir,
+                shell: process.platform === 'win32',
+                timeout: 60000,
+              });
 
-输出要求：
-1. 只输出 JavaScript 代码，不要其他内容
-2. 代码必须是完整的、可执行的
-3. 使用 Node.js 原生 fetch API（不需要额外依赖）
-4. 导出一个 async main(params) 函数
-5. params 是一个对象，包含用户传入的参数
-6. 返回格式: { success: true/false, data: {...}, message: "..." }
-
-代码模板：
-\`\`\`javascript
-/**
- * ${skillName} skill - 自动生成的跨平台实现
- */
-
-/**
- * 执行技能
- * @param {Object} params - 参数对象
- * @returns {Promise<{success: boolean, data: any, message: string}>}
- */
-async function main(params) {
-  try {
-    // 从 params 中获取参数
-    const param1 = params.param1 || 'default';
-    
-    // 执行请求或操作
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'curl/7.68.0' }
-    });
-    const result = await response.text();
-    
-    return {
-      success: true,
-      data: { result },
-      message: result
-    };
-  } catch (error) {
-    return {
-      success: false,
-      data: {},
-      message: error.message
-    };
-  }
-}
-
-// 自动执行：从环境变量或命令行参数读取
-if (require.main === module) {
-  let params = {};
-  if (process.env.BAIZE_PARAMS) {
-    try {
-      const parsed = JSON.parse(process.env.BAIZE_PARAMS);
-      params = parsed.params || parsed;
-    } catch (e) {}
-  }
-  if (process.argv.length > 2) {
-    try {
-      params = JSON.parse(process.argv[2]);
-    } catch (e) {
-      params = { query: process.argv[2] };
-    }
-  }
-  main(params).then(result => {
-    console.log(JSON.stringify(result));
-    process.exit(result.success ? 0 : 1);
-  }).catch(error => {
-    console.log(JSON.stringify({ success: false, message: error.message }));
-    process.exit(1);
-  });
-}
-
-module.exports = { main };
-\`\`\`
-
-规则：
-1. 使用 encodeURIComponent 处理 URL 参数
-2. 设置合适的 User-Agent（如 'Baize/3.0'）
-3. 处理超时（使用 AbortController）
-4. 错误处理要完善
-5. 只输出代码，不要 markdown 代码块标记`
-        },
-        {
-          role: 'user',
-          content: `请将以下技能转换为跨平台的 Node.js 代码：
-
-技能名称: ${skillName}
-
-参数定义:
-${inputSchema ? JSON.stringify(inputSchema, null, 2) : '无参数定义'}
-
-原始命令:
-${commands.join('\n\n---\n\n')}
-
-技能文档:
-${skillDoc.substring(0, 3000)}
-
-请生成完整的 main.js 代码：`
-        }
-      ], { temperature: 0.1 });
-
-      let code = response.content.trim();
-      
-      // 移除可能的 markdown 代码块标记
-      code = code.replace(/^```javascript\n?/i, '').replace(/^```\n?/i, '').replace(/\n?```$/i, '');
-      
-      logger.info('LLM 生成 Node.js 代码成功', { 
-        skillName, 
-        codeLength: code.length 
-      });
-      
-      return code;
-    } catch (error) {
-      logger.error('LLM 生成 Node.js 代码失败', { error, skillName });
-      return null;
-    }
-  }
-
-  /**
-   * 使用 LLM 从文档和脚本中提取 input_schema
-   */
-  private async extractInputSchema(
-    skillDoc: string, 
-    skillName: string,
-    scriptContents: string[]
-  ): Promise<ExtractedInputSchema | null> {
-    try {
-      const llm = getLLMManager();
-      
-      // 构建分析内容
-      let analysisContent = skillDoc;
-      if (scriptContents.length > 0) {
-        analysisContent += `\n\n## 脚本代码\n\n`;
-        for (let i = 0; i < scriptContents.length; i++) {
-          const ext = scriptContents[i].includes('def ') ? 'python' : 'javascript';
-          analysisContent += `### 脚本 ${i + 1}\n\`\`\`${ext}\n${scriptContents[i]}\n\`\`\`\n\n`;
-        }
-      }
-      
-      const response = await llm.chat([
-        {
-          role: 'system',
-          content: `你是一个技能参数分析器。分析技能文档和代码，提取输入参数的 JSON Schema。
-
-输出格式（只输出 JSON，不要其他内容）：
-{
-  "type": "object",
-  "properties": {
-    "参数名": {
-      "type": "string|number|boolean",
-      "description": "参数描述"
-    }
-  },
-  "required": ["必需参数列表"]
-}
-
-规则：
-1. 从 curl 命令中识别可变部分作为参数
-2. 从 JavaScript/Python 代码中识别函数参数
-3. 例如 main(params) 中的 params 解构出的变量就是参数
-4. 例如 const { action, path } = params 表示 action 和 path 是参数
-5. 从命令行参数中识别，如 ./search.js "query" -n 10 中的 query 和 n
-6. 如果文档中没有明确的参数，返回空对象 {"type": "object", "properties": {}, "required": []}
-7. 只输出 JSON，不要其他内容`
-        },
-        {
-          role: 'user',
-          content: `请分析以下技能文档和代码，提取 input_schema：
-
-技能名称: ${skillName}
-
-${analysisContent}`
-        }
-      ], { temperature: 0.1 });
-
-      // 解析 JSON
-      const content = response.content.trim();
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) {
-        logger.warn('LLM 未返回有效的 JSON', { skillName });
-        return null;
-      }
-
-      const schema = JSON.parse(jsonMatch[0]) as ExtractedInputSchema;
-      logger.info('LLM 提取 input_schema 成功', { 
-        skillName, 
-        properties: Object.keys(schema.properties || {}),
-        required: schema.required 
-      });
-      
-      return schema;
-    } catch (error) {
-      logger.error('LLM 提取 input_schema 失败', { error, skillName });
-      return null;
-    }
-  }
-
-  /**
-   * 从文档中提取初始化说明
-   */
-  private extractSetupInstructions(skillDoc: string): {
-    commands: string[];
-    requiredEnv: string[];
-  } {
-    const commands: string[] = [];
-    const requiredEnv: string[] = [];
-
-    // 提取 Setup 部分
-    const setupMatch = skillDoc.match(/##\s*Setup[\s\S]*?(?=##|$)/i);
-    if (setupMatch) {
-      const setupSection = setupMatch[0];
-      
-      // 提取 bash 命令（排除 curl 命令，因为会被转换）
-      const bashMatches = setupSection.matchAll(/```bash\n([\s\S]*?)```/g);
-      for (const match of bashMatches) {
-        const cmd = match[1].trim();
-        // 过滤掉 curl 命令和危险命令
-        if (!cmd.includes('curl ') && !cmd.includes('sudo') && !cmd.includes('rm ')) {
-          commands.push(cmd);
-        }
-      }
-    }
-
-    // 提取环境变量要求
-    const envMatch = skillDoc.match(/Needs?\s*env:\s*`([^`]+)`/i);
-    if (envMatch) {
-      requiredEnv.push(envMatch[1]);
-    }
-
-    // 从 frontmatter 提取 required_env
-    const frontmatterEnv = skillDoc.match(/required_env:\s*\n(\s+-\s+.+\n)+/);
-    if (frontmatterEnv) {
-      const envLines = frontmatterEnv[0].match(/-\s+(.+)/g);
-      if (envLines) {
-        for (const line of envLines) {
-          const envName = line.replace(/-\s+/, '').trim();
-          if (!requiredEnv.includes(envName)) {
-            requiredEnv.push(envName);
+              proc.on('close', () => resolve());
+              proc.on('error', () => resolve());
+            });
           }
+        } catch (error) {
+          warnings.push('npm 依赖安装失败，请手动安装');
         }
       }
     }
 
-    return { commands, requiredEnv };
+    // 检查 requirements.txt
+    if (files.has('requirements.txt')) {
+      warnings.push('检测到 Python 依赖，请手动安装: pip install -r requirements.txt');
+    }
+
+    return warnings;
   }
 
   /**
@@ -680,27 +563,22 @@ ${analysisContent}`
     const warnings: string[] = [];
 
     for (const cmd of commands) {
-      logger.info('执行初始化命令', { cmd });
-      
       try {
-        await new Promise<void>((resolve, reject) => {
-          exec(cmd, { 
+        logger.info('执行初始化命令', { cmd });
+        
+        await new Promise<void>((resolve) => {
+          exec(cmd, {
             cwd: skillDir,
-            timeout: 120000 // 2分钟超时
-          }, (error, stdout, stderr) => {
+            timeout: 30000,
+          }, (error) => {
             if (error) {
-              logger.warn('初始化命令失败', { cmd, error: error.message });
-              warnings.push(`初始化命令失败: ${cmd} - ${error.message}`);
-              resolve(); // 不中断，继续
-            } else {
-              logger.debug('初始化命令完成', { cmd, stdout: stdout.substring(0, 100) });
-              resolve();
+              warnings.push(`初始化命令失败: ${cmd}`);
             }
+            resolve();
           });
         });
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        warnings.push(`初始化命令异常: ${cmd} - ${errorMsg}`);
+        warnings.push(`初始化命令失败: ${cmd}`);
       }
     }
 
@@ -708,463 +586,91 @@ ${analysisContent}`
   }
 
   /**
-   * 安装技能依赖
+   * 从 SKILL.md 提取初始化说明
    */
-  private async installDependencies(skillDir: string, files: Map<string, Buffer>): Promise<string[]> {
-    const warnings: string[] = [];
-
-    // 检查 package.json
-    if (files.has('package.json')) {
-      logger.info('检测到 package.json，安装 Node.js 依赖');
-      
-      try {
-        await new Promise<void>((resolve) => {
-          const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-          const proc = spawn(npmCmd, ['install'], {
-            cwd: skillDir,
-            stdio: 'pipe',
-            shell: process.platform === 'win32',
-          });
-
-          let stderr = '';
-          proc.stderr?.on('data', (data) => {
-            stderr += data.toString();
-          });
-
-          proc.on('close', (code) => {
-            if (code !== 0) {
-              logger.warn('npm install 失败', { code, stderr });
-              warnings.push(`npm install 失败 (退出码: ${code})`);
-            } else {
-              logger.info('npm install 完成');
-            }
-            resolve();
-          });
-
-          proc.on('error', (error) => {
-            logger.warn('npm install 异常', { error: error.message });
-            warnings.push(`npm install 异常: ${error.message}`);
-            resolve();
-          });
-
-          // 60秒超时
-          setTimeout(() => {
-            proc.kill();
-            warnings.push('npm install 超时');
-            resolve();
-          }, 60000);
-        });
-      } catch (error) {
-        warnings.push(`npm install 异常: ${error}`);
-      }
-    }
-
-    // 检查 requirements.txt
-    if (files.has('requirements.txt')) {
-      logger.info('检测到 requirements.txt，安装 Python 依赖');
-      
-      try {
-        await new Promise<void>((resolve) => {
-          const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-          const proc = spawn(pythonCmd, ['-m', 'pip', 'install', '-r', 'requirements.txt'], {
-            cwd: skillDir,
-            stdio: 'pipe',
-          });
-
-          let stderr = '';
-          proc.stderr?.on('data', (data) => {
-            stderr += data.toString();
-          });
-
-          proc.on('close', (code) => {
-            if (code !== 0) {
-              logger.warn('pip install 失败', { code, stderr });
-              warnings.push(`pip install 失败 (退出码: ${code})`);
-            } else {
-              logger.info('pip install 完成');
-            }
-            resolve();
-          });
-
-          proc.on('error', (error) => {
-            logger.warn('pip install 异常', { error: error.message });
-            warnings.push(`pip install 异常: ${error.message}`);
-            resolve();
-          });
-
-          // 60秒超时
-          setTimeout(() => {
-            proc.kill();
-            warnings.push('pip install 超时');
-            resolve();
-          }, 60000);
-        });
-      } catch (error) {
-        warnings.push(`pip install 异常: ${error}`);
-      }
-    }
-
-    return warnings;
-  }
-
-  /**
-   * 转换 ClawHub 格式为白泽格式
-   */
-  private async convertToBaizeFormat(
-    content: string, 
-    slug: string,
-    scriptContents: string[]
-  ): Promise<string> {
-    // 解析 YAML frontmatter
-    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-
-    if (!frontmatterMatch) {
-      // 没有 frontmatter，添加默认值
-      return `---
-name: ${slug}
-version: 1.0.0
-description: ${slug} skill
-capabilities:
-  - ${slug}
-risk_level: low
----
-
-${content}`;
-    }
-
-    const [, frontmatter, body] = frontmatterMatch;
-
-    // 检查是否已有 input_schema
-    const hasInputSchema = frontmatter.includes('input_schema:');
-    let inputSchema: ExtractedInputSchema | null = null;
-
-    if (hasInputSchema) {
-      // 提取现有的 input_schema
-      const schemaMatch = frontmatter.match(/input_schema:\s*\n([\s\S]*?)(?=\n\w+:|\n---)/);
-      if (schemaMatch) {
-        try {
-          const YAML = require('yaml');
-          inputSchema = YAML.parse(`input_schema:\n${schemaMatch[1]}`).input_schema;
-          logger.debug('使用现有的 input_schema', { slug });
-        } catch (e) {
-          logger.warn('解析现有 input_schema 失败', { slug });
-        }
-      }
-    }
-
-    // 如果没有 input_schema，使用 LLM 提取
-    if (!inputSchema) {
-      logger.info('技能没有 input_schema，使用 LLM 提取', { 
-        slug, 
-        scriptCount: scriptContents.length 
-      });
-      inputSchema = await this.extractInputSchema(content, slug, scriptContents);
-    }
-
-    // 提取环境变量要求
-    const envMatch = frontmatter.match(/env:\s*\n(\s+-\s+.+\n)+/);
+  private extractSetupInstructions(content: string): { commands: string[]; requiredEnv: string[] } {
+    const commands: string[] = [];
     const requiredEnv: string[] = [];
+
+    // 提取环境变量
+    const envMatch = content.match(/required_env:\s*\n([\s\S]*?)(?=\n\w+:|\n---|$)/);
     if (envMatch) {
-      const envLines = envMatch[0].match(/-\s+(.+)/g);
+      const envLines = envMatch[1].match(/-\s+(\S+)/g);
       if (envLines) {
         for (const line of envLines) {
-          const envName = line.replace(/-\s+/, '').trim();
-          requiredEnv.push(envName);
+          const env = line.replace(/-\s+/, '').trim();
+          if (env) requiredEnv.push(env);
         }
       }
     }
 
-    // 解析现有字段
-    const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
-    const versionMatch = frontmatter.match(/^version:\s*(.+)$/m);
-    const descMatch = frontmatter.match(/^description:\s*(.+)$/m) || frontmatter.match(/^summary:\s*(.+)$/m);
-
-    // 构建白泽格式的 frontmatter
-    const lines: string[] = [
-      '---',
-      `name: ${nameMatch ? nameMatch[1].trim() : slug}`,
-      `version: ${versionMatch ? versionMatch[1].trim() : '1.0.0'}`,
-      `description: "${(descMatch ? descMatch[1].trim() : `${slug} skill`).replace(/"/g, '\\"')}"`,
-      'capabilities:',
-      `  - ${slug}`,
-      'risk_level: low',
-    ];
-
-    // 添加 input_schema
-    if (inputSchema && Object.keys(inputSchema.properties || {}).length > 0) {
-      lines.push('input_schema:');
-      lines.push('  type: object');
-      lines.push('  properties:');
-      
-      for (const [propName, propDef] of Object.entries(inputSchema.properties)) {
-        lines.push(`    ${propName}:`);
-        lines.push(`      type: ${propDef.type}`);
-        lines.push(`      description: "${propDef.description.replace(/"/g, '\\"')}"`);
-      }
-      
-      if (inputSchema.required && inputSchema.required.length > 0) {
-        lines.push('  required:');
-        for (const req of inputSchema.required) {
-          lines.push(`    - ${req}`);
+    // 提取初始化命令
+    const setupMatch = content.match(/```bash\n# Setup[\s\S]*?```/);
+    if (setupMatch) {
+      const setupContent = setupMatch[0];
+      const cmdMatches = setupContent.matchAll(/^(?!#)\s*(\S+.*)$/gm);
+      for (const match of cmdMatches) {
+        const cmd = match[1].trim();
+        if (cmd && !cmd.startsWith('#')) {
+          commands.push(cmd);
         }
       }
     }
 
-    // 添加环境变量要求
-    if (requiredEnv.length > 0) {
-      lines.push('required_env:');
-      for (const env of requiredEnv) {
-        lines.push(`  - ${env}`);
-      }
-    }
-
-    lines.push('---');
-    lines.push('');
-
-    return lines.join('\n') + body;
+    return { commands, requiredEnv };
   }
 
   /**
-   * 安装技能
+   * HTTP GET 请求
    */
-  async install(slug: string, version?: string): Promise<ClawHubInstallResult> {
-    logger.info('安装技能', { slug, version });
+  private httpGet(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
 
-    const warnings: string[] = [];
-    let requiredEnv: string[] = [];
-
-    try {
-      // 获取技能信息
-      const details = await this.getSkillDetails(slug);
-      if (!details) {
-        return { success: false, error: '技能不存在' };
-      }
-
-      // 确定版本
-      const targetVersion = version || details.latestVersion?.version;
-      if (!targetVersion) {
-        return { success: false, error: '无法确定版本' };
-      }
-
-      // 下载 ZIP
-      const downloadResult = await this.downloadZip(slug, targetVersion);
-      if (!downloadResult.buffer) {
-        return { success: false, error: downloadResult.error || '下载失败' };
-      }
-
-      // 解析 ZIP
-      const files = this.parseZip(downloadResult.buffer);
-      if (files.size === 0) {
-        return { success: false, error: 'ZIP 解析失败' };
-      }
-
-      // 创建技能目录
-      const skillDir = path.join(this.skillsDir, slug);
-      if (!fs.existsSync(skillDir)) {
-        fs.mkdirSync(skillDir, { recursive: true });
-      }
-
-      // 收集所有脚本文件内容
-      const scriptContents: string[] = [];
-      const scriptExtensions = ['.js', '.ts', '.py', '.sh'];
-      
-      for (const [filename, content] of files) {
-        const ext = path.extname(filename).toLowerCase();
-        if (scriptExtensions.includes(ext) && !filename.includes('node_modules')) {
-          const scriptContent = content.toString('utf-8');
-          // 只取前 5000 字符，避免太长
-          scriptContents.push(scriptContent.substring(0, 5000));
-        }
-      }
-
-      // 获取 SKILL.md 内容
-      let skillDoc = '';
-      const skillMdFile = files.get('SKILL.md') || files.get('skill.md');
-      if (skillMdFile) {
-        skillDoc = skillMdFile.toString('utf-8');
-        
-        // 提取初始化说明
-        const setup = this.extractSetupInstructions(skillDoc);
-        requiredEnv = setup.requiredEnv;
-      }
-
-      // 提取 input_schema
-      let inputSchema: ExtractedInputSchema | null = null;
-      if (skillDoc) {
-        inputSchema = await this.extractInputSchema(skillDoc, slug, scriptContents);
-      }
-
-      // 检测是否需要转换为 Node.js
-      const conversion = this.needsConversion(skillDoc, files);
-      let generatedMainJs: string | null = null;
-      
-      if (conversion.needed) {
-        logger.info('检测到平台相关命令，转换为 Node.js', { 
-          slug, 
-          reason: conversion.reason,
-          commandCount: conversion.commands.length 
+      protocol.get(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Baize/3.0',
+        },
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
         });
-        
-        generatedMainJs = await this.convertToNodeJS(
-          skillDoc, 
-          conversion.commands, 
-          inputSchema,
-          slug
-        );
-        
-        if (generatedMainJs) {
-          warnings.push('已将平台相关命令转换为跨平台 Node.js 代码');
-        }
-      }
-
-      // 写入文件
-      for (const [filename, content] of files) {
-        if (filename === '_meta.json') continue;
-        
-        // 跳过 shell 脚本（已转换为 Node.js）
-        if (generatedMainJs && filename.endsWith('.sh')) {
-          continue;
-        }
-        
-        const filePath = path.join(skillDir, filename);
-        const dir = path.dirname(filePath);
-        
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-
-        let fileContent = content.toString('utf-8');
-        if (filename.toLowerCase() === 'skill.md') {
-          fileContent = await this.convertToBaizeFormat(fileContent, slug, scriptContents);
-        }
-
-        fs.writeFileSync(filePath, fileContent, 'utf-8');
-        logger.debug('写入文件', { path: filePath, size: content.length });
-      }
-
-      // 写入生成的 main.js
-      if (generatedMainJs) {
-        const mainJsPath = path.join(skillDir, 'main.js');
-        fs.writeFileSync(mainJsPath, generatedMainJs, 'utf-8');
-        logger.info('生成跨平台 main.js', { path: mainJsPath });
-      }
-
-      // 安装依赖
-      const depWarnings = await this.installDependencies(skillDir, files);
-      warnings.push(...depWarnings);
-
-      // 执行初始化命令
-      if (skillDoc) {
-        const setup = this.extractSetupInstructions(skillDoc);
-        if (setup.commands.length > 0) {
-          const setupWarnings = await this.runSetupCommands(skillDir, setup.commands);
-          warnings.push(...setupWarnings);
-        }
-      }
-
-      // 如果没有 main.js 且有其他 .js 文件，创建入口
-      const hasMainJs = files.has('main.js') || generatedMainJs;
-      const hasMainPy = files.has('main.py');
-      const jsFiles = Array.from(files.keys()).filter(f => f.endsWith('.js') && f !== 'main.js');
-
-      if (!hasMainJs && !hasMainPy && jsFiles.length > 0) {
-        const mainJsContent = `/**
- * ${slug} skill - 自动生成的入口文件
- */
-
-const impl = require('./${jsFiles[0].replace('.js', '')}');
-
-async function main(params) {
-  if (typeof impl.main === 'function') {
-    return impl.main(params);
-  }
-  if (typeof impl === 'function') {
-    return impl(params);
-  }
-  return { success: false, error: '未找到入口函数' };
-}
-
-module.exports = { main };
-`;
-        fs.writeFileSync(path.join(skillDir, 'main.js'), mainJsContent, 'utf-8');
-        logger.info('创建入口文件', { path: path.join(skillDir, 'main.js') });
-      }
-
-      logger.info('技能安装成功', { slug, version: targetVersion, path: skillDir, fileCount: files.size });
-
-      // 构建结果消息
-      let message = `技能 ${slug}@${targetVersion} 安装成功 (${files.size} 个文件)`;
-      if (warnings.length > 0) {
-        message += `\n\n提示:\n${warnings.map(w => `- ${w}`).join('\n')}`;
-      }
-      if (requiredEnv.length > 0) {
-        message += `\n\n需要配置环境变量:\n${requiredEnv.map(e => `- ${e}`).join('\n')}`;
-      }
-
-      return {
-        success: true,
-        path: skillDir,
-        message,
-        warnings: warnings.length > 0 ? warnings : undefined,
-        requiredEnv: requiredEnv.length > 0 ? requiredEnv : undefined,
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      logger.error('技能安装失败', { error: errorMsg });
-      return {
-        success: false,
-        error: errorMsg,
-        warnings: warnings.length > 0 ? warnings : undefined,
-      };
-    }
-  }
-
-  /**
-   * 列出已安装的技能
-   */
-  listInstalled(): string[] {
-    if (!fs.existsSync(this.skillsDir)) {
-      return [];
-    }
-
-    return fs.readdirSync(this.skillsDir).filter(name => {
-      const skillPath = path.join(this.skillsDir, name);
-      const skillMd = path.join(skillPath, 'SKILL.md');
-      return fs.statSync(skillPath).isDirectory() && fs.existsSync(skillMd);
+      }).on('error', reject);
     });
   }
 
   /**
-   * 卸载技能
+   * 读取文件（如果存在）
    */
-  uninstall(slug: string): ClawHubInstallResult {
-    const skillDir = path.join(this.skillsDir, slug);
-
-    if (!fs.existsSync(skillDir)) {
-      return { success: false, error: '技能未安装' };
-    }
-
+  private readFileIfExists(filePath: string): string | null {
     try {
-      fs.rmSync(skillDir, { recursive: true, force: true });
-      logger.info('技能已卸载', { slug });
-
-      return {
-        success: true,
-        message: `技能 ${slug} 已卸载`,
-      };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return { success: false, error: errorMsg };
+      if (fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, 'utf-8');
+      }
+    } catch {
+      // ignore
     }
+    return null;
   }
 }
 
 // 全局实例
-let clawhubClient: ClawHubClient | null = null;
+let clientInstance: ClawHubClient | null = null;
 
-export function getClawHubClient(): ClawHubClient {
-  if (!clawhubClient) {
-    clawhubClient = new ClawHubClient();
+/**
+ * 获取 ClawHub 客户端
+ */
+export function getClawHubClient(skillsDir?: string): ClawHubClient {
+  if (!clientInstance) {
+    clientInstance = new ClawHubClient(skillsDir);
   }
-  return clawhubClient;
+  return clientInstance;
 }

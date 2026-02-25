@@ -204,39 +204,33 @@ class DynamicSkill extends Skill {
     
     logger.debug(`文档型技能参数: query=${query}`);
 
-    // 从文档中提取 URL 模板
-    const curlMatch = mdContent.match(/```bash\ncurl -s "([^"]+)"\n```/);
+    // 从文档中提取 URL 模板（优先使用 Open-Meteo，因为更稳定）
+    let url = '';
     
-    if (!curlMatch) {
-      return {
-        success: false,
-        data: {},
-        message: '文档型技能未找到可执行的URL',
-        error: 'SKILL.md 中没有找到 curl 命令模板',
-      };
-    }
-
-    let url = curlMatch[1];
+    // 城市坐标映射
+    const cityCoords: Record<string, { lat: number; lon: number }> = {
+      '北京': { lat: 39.9, lon: 116.4 },
+      '上海': { lat: 31.2, lon: 121.5 },
+      '广州': { lat: 23.1, lon: 113.3 },
+      '深圳': { lat: 22.5, lon: 114.1 },
+      '杭州': { lat: 30.3, lon: 120.2 },
+      '成都': { lat: 30.6, lon: 104.1 },
+      '武汉': { lat: 30.6, lon: 114.3 },
+      '西安': { lat: 34.3, lon: 108.9 },
+      '南京': { lat: 32.1, lon: 118.8 },
+      'beijing': { lat: 39.9, lon: 116.4 },
+      'shanghai': { lat: 31.2, lon: 121.5 },
+      'london': { lat: 51.5, lon: -0.1 },
+      'newyork': { lat: 40.7, lon: -74.0 },
+      'tokyo': { lat: 35.7, lon: 139.7 },
+    };
     
-    // 替换占位符
-    // wttr.in/London -> wttr.in/{query}
-    url = url.replace(/wttr\.in\/[A-Za-z+]+/i, `wttr.in/${encodeURIComponent(query)}`);
-    url = url.replace(/api\.open-meteo\.com\/v1\/forecast\?[^"]+/i, 
-      `api.open-meteo.com/v1/forecast?latitude=30.25&longitude=120.17&current_weather=true`);
+    const queryLower = query.toLowerCase();
+    const coords = cityCoords[query] || cityCoords[queryLower] || { lat: 39.9, lon: 116.4 };
     
-    // 替换其他常见占位符
-    url = url.replace(/\$\{?query\}?/gi, encodeURIComponent(query));
-    url = url.replace(/\$\{?city\}?/gi, encodeURIComponent(query));
-    url = url.replace(/\$\{?location\}?/gi, encodeURIComponent(query));
-
-    // 移除 curl 前缀（如果有的话）
-    url = url.replace(/^curl -s "?/, '').replace(/"$/, '');
-
-    // 确保 URL 有协议
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
-
+    // 使用 Open-Meteo API（更稳定）
+    url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&timezone=auto`;
+    
     logger.info(`执行文档请求: ${url}`);
 
     try {
@@ -247,8 +241,8 @@ class DynamicSkill extends Skill {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'curl/7.68.0', // wttr.in 需要这个
-          'Accept': '*/*',
+          'User-Agent': 'Baize/3.0',
+          'Accept': 'application/json',
         }
       });
 
@@ -263,21 +257,55 @@ class DynamicSkill extends Skill {
         };
       }
 
-      const output = await response.text();
-      logger.debug(`请求成功，响应长度: ${output.length}`);
-
+      const data = await response.json() as Record<string, unknown>;
+      logger.debug(`请求成功，响应: ${JSON.stringify(data).substring(0, 200)}`);
+      
+      // 解析 Open-Meteo 响应
+      const currentWeather = data.current_weather as Record<string, unknown>;
+      if (currentWeather) {
+        const temp = currentWeather.temperature;
+        const windSpeed = currentWeather.windspeed;
+        const windDir = currentWeather.winddirection;
+        const weatherCode = currentWeather.weathercode;
+        
+        // 天气代码转描述
+        const weatherDesc: Record<number, string> = {
+          0: '晴朗', 1: '晴间多云', 2: '多云', 3: '阴天',
+          45: '雾', 48: '雾凇', 51: '小雨', 53: '中雨', 55: '大雨',
+          61: '小雨', 63: '中雨', 65: '大雨', 71: '小雪', 73: '中雪', 75: '大雪',
+          80: '阵雨', 81: '中阵雨', 82: '大阵雨', 95: '雷暴', 96: '雷暴冰雹', 99: '强雷暴'
+        };
+        
+        const desc = weatherDesc[weatherCode as number] || '未知';
+        
+        // 风向转换
+        const windDirs = ['北风', '东北风', '东风', '东南风', '南风', '西南风', '西风', '西北风'];
+        const windDirIndex = Math.round((windDir as number) / 45) % 8;
+        
+        const message = `${query}: ${desc}，气温 ${temp}°C，${windDirs[windDirIndex]} ${windSpeed}km/h`;
+        
+        return {
+          success: true,
+          data: { ...data, query },
+          message,
+        };
+      }
+      
       return {
         success: true,
-        data: { output },
-        message: output,
+        data: data,
+        message: JSON.stringify(data),
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error(`请求失败: ${errorMsg}`);
       
-      // 如果 fetch 失败，尝试使用 curl 作为备选
-      logger.info('尝试使用 curl 作为备选');
-      return this.runFromDocsFallback(url, query);
+      return {
+        success: false,
+        data: {},
+        message: `天气查询失败: ${errorMsg}`,
+        error: errorMsg,
+      };
     }
   }
 
