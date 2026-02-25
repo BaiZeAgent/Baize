@@ -1045,35 +1045,8 @@ ${content}`;
       // 写入生成的 main.js
       if (generatedMainJs) {
         const mainJsPath = path.join(skillDir, 'main.js');
-        
-        // 验证生成的代码
-        try {
-          new Function(generatedMainJs); // 语法检查
-          fs.writeFileSync(mainJsPath, generatedMainJs, 'utf-8');
-          logger.info('生成跨平台 main.js', { path: mainJsPath });
-        } catch (syntaxError) {
-          logger.error('生成的代码有语法错误，尝试修复', { error: syntaxError });
-          
-          // 尝试修复代码
-          const { fixGeneratedCode, validateJavaScriptCode } = require('./skillValidator');
-          const fixedCode = fixGeneratedCode(generatedMainJs, slug);
-          
-          const validation = validateJavaScriptCode(fixedCode);
-          if (validation.valid) {
-            fs.writeFileSync(mainJsPath, fixedCode, 'utf-8');
-            logger.info('修复后写入 main.js', { path: mainJsPath });
-            warnings.push('自动修复了生成代码的语法错误');
-          } else {
-            // 生成标准模板作为备选
-            const { generateStandardMainJs } = require('./skillValidator');
-            const curlCmd = conversion.commands.find(c => c.includes('curl')) || null;
-            const standardCode = generateStandardMainJs(slug, skillDoc.substring(0, 100), inputSchema, curlCmd);
-            
-            fs.writeFileSync(mainJsPath, standardCode, 'utf-8');
-            logger.warn('使用标准模板替代', { path: mainJsPath });
-            warnings.push('LLM 生成的代码无效，使用标准模板替代');
-          }
-        }
+        fs.writeFileSync(mainJsPath, generatedMainJs, 'utf-8');
+        logger.info('生成跨平台 main.js', { path: mainJsPath });
       }
 
       // 安装依赖
@@ -1118,43 +1091,6 @@ module.exports = { main };
       }
 
       logger.info('技能安装成功', { slug, version: targetVersion, path: skillDir, fileCount: files.size });
-
-      // 验证安装结果
-      const { validateSkillDirectory, fixSkillDirectory, testSkillExecution } = require('./skillValidator');
-      const validation = validateSkillDirectory(skillDir);
-      
-      if (!validation.valid) {
-        logger.warn('技能验证失败，尝试自动修复', { errors: validation.errors });
-        
-        const fixResult = fixSkillDirectory(skillDir);
-        if (fixResult.fixed) {
-          warnings.push(...fixResult.changes);
-          logger.info('技能修复成功', { changes: fixResult.changes });
-        } else if (fixResult.errors.length > 0) {
-          warnings.push(`自动修复失败: ${fixResult.errors.join(', ')}`);
-        }
-      }
-      
-      if (validation.warnings.length > 0) {
-        warnings.push(...validation.warnings);
-      }
-
-      // 测试技能执行
-      try {
-        const testParams = inputSchema?.properties ? 
-          Object.fromEntries(Object.keys(inputSchema.properties).map(k => [k, 'test'])) : 
-          { query: 'test' };
-        
-        const testResult = await testSkillExecution(skillDir, testParams);
-        if (testResult.success) {
-          logger.info('技能测试通过', { slug });
-        } else {
-          warnings.push(`技能测试失败: ${testResult.error}`);
-          logger.warn('技能测试失败', { slug, error: testResult.error });
-        }
-      } catch (testError) {
-        logger.warn('技能测试异常', { slug, error: testError });
-      }
 
       // 构建结果消息
       let message = `技能 ${slug}@${targetVersion} 安装成功 (${files.size} 个文件)`;
