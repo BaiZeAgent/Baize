@@ -141,8 +141,12 @@ export class APIServer {
         // 获取或创建会话
         const session = getOrCreateSession(conversationId);
         
+        // 获取记忆系统
+        const memory = getMemory();
+        
         // 记录用户消息
         addMessageToSession(session.id, 'user', message);
+        memory.recordEpisode('conversation', `用户: ${message}`);
         
         const brain = getBrain();
         const startTime = Date.now();
@@ -159,6 +163,7 @@ export class APIServer {
         if (decision.action === 'reply') {
           // 记录助手回复
           addMessageToSession(session.id, 'assistant', decision.response || '');
+          memory.recordEpisode('conversation', `白泽: ${decision.response || ''}`);
           
           return res.json({
             success: true,
@@ -196,6 +201,7 @@ export class APIServer {
             
             // 记录助手回复
             addMessageToSession(session.id, 'assistant', result.finalMessage);
+            memory.recordEpisode('conversation', `白泽: ${result.finalMessage}`);
 
             return res.json({
               success: true,

@@ -12,6 +12,8 @@
 
 import { getLogger } from '../../observability/logger';
 import { CostConfig, CostRecord } from '../../types';
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
 const logger = getLogger('cost:manager');
 
@@ -313,9 +315,17 @@ export class CostManager {
         records: this.records.slice(-1000), // 只保留最近1000条
         dailyUsage: Object.fromEntries(this.dailyUsage),
       };
-      // localStorage.setItem('baize_cost_data', JSON.stringify(data));
+      
+      // 确保 data 目录存在
+      const dataDir = join(process.cwd(), 'data');
+      if (!existsSync(dataDir)) {
+        mkdirSync(dataDir, { recursive: true });
+      }
+      
+      const filePath = join(dataDir, 'cost_records.json');
+      writeFileSync(filePath, JSON.stringify(data, null, 2));
     } catch (error) {
-      // 忽略存储错误
+      logger.warn('成本数据保存失败', { error });
     }
   }
 
@@ -324,14 +334,19 @@ export class CostManager {
    */
   private loadFromStorage(): void {
     try {
-      const data = null; // localStorage.getItem('baize_cost_data');
-      if (data) {
+      const filePath = join(process.cwd(), 'data', 'cost_records.json');
+      if (existsSync(filePath)) {
+        const data = readFileSync(filePath, 'utf-8');
         const parsed = JSON.parse(data);
         this.records = parsed.records || [];
         this.dailyUsage = new Map(Object.entries(parsed.dailyUsage || {}));
+        logger.info('成本数据已加载', { 
+          recordCount: this.records.length,
+          dailyUsageDays: this.dailyUsage.size 
+        });
       }
     } catch (error) {
-      // 忽略加载错误
+      logger.warn('成本数据加载失败', { error });
     }
   }
 }
