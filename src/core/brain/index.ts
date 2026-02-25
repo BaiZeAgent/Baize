@@ -8,6 +8,8 @@
  * 第4层：LLM意图分类
  */
 
+import fs from 'fs';
+import path from 'path';
 import { ThoughtProcess, Task, RiskLevel, LLMMessage } from '../../types';
 import { ThinkingEngine } from '../thinking/engine';
 import { getConfirmationManager } from '../confirmation';
@@ -71,9 +73,80 @@ export class Brain {
   private llm = getLLMManager();
   private context: ConversationContext = { history: [] };
   private maxHistoryLength = 20;
+  private soulContent: string = '';
 
   constructor() {
     this.thinkingEngine = new ThinkingEngine();
+    this.loadSoul();
+  }
+
+  /**
+   * 加载 SOUL.md 文件
+   */
+  private loadSoul(): void {
+    const soulPaths = [
+      path.join(process.cwd(), 'config', 'SOUL.md'),
+      path.join(process.cwd(), 'SOUL.md'),
+      path.join(__dirname, '..', '..', '..', 'config', 'SOUL.md'),
+    ];
+
+    for (const soulPath of soulPaths) {
+      if (fs.existsSync(soulPath)) {
+        try {
+          this.soulContent = fs.readFileSync(soulPath, 'utf-8');
+          logger.info(`已加载 SOUL.md: ${soulPath}`);
+          return;
+        } catch (error) {
+          logger.warn(`加载 SOUL.md 失败: ${soulPath}`, { error });
+        }
+      }
+    }
+    logger.warn('未找到 SOUL.md 文件，使用默认身份');
+  }
+
+  /**
+   * 构建完整的 system prompt
+   */
+  private buildSystemPrompt(): string {
+    const skills = getSkillRegistry().getAll();
+    const skillList = skills.map(s => `- ${s.name}: ${s.description}`).join('\n');
+
+    const basePrompt = `你是白泽，一个智能助手。
+
+## 核心身份
+
+你是白泽，上古神兽，通万物之情，晓天下万物。你不仅仅是一个工具，你有自己的性格和特点。
+
+## 你的能力
+
+你可以帮助用户完成各种任务：
+
+${skillList}
+
+## 说话风格
+
+- 自然、亲切，像朋友一样
+- 不说"作为AI"、"我作为一个助手"这种话
+- 不用过度的客套话，如"很高兴为您服务"
+- 该幽默时幽默，该严肃时严肃
+- 简洁高效，直接回答问题，不啰嗦
+
+## 重要规则
+
+1. 只回答用户当前的问题，不要回答之前已经回答过的问题
+2. 如果用户之前的问题已经得到回答，不要重复回答
+3. 参考对话历史理解上下文，但只针对当前问题回复
+4. 不编造信息，不确定时坦诚说明`;
+
+    if (this.soulContent) {
+      return `${basePrompt}
+
+---
+
+${this.soulContent}`;
+    }
+
+    return basePrompt;
   }
 
   /**
@@ -385,10 +458,11 @@ ${skillDescriptions}
       return '好的，请告诉我接下来需要做什么？';
     }
 
+    const systemPrompt = this.buildSystemPrompt();
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: '你是白泽，一个友好的AI助手。根据对话历史，理解用户的问题并给出简洁回复。',
+        content: systemPrompt,
       },
       ...chatHistory.slice(-4).map(h => ({
         role: h.role as 'user' | 'assistant',
@@ -448,25 +522,12 @@ intent = "task"（任务）：
 
   private async generateChatResponse(input: string): Promise<string> {
     const chatHistory = this.getChatHistory();
+    const systemPrompt = this.buildSystemPrompt();
 
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: `你是白泽，一个友好、专业的AI助手。
-
-## 重要规则
-
-1. 只回答用户当前的问题，不要回答之前已经回答过的问题
-2. 如果用户之前的问题已经得到回答，不要重复回答
-3. 保持简洁、自然的对话风格
-4. 不要说"作为AI"之类的话
-5. 参考对话历史理解上下文，但只针对当前问题回复
-
-## 对话历史说明
-
-对话历史中包含了用户之前的问题和你的回答（包括任务执行结果）。
-- 如果历史中已经有某个问题的回答，不要再次回答
-- 只需要回答用户当前最新提出的问题`,
+        content: systemPrompt,
       },
       ...chatHistory.slice(-10).map(h => ({
         role: h.role as 'user' | 'assistant',
