@@ -452,9 +452,23 @@ intent = "task"（任务）：
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: '你是白泽，一个友好、专业的AI助手。请简洁、自然地回复用户。不要说"作为AI"之类的话。不要重复之前说过的话。',
+        content: `你是白泽，一个友好、专业的AI助手。
+
+## 重要规则
+
+1. 只回答用户当前的问题，不要回答之前已经回答过的问题
+2. 如果用户之前的问题已经得到回答，不要重复回答
+3. 保持简洁、自然的对话风格
+4. 不要说"作为AI"之类的话
+5. 参考对话历史理解上下文，但只针对当前问题回复
+
+## 对话历史说明
+
+对话历史中包含了用户之前的问题和你的回答（包括任务执行结果）。
+- 如果历史中已经有某个问题的回答，不要再次回答
+- 只需要回答用户当前最新提出的问题`,
       },
-      ...chatHistory.slice(-4).map(h => ({
+      ...chatHistory.slice(-10).map(h => ({
         role: h.role as 'user' | 'assistant',
         content: h.content,
       })),
@@ -468,10 +482,11 @@ intent = "task"（任务）：
   // ==================== 辅助方法 ====================
 
   /**
-   * 获取纯聊天历史（不包括任务执行结果）
+   * 获取聊天历史（包括任务执行结果，用于上下文理解）
    */
   private getChatHistory(): ConversationMessage[] {
-    return this.context.history.filter(h => h.type === 'chat');
+    // 包含所有类型的消息，让 LLM 能看到完整的对话上下文
+    return this.context.history;
   }
 
   private assessRisk(thoughtProcess: ThoughtProcess): RiskLevel {
