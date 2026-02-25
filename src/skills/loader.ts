@@ -181,7 +181,7 @@ class DynamicSkill extends Skill {
 
   /**
    * 从文档中提取并执行命令（文档型技能）
-   * 所有文档型技能都交给 LLM 理解和执行
+   * 解析 SKILL.md 中的命令并执行
    */
   private async runFromDocs(params: Record<string, unknown>, context: SkillContext): Promise<SkillResult> {
     const mdContent = this.definition.mdContent;
@@ -189,17 +189,333 @@ class DynamicSkill extends Skill {
     
     logger.info(`执行文档型技能: ${skillName}`, { params });
     
-    // 返回文档内容，由执行器的 LLM 后处理来理解和执行
-    return {
-      success: true,
-      data: { 
-        docContent: mdContent,
-        params,
-        skillName,
-        isDocSkill: true,
-      },
-      message: `[文档型技能: ${skillName}]\n\n${mdContent}`,
+    // 1. 提取所有 bash 命令
+    const commands = this.extractBashCommands(mdContent);
+    
+    if (commands.length === 0) {
+      // 没有可执行命令，返回文档让 LLM 理解
+      return {
+        success: true,
+        data: { docContent: mdContent, params, skillName, isDocSkill: true },
+        message: `[文档型技能: ${skillName}]\n\n${mdContent}`,
+      };
+    }
+    
+    // 2. 根据技能类型和参数选择合适的命令
+    const selectedCommand = this.selectCommand(commands, skillName, params);
+    
+    if (!selectedCommand) {
+      return {
+        success: false,
+        data: { commands, params },
+        message: `无法确定要执行的命令`,
+        error: '未找到匹配的命令模板',
+      };
+    }
+    
+    logger.info(`选择命令: ${selectedCommand}`);
+    
+    // 3. 执行命令
+    return this.executeDocCommand(selectedCommand, skillName, params);
+  }
+
+  /**
+   * 提取文档中的 bash 命令
+   */
+  private extractBashCommands(content: string): string[] {
+    const commands: string[] = [];
+    const bashBlockRegex = /```bash\s*\n([\s\S]*?)```/g;
+    let match;
+    
+    while ((match = bashBlockRegex.exec(content)) !== null) {
+      const cmd = match[1].trim();
+      // 过滤掉注释行和空行
+      const lines = cmd.split('\n')
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'));
+      
+      for (const line of lines) {
+        commands.push(line);
+      }
+    }
+    
+    return commands;
+  }
+
+  /**
+   * 根据技能类型和参数选择命令
+   */
+  private selectCommand(commands: string[], skillName: string, params: Record<string, unknown>): string | null {
+    // 获取参数值
+    const location = params.location || params.city || params.query || params.place || '';
+    const url = params.url || params.link || '';
+    
+    // 天气技能：优先选择 Open-Meteo API（更稳定）
+    if (skillName === 'weather') {
+      for (const cmd of commands) {
+        if (cmd.includes('open-meteo')) {
+          return cmd;
+        }
+      }
+      // 备选 wttr.in
+      for (const cmd of commands) {
+        if (cmd.includes('wttr.in') && (cmd.includes('format=3') || cmd.includes('format=%'))) {
+          return cmd;
+        }
+      }
+      // 返回第一个 wttr.in 命令
+      for (const cmd of commands) {
+        if (cmd.includes('wttr.in')) {
+          return cmd;
+        }
+      }
+    }
+    
+    for (const cmd of commands) {
+      // 打开浏览器
+      if (cmd.includes('open ') && cmd.includes('http')) {
+        return cmd;
+      }
+      
+      // GitHub 技能
+      if (skillName === 'github' && cmd.includes('gh ')) {
+        return cmd;
+      }
+      
+      // Docker 技能
+      if (skillName.toLowerCase().includes('docker') && cmd.includes('docker ')) {
+        return cmd;
+      }
+      
+      // temporal 技能
+      if (cmd.includes('temporal ')) {
+        return cmd;
+      }
+    }
+    
+    // 默认返回第一个命令
+    return commands[0] || null;
+  }
+
+  /**
+   * 执行文档型命令
+   */
+  private async executeDocCommand(commandTemplate: string, skillName: string, params: Record<string, unknown>): Promise<SkillResult> {
+    // 替换参数
+    let command = this.replaceParams(commandTemplate, params);
+    
+    logger.info(`执行命令: ${command}`);
+    
+    // 根据命令类型执行
+    if (command.startsWith('curl ')) {
+      return this.executeCurlCommand(command);
+    } else if (command.startsWith('open ') || command.includes('://')) {
+      return this.executeOpenCommand(command);
+    } else {
+      return this.executeShellCommand(command);
+    }
+  }
+
+  /**
+   * 替换命令中的参数
+   */
+  private replaceParams(template: string, params: Record<string, unknown>): string {
+    let result = template;
+    
+    // 获取常用参数
+    const locationRaw = String(params.location || params.city || params.query || params.place || 'Beijing');
+    const url = String(params.url || params.link || '');
+    const repo = String(params.repo || params.repository || 'BaiZeAgent/Baize');
+    
+    // 中文城市名坐标映射（用于 Open-Meteo API）
+    const cityCoords: Record<string, { lat: number; lon: number }> = {
+      '北京': { lat: 39.9, lon: 116.4 },
+      '上海': { lat: 31.2, lon: 121.5 },
+      '广州': { lat: 23.1, lon: 113.3 },
+      '深圳': { lat: 22.5, lon: 114.1 },
+      '杭州': { lat: 30.3, lon: 120.2 },
+      '成都': { lat: 30.6, lon: 104.1 },
+      '武汉': { lat: 30.6, lon: 114.3 },
+      '西安': { lat: 34.3, lon: 108.9 },
+      '南京': { lat: 32.1, lon: 118.8 },
+      '重庆': { lat: 29.6, lon: 106.5 },
+      '天津': { lat: 39.1, lon: 117.2 },
+      '苏州': { lat: 31.3, lon: 120.6 },
+      '长沙': { lat: 28.2, lon: 112.9 },
+      '郑州': { lat: 34.8, lon: 113.7 },
+      '青岛': { lat: 36.1, lon: 120.4 },
+      '大连': { lat: 38.9, lon: 121.6 },
+      '厦门': { lat: 24.5, lon: 118.1 },
+      '宁波': { lat: 29.9, lon: 121.6 },
+      '福州': { lat: 26.1, lon: 119.3 },
+      '哈尔滨': { lat: 45.8, lon: 126.5 },
+      '沈阳': { lat: 41.8, lon: 123.4 },
+      '长春': { lat: 43.9, lon: 125.3 },
+      '昆明': { lat: 25.0, lon: 102.7 },
+      '贵阳': { lat: 26.6, lon: 106.6 },
+      '南宁': { lat: 22.8, lon: 108.3 },
+      '海口': { lat: 20.0, lon: 110.3 },
+      '三亚': { lat: 18.3, lon: 109.5 },
+      '拉萨': { lat: 29.7, lon: 91.1 },
+      '乌鲁木齐': { lat: 43.8, lon: 87.6 },
+      '兰州': { lat: 36.1, lon: 103.8 },
+      '银川': { lat: 38.5, lon: 106.3 },
+      '西宁': { lat: 36.6, lon: 101.8 },
+      '呼和浩特': { lat: 40.8, lon: 111.7 },
+      '石家庄': { lat: 38.0, lon: 114.5 },
+      '太原': { lat: 37.9, lon: 112.5 },
+      '济南': { lat: 36.7, lon: 117.0 },
+      '合肥': { lat: 31.8, lon: 117.3 },
+      '南昌': { lat: 28.7, lon: 115.9 },
     };
+    
+    // 获取城市坐标（用于 Open-Meteo）
+    const coords = cityCoords[locationRaw] || { lat: 39.9, lon: 116.4 };
+    
+    // 替换 Open-Meteo API 的坐标参数
+    result = result.replace(/latitude=[\d.-]+/, `latitude=${coords.lat}`);
+    result = result.replace(/longitude=[\d.-]+/, `longitude=${coords.lon}`);
+    
+    // 替换 wttr.in 的城市名（wttr.in 支持中文，直接使用原始值）
+    result = result.replace(/wttr\.in\/[^\s"?]*/g, `wttr.in/${locationRaw}`);
+    
+    // 替换 owner/repo
+    result = result.replace(/--repo\s+\S+/g, `--repo ${repo}`);
+    result = result.replace(/owner\/repo/g, repo);
+    
+    // 替换 URL 参数
+    if (url && result.includes('http')) {
+      result = result.replace(/https?:\/\/[^\s"']+/g, url);
+    }
+    
+    return result;
+  }
+
+  /**
+   * 执行 curl 命令（使用 fetch 或 curl 命令）
+   */
+  private async executeCurlCommand(command: string): Promise<SkillResult> {
+    // 提取 URL（支持 http:// 和 https:// 以及无协议的 URL）
+    let urlMatch = command.match(/["']?(https?:\/\/[^\s"']+)["']?/);
+    
+    // 如果没有找到 http:// 开头的 URL，尝试匹配其他 URL
+    if (!urlMatch) {
+      urlMatch = command.match(/["']?([a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}[^\s"']*)["']?/);
+    }
+    
+    if (!urlMatch) {
+      return { success: false, data: {}, message: '无法解析 URL', error: 'URL 解析失败' };
+    }
+    
+    let url = urlMatch[1];
+    
+    // 如果 URL 没有协议前缀，添加 https://
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    
+    logger.info(`请求 URL: ${url}`);
+    
+    // 先尝试使用 fetch
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'curl/7.68.0' },
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const text = await response.text();
+      
+      return {
+        success: true,
+        data: { output: text, url },
+        message: text,
+      };
+    } catch (fetchError) {
+      // fetch 失败，使用 curl 命令作为备选
+      logger.warn(`fetch 失败，使用 curl 备选: ${fetchError}`);
+      
+      return new Promise((resolve) => {
+        exec(`curl -s "${url}"`, { timeout: 15000 }, (error, stdout, stderr) => {
+          if (error) {
+            resolve({ 
+              success: false, 
+              data: {}, 
+              message: `请求失败: ${error.message}`, 
+              error: stderr || error.message 
+            });
+          } else {
+            resolve({
+              success: true,
+              data: { output: stdout.trim(), url },
+              message: stdout.trim(),
+            });
+          }
+        });
+      });
+    }
+  }
+
+  /**
+   * 执行打开浏览器命令
+   */
+  private async executeOpenCommand(command: string): Promise<SkillResult> {
+    // 提取 URL
+    const urlMatch = command.match(/https?:\/\/[^\s"']+/);
+    if (!urlMatch) {
+      return { success: false, data: {}, message: '未找到 URL', error: '缺少 URL' };
+    }
+    
+    const url = urlMatch[0];
+    
+    // 根据平台选择打开命令
+    const openCmd = process.platform === 'darwin' ? 'open' : 
+                    process.platform === 'win32' ? 'start' : 'xdg-open';
+    
+    return new Promise((resolve) => {
+      exec(`${openCmd} "${url}"`, { timeout: 5000 }, (error) => {
+        if (error) {
+          resolve({ success: false, data: {}, message: `打开失败: ${error.message}`, error: error.message });
+        } else {
+          resolve({ success: true, data: { url }, message: `已打开: ${url}` });
+        }
+      });
+    });
+  }
+
+  /**
+   * 执行通用 shell 命令
+   */
+  private async executeShellCommand(command: string): Promise<SkillResult> {
+    return new Promise((resolve) => {
+      exec(command, { 
+        timeout: 30000,
+        shell: process.platform === 'win32' ? 'cmd.exe' : undefined,
+      }, (error, stdout, stderr) => {
+        if (error) {
+          resolve({
+            success: false,
+            data: { error: error.message, stderr },
+            message: `执行失败: ${error.message}`,
+            error: stderr || error.message,
+          });
+        } else {
+          resolve({
+            success: true,
+            data: { output: stdout.trim() },
+            message: stdout.trim() || '执行成功',
+          });
+        }
+      });
+    });
   }
 
   /**

@@ -6,6 +6,7 @@ const ChatComponent = {
     // 状态
     messages: [],
     isLoading: false,
+    conversationId: null,  // 当前会话 ID
 
     /**
      * 初始化
@@ -49,9 +50,12 @@ const ChatComponent = {
      */
     async loadHistory() {
         try {
-            const result = await BaizeAPI.getChatHistory();
+            const result = await BaizeAPI.getChatHistory(this.conversationId);
             if (result.success && result.data.history) {
                 this.messages = result.data.history;
+                if (result.data.conversationId) {
+                    this.conversationId = result.data.conversationId;
+                }
                 this.renderMessages();
             }
         } catch (error) {
@@ -77,11 +81,15 @@ const ChatComponent = {
         this.showTyping();
 
         try {
-            const result = await BaizeAPI.chat(message);
+            const result = await BaizeAPI.chat(message, this.conversationId);
             
             this.hideTyping();
 
             if (result.success) {
+                // 保存会话 ID
+                if (result.data.conversationId) {
+                    this.conversationId = result.data.conversationId;
+                }
                 const response = result.data.response || '任务执行完成';
                 this.addMessage('assistant', response);
             } else {
@@ -162,8 +170,9 @@ const ChatComponent = {
         if (!confirm('确定要清空对话历史吗？')) return;
 
         try {
-            await BaizeAPI.clearChatHistory();
+            await BaizeAPI.clearChatHistory(this.conversationId);
             this.messages = [];
+            this.conversationId = null;  // 重置会话 ID
             this.messagesContainer.innerHTML = `
                 <div class="message assistant">
                     <div class="message-content">

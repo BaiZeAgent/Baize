@@ -6,6 +6,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import * as http from 'http';
 import cors from 'cors';
 import { Server as SocketServer, Socket } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
 import { getBrain } from '../core/brain';
 import { getSkillRegistry } from '../skills/registry';
 import { getMarketClient } from '../skills/market';
@@ -18,6 +19,57 @@ import { SkillLoader } from '../skills/loader';
 import { getExecutor } from '../executor';
 
 const logger = getLogger('api');
+
+// 会话存储
+interface SessionMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+interface Session {
+  id: string;
+  messages: SessionMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const sessions: Map<string, Session> = new Map();
+
+// 会话管理函数
+function getOrCreateSession(conversationId?: string): Session {
+  if (conversationId && sessions.has(conversationId)) {
+    const session = sessions.get(conversationId)!;
+    session.updatedAt = new Date();
+    return session;
+  }
+  
+  const newSession: Session = {
+    id: uuidv4(),
+    messages: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  sessions.set(newSession.id, newSession);
+  return newSession;
+}
+
+function addMessageToSession(sessionId: string, role: 'user' | 'assistant', content: string): void {
+  const session = sessions.get(sessionId);
+  if (session) {
+    session.messages.push({ role, content, timestamp: new Date() });
+    session.updatedAt = new Date();
+    // 保留最近 50 条消息
+    if (session.messages.length > 50) {
+      session.messages = session.messages.slice(-50);
+    }
+  }
+}
+
+function getSessionHistory(sessionId: string): SessionMessage[] {
+  const session = sessions.get(sessionId);
+  return session ? session.messages : [];
+}
 
 export class APIServer {
   private app: express.Application;
@@ -77,7 +129,7 @@ export class APIServer {
     // ==================== 对话接口 ====================
     this.app.post('/api/chat', async (req: Request, res: Response) => {
       try {
-        const { message, autoExecute = true } = req.body;
+        const { message, conversationId, autoExecute = true } = req.body;
         
         if (!message) {
           return res.status(400).json({
@@ -86,19 +138,35 @@ export class APIServer {
           });
         }
 
+        // 获取或创建会话
+        const session = getOrCreateSession(conversationId);
+        
+        // 记录用户消息
+        addMessageToSession(session.id, 'user', message);
+        
         const brain = getBrain();
         const startTime = Date.now();
-        const decision = await brain.process(message);
+        
+        // 获取会话历史作为上下文
+        const history = getSessionHistory(session.id);
+        const historyContext = history.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n');
+        
+        // 处理消息
+        const decision = await brain.process(message, historyContext);
         const duration = (Date.now() - startTime) / 1000;
 
         // 直接回复
         if (decision.action === 'reply') {
+          // 记录助手回复
+          addMessageToSession(session.id, 'assistant', decision.response || '');
+          
           return res.json({
             success: true,
             data: {
               type: 'reply',
               response: decision.response,
               intent: decision.intent,
+              conversationId: session.id,
               duration,
             },
           });
@@ -111,7 +179,7 @@ export class APIServer {
 
           // 如果有任务且需要执行
           if (autoExecute && tasks.length > 0 && scheduling) {
-            logger.info('执行任务', { taskCount: tasks.length });
+            logger.info('执行任务', { taskCount: tasks.length, conversationId: session.id });
             
             const executor = getExecutor();
             // 传入用户意图用于LLM后处理
@@ -125,6 +193,9 @@ export class APIServer {
             
             // 记录结果到大脑
             brain.recordTaskResult(result.finalMessage);
+            
+            // 记录助手回复
+            addMessageToSession(session.id, 'assistant', result.finalMessage);
 
             return res.json({
               success: true,
@@ -137,6 +208,7 @@ export class APIServer {
                   skill: t.skillName,
                   status: 'completed',
                 })),
+                conversationId: session.id,
                 duration,
               },
             });
@@ -152,6 +224,7 @@ export class APIServer {
                 tasks: tasks,
               },
               needConfirm: false,
+              conversationId: session.id,
               duration,
             },
           });
@@ -162,6 +235,7 @@ export class APIServer {
           data: {
             type: 'unknown',
             message: '无法理解您的请求',
+            conversationId: session.id,
             duration,
           },
         });
@@ -177,9 +251,18 @@ export class APIServer {
 
     this.app.get('/api/chat/history', (req: Request, res: Response) => {
       try {
-        const brain = getBrain();
-        const history = brain.getHistory();
-        res.json({ success: true, data: { history } });
+        const { conversationId } = req.query;
+        
+        if (conversationId && typeof conversationId === 'string') {
+          // 返回指定会话的历史
+          const history = getSessionHistory(conversationId);
+          res.json({ success: true, data: { history, conversationId } });
+        } else {
+          // 返回大脑历史（兼容旧接口）
+          const brain = getBrain();
+          const history = brain.getHistory();
+          res.json({ success: true, data: { history } });
+        }
       } catch (error) {
         res.status(500).json({
           success: false,
@@ -190,9 +273,22 @@ export class APIServer {
 
     this.app.delete('/api/chat/history', (req: Request, res: Response) => {
       try {
-        const brain = getBrain();
-        brain.clearHistory();
-        res.json({ success: true, message: '对话历史已清空' });
+        const { conversationId } = req.query;
+        
+        if (conversationId && typeof conversationId === 'string') {
+          // 清空指定会话历史
+          const session = sessions.get(conversationId);
+          if (session) {
+            session.messages = [];
+            session.updatedAt = new Date();
+          }
+          res.json({ success: true, message: '会话历史已清空', conversationId });
+        } else {
+          // 清空大脑历史（兼容旧接口）
+          const brain = getBrain();
+          brain.clearHistory();
+          res.json({ success: true, message: '对话历史已清空' });
+        }
       } catch (error) {
         res.status(500).json({
           success: false,
@@ -309,7 +405,49 @@ export class APIServer {
     // ==================== 记忆接口 ====================
     this.app.get('/api/memory/stats', (req: Request, res: Response) => {
       try {
-        res.json({ success: true, data: { message: '记忆系统正常' } });
+        const memory = getMemory();
+        const recentEpisodes = memory.getRecentConversation(10);
+        res.json({ 
+          success: true, 
+          data: { 
+            message: '记忆系统正常',
+            episodeCount: recentEpisodes.length,
+          } 
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error instanceof Error ? error.message : '未知错误',
+        });
+      }
+    });
+
+    this.app.get('/api/memory/search', (req: Request, res: Response) => {
+      try {
+        const { q } = req.query;
+        if (!q || typeof q !== 'string') {
+          return res.status(400).json({ success: false, error: '搜索关键词不能为空' });
+        }
+        
+        const memory = getMemory();
+        const episodes = memory.getRecentConversation(100);
+        
+        // 简单的关键词搜索
+        const results = episodes.filter(ep => 
+          ep.content.toLowerCase().includes(q.toLowerCase())
+        ).slice(0, 20);
+        
+        res.json({ 
+          success: true, 
+          data: { 
+            query: q,
+            results: results.map(r => ({
+              content: r.content,
+              timestamp: r.timestamp,
+            })),
+            total: results.length,
+          } 
+        });
       } catch (error) {
         res.status(500).json({
           success: false,

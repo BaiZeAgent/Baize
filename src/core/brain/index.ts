@@ -79,7 +79,7 @@ export class Brain {
   /**
    * 处理用户输入 - 主入口
    */
-  async process(userInput: string): Promise<Decision> {
+  async process(userInput: string, sessionHistory?: string): Promise<Decision> {
     logger.info(`大脑处理: ${userInput.substring(0, 50)}...`);
     const startTime = Date.now();
 
@@ -101,7 +101,7 @@ export class Brain {
       logger.debug(`技能匹配: ${skillResult.matchedSkill}`, { duration: `${Date.now() - startTime}ms` });
       // 直接执行技能
       const thoughtProcess = await this.thinkingEngine.process(userInput, {
-        history: this.getChatHistory(),
+        history: sessionHistory || this.getChatHistory(),
         matchedSkill: skillResult.matchedSkill,
       });
       
@@ -155,7 +155,7 @@ export class Brain {
 
     // 任务类型，调用思考引擎
     const thoughtProcess = await this.thinkingEngine.process(userInput, {
-      history: this.getChatHistory(),
+      history: sessionHistory || this.getChatHistory(),
     });
 
     // 检查是否需要确认

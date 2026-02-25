@@ -68,21 +68,31 @@ const BaizeAPI = (function() {
     /**
      * 发送消息
      */
-    async function chat(message) {
-        return request('POST', '/api/chat', { message });
+    async function chat(message, conversationId) {
+        const body = { message };
+        if (conversationId) {
+            body.conversationId = conversationId;
+        }
+        return request('POST', '/api/chat', body);
     }
 
     /**
      * 获取对话历史
      */
-    async function getChatHistory() {
+    async function getChatHistory(conversationId) {
+        if (conversationId) {
+            return request('GET', `/api/chat/history?conversationId=${encodeURIComponent(conversationId)}`);
+        }
         return request('GET', '/api/chat/history');
     }
 
     /**
      * 清空对话历史
      */
-    async function clearChatHistory() {
+    async function clearChatHistory(conversationId) {
+        if (conversationId) {
+            return request('DELETE', `/api/chat/history?conversationId=${encodeURIComponent(conversationId)}`);
+        }
         return request('DELETE', '/api/chat/history');
     }
 
