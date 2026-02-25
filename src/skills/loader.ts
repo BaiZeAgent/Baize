@@ -291,6 +291,11 @@ class DynamicSkill extends Skill {
       if (cmd.includes('temporal ')) {
         return cmd;
       }
+      
+      // time 技能：选择 date 命令
+      if (skillName === 'time' && cmd.includes('date ')) {
+        return cmd;
+      }
     }
     
     // 默认返回第一个命令
