@@ -1,17 +1,22 @@
 /**
- * 并行执行器
+ * 并行执行器（已集成锁机制）
  * 
  * 支持：
  * - 并行执行任务组
+ * - 资源锁保护（防止并发冲突）
  * - step_by_step模式（逐步执行，每步与思考层通讯）
  * - 执行结果收集
  * - LLM后处理（带记忆和经验）
+ * 
+ * 更新日志：
+ * - v3.1.0: 集成资源锁机制，防止并行任务资源冲突
  */
 import { Task, TaskResult, SkillResult, SkillContext, LLMMessage } from '../types';
 import { getSkillRegistry } from '../skills/registry';
 import { getLogger } from '../observability/logger';
 import { getMemory } from '../memory';
 import { getLLMManager } from '../llm';
+import { getLockManager, ResourceLockManager } from '../scheduler/lock';
 
 const logger = getLogger('executor');
 
@@ -45,9 +50,11 @@ export class ParallelExecutor {
   private skillRegistry = getSkillRegistry();
   private memory = getMemory();
   private llm = getLLMManager();
+  private lockManager: ResourceLockManager;
 
   constructor(maxWorkers: number = 5) {
     this.maxWorkers = maxWorkers;
+    this.lockManager = getLockManager();
   }
 
   /**
@@ -92,11 +99,9 @@ export class ParallelExecutor {
       const groupTasks = tasks.filter(t => group.includes(t.id));
       
       if (groupTasks.length > 1) {
-        // 并行执行
-        logger.debug(`并行执行 ${groupTasks.length} 个任务`);
-        const results = await Promise.all(
-          groupTasks.map(task => this.executeTask(task, context))
-        );
+        // 并行执行（带锁保护）
+        logger.debug(`并行执行 ${groupTasks.length} 个任务（带锁保护）`);
+        const results = await this.executeParallelWithLocks(groupTasks, context);
         
         for (let i = 0; i < groupTasks.length; i++) {
           taskResults.push(results[i]);
@@ -134,6 +139,137 @@ export class ParallelExecutor {
     logger.info(`执行完成，耗时 ${duration.toFixed(2)}s`, { success, errorCount: errors.length });
 
     return { success, taskResults, errors, duration, finalMessage, rawResult };
+  }
+
+  /**
+   * 带锁保护的并行执行
+   * 
+   * 核心逻辑：
+   * 1. 分析每个任务的资源需求
+   * 2. 获取所需资源的锁
+   * 3. 执行任务
+   * 4. 释放锁
+   */
+  private async executeParallelWithLocks(
+    tasks: Task[],
+    context: SkillContext
+  ): Promise<TaskResult[]> {
+    const results: TaskResult[] = new Array(tasks.length);
+    
+    // 并行执行，每个任务独立获取锁
+    const promises = tasks.map(async (task, index) => {
+      // 获取任务所需的资源锁
+      const resources = this.identifyResources(task);
+      
+      try {
+        // 尝试获取所有资源的读锁（默认）
+        const acquired = await this.acquireLocks(task.id, resources, 'read');
+        
+        if (!acquired) {
+          // 无法获取锁，等待后重试
+          logger.debug(`任务 ${task.id} 等待锁...`);
+          await this.waitForLocks(task.id, resources, 'read');
+        }
+        
+        // 执行任务
+        const result = await this.executeTask(task, context);
+        results[index] = result;
+        
+      } finally {
+        // 释放所有锁
+        this.releaseLocks(task.id, resources);
+      }
+    });
+    
+    await Promise.all(promises);
+    return results;
+  }
+
+  /**
+   * 识别任务所需的资源
+   */
+  private identifyResources(task: Task): string[] {
+    const resources: string[] = [];
+    
+    // 根据技能类型识别资源
+    if (task.skillName) {
+      // 文件操作技能
+      if (['read', 'write', 'edit'].includes(task.skillName)) {
+        const path = task.params?.path as string;
+        if (path) {
+          resources.push(`file:${path}`);
+        }
+      }
+      
+      // 命令执行技能
+      if (task.skillName === 'exec') {
+        resources.push('system:exec');
+      }
+      
+      // 网络请求技能
+      if (['web_search', 'web_fetch'].includes(task.skillName)) {
+        resources.push('network:api');
+      }
+    }
+    
+    // 如果没有识别到资源，使用默认资源
+    if (resources.length === 0) {
+      resources.push(`task:${task.id}`);
+    }
+    
+    return resources;
+  }
+
+  /**
+   * 获取锁
+   */
+  private async acquireLocks(
+    taskId: string,
+    resources: string[],
+    type: 'read' | 'write'
+  ): Promise<boolean> {
+    for (const resource of resources) {
+      const acquired = this.lockManager.tryAcquire(resource, type, taskId);
+      if (!acquired) {
+        // 获取失败，释放已获取的锁
+        this.releaseLocks(taskId, resources.slice(0, resources.indexOf(resource)));
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 等待锁
+   */
+  private async waitForLocks(
+    taskId: string,
+    resources: string[],
+    type: 'read' | 'write',
+    timeout: number = 30000
+  ): Promise<boolean> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeout) {
+      const acquired = await this.acquireLocks(taskId, resources, type);
+      if (acquired) {
+        return true;
+      }
+      // 等待100ms后重试
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    logger.warn(`任务 ${taskId} 等待锁超时`);
+    return false;
+  }
+
+  /**
+   * 释放锁
+   */
+  private releaseLocks(taskId: string, resources: string[]): void {
+    for (const resource of resources) {
+      this.lockManager.release(resource, taskId);
+    }
   }
 
   /**
@@ -560,4 +696,11 @@ export function getExecutor(): ParallelExecutor {
     executorInstance = new ParallelExecutor();
   }
   return executorInstance;
+}
+
+/**
+ * 重置执行器实例（测试用）
+ */
+export function resetExecutor(): void {
+  executorInstance = null;
 }

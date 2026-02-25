@@ -1,25 +1,163 @@
 /**
- * 思考引擎 - 多阶段思考过程
+ * 思考引擎 - 双层决策机制
+ * 
+ * v3.1.0 更新：
+ * - 集成智能路由器，实现双层决策
+ * - 简单任务走快速路径（单次LLM调用）
+ * - 复杂任务走六阶段思考
  * 
  * 阶段1: 理解 - 分析用户意图
  * 阶段2: 拆解 - 分解为原子任务
  * 阶段3: 规划 - 选择技能和执行顺序
  * 阶段4: 调度 - 并行/串行执行
+ * 阶段5: 验收 - 检查执行结果
+ * 阶段6: 反思 - 分析失败原因
  */
 
 import { LLMMessage, Task, RiskLevel, ThoughtProcess, Understanding, Decomposition, Planning, Scheduling, Validation, Reflection, TaskResult, SkillSelection } from '../../types';
 import { getLLMManager } from '../../llm';
 import { getSkillRegistry } from '../../skills/registry';
 import { getLogger } from '../../observability/logger';
+import { getSmartRouter, RouteDecision, RouteContext } from '../router';
+import { getContextManager } from '../context';
+import { getRecoveryManager } from '../recovery';
 
 const logger = getLogger('core:thinking');
+
+/**
+ * 思考结果（扩展）
+ */
+export interface ThinkingResult {
+  /** 是否走快速路径 */
+  fastPath: boolean;
+  /** 直接回复（快速路径） */
+  directResponse?: string;
+  /** 工具调用（快速路径） */
+  toolCall?: {
+    name: string;
+    params: Record<string, unknown>;
+  };
+  /** 完整思考过程（规划路径） */
+  thoughtProcess?: ThoughtProcess;
+  /** 耗时 */
+  duration: number;
+}
 
 export class ThinkingEngine {
   private llm = getLLMManager();
   private skillRegistry = getSkillRegistry();
+  private router = getSmartRouter();
+  private contextManager = getContextManager();
+  private recoveryManager = getRecoveryManager();
 
   /**
-   * 完整思考过程
+   * 主入口：双层决策
+   * 
+   * 1. 智能路由判断任务复杂度
+   * 2. 简单任务走快速路径
+   * 3. 复杂任务走六阶段思考
+   */
+  async think(
+    userInput: string,
+    context: Record<string, unknown> = {}
+  ): Promise<ThinkingResult> {
+    const startTime = Date.now();
+    logger.info(`[think-start] input=${userInput.substring(0, 50)}...`);
+
+    try {
+      // 第一层：智能路由判断
+      const routeContext: RouteContext = {
+        userInput,
+        sessionId: context.sessionId as string,
+        historySummary: context.historySummary as string,
+      };
+
+      const decision = await this.router.route(routeContext);
+      logger.info(`[route-decision] action=${decision.action}`);
+
+      // 根据路由结果选择路径
+      switch (decision.action) {
+        case 'reply':
+          // 快速路径：直接回复
+          return this.fastReply(decision.content || '', startTime);
+
+        case 'tool':
+          // 快速路径：单工具调用
+          return this.fastToolCall(
+            decision.toolName || '',
+            decision.toolParams || {},
+            startTime
+          );
+
+        case 'plan':
+          // 规划路径：六阶段思考
+          return this.fullThinking(userInput, context, startTime, decision.reason);
+
+        default:
+          // 未知情况，走规划路径确保安全
+          return this.fullThinking(userInput, context, startTime, '未知路由结果');
+      }
+    } catch (error) {
+      logger.error(`[think-error] ${error}`);
+      // 出错时返回友好提示
+      return {
+        fastPath: true,
+        directResponse: '抱歉，处理您的请求时出现问题，请稍后再试。',
+        duration: (Date.now() - startTime) / 1000,
+      };
+    }
+  }
+
+  /**
+   * 快速路径：直接回复
+   */
+  private fastReply(content: string, startTime: number): ThinkingResult {
+    logger.debug('[fast-path] reply');
+    return {
+      fastPath: true,
+      directResponse: content,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  /**
+   * 快速路径：单工具调用
+   */
+  private fastToolCall(
+    toolName: string,
+    params: Record<string, unknown>,
+    startTime: number
+  ): ThinkingResult {
+    logger.debug(`[fast-path] tool=${toolName}`);
+    return {
+      fastPath: true,
+      toolCall: { name: toolName, params },
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  /**
+   * 规划路径：完整六阶段思考
+   */
+  private async fullThinking(
+    userInput: string,
+    context: Record<string, unknown>,
+    startTime: number,
+    reason?: string
+  ): Promise<ThinkingResult> {
+    logger.info(`[full-thinking] reason=${reason || '需要规划'}`);
+
+    const thoughtProcess = await this.process(userInput, context);
+
+    return {
+      fastPath: false,
+      thoughtProcess,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  /**
+   * 完整思考过程（六阶段）
    */
   async process(
     userInput: string,
