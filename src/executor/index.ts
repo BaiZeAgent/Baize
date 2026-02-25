@@ -279,6 +279,11 @@ export class ParallelExecutor {
       return true;
     }
     
+    // 文档型技能需要处理
+    if (rawResult.includes('[文档型技能:')) {
+      return true;
+    }
+    
     // 如果用户意图需要解释性回答（如穿衣建议），需要处理
     if (userIntent) {
       const intentKeywords = ['穿什么', '带什么', '适合', '建议', '推荐', '怎么样', '如何'];
@@ -319,18 +324,38 @@ export class ParallelExecutor {
     // 获取用户偏好
     const userPreference = this.memory.getPreference('response_style') || 'balanced';
     
-    // 获取相关记忆
-    const recentEpisodes = this.memory.getRecentConversation(5);
-    const conversationContext = recentEpisodes
-      .map(e => e.content)
-      .join('\n');
-
     // 获取技能执行历史
     const skillName = tasks[0]?.skillName || 'unknown';
     const trustRecord = this.memory.getTrustRecord(skillName);
 
+    // 检测是否是文档型技能
+    const isDocSkill = rawResult.includes('[文档型技能:');
+    
     // 构建系统提示
-    let systemPrompt = `你是白泽，一个智能助手。你的任务是根据技能执行结果回答用户的问题。
+    let systemPrompt: string;
+    
+    if (isDocSkill) {
+      // 文档型技能：让 LLM 理解文档并执行
+      systemPrompt = `你是白泽，一个智能助手。用户请求执行一个文档型技能。
+
+## 技能文档
+${rawResult}
+
+## 你的任务
+1. 阅读并理解上面的技能文档
+2. 根据用户的问题，理解需要执行什么操作
+3. 如果文档中有可执行的命令（如 curl、open、temporal 等），理解如何使用它们
+4. 如果需要调用 API，理解 API 的用法
+5. 执行操作后，用自然语言回复用户
+
+## 规则
+1. 不要只是复述文档内容
+2. 要真正理解并执行用户的请求
+3. 如果无法执行，说明原因
+4. 使用自然语言，像朋友一样交流`;
+    } else {
+      // 普通技能结果处理
+      systemPrompt = `你是白泽，一个智能助手。你的任务是根据技能执行结果回答用户的问题。
 
 ## 用户偏好
 - 回复风格: ${userPreference} (concise=简洁, detailed=详细, balanced=平衡)
@@ -346,6 +371,7 @@ export class ParallelExecutor {
 3. 如果用户问的是天气，简洁地报告天气情况
 4. 如果用户问的是其他问题，根据结果智能回答
 5. 使用自然语言，像朋友一样交流`;
+    }
 
     if (userCommand === 'summarize') {
       systemPrompt += '\n\n用户明确要求总结，请提取最重要的信息。';
@@ -353,11 +379,10 @@ export class ParallelExecutor {
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `用户问题: ${userIntent || '未知'}
-
-技能执行结果: ${rawResult}
-
-请根据用户的问题，给出合适的回答：` },
+      { role: 'user', content: isDocSkill 
+        ? `用户问题: ${userIntent || '未知'}\n\n请根据技能文档，执行用户的请求并回答：`
+        : `用户问题: ${userIntent || '未知'}\n\n技能执行结果: ${rawResult}\n\n请根据用户的问题，给出合适的回答：`
+      },
     ];
 
     const response = await this.llm.chat(messages, { temperature: 0.7 });

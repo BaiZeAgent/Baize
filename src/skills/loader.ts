@@ -181,241 +181,25 @@ class DynamicSkill extends Skill {
 
   /**
    * 从文档中提取并执行命令（文档型技能）
-   * 支持多种命令类型：curl、open、temporal 等
+   * 所有文档型技能都交给 LLM 理解和执行
    */
   private async runFromDocs(params: Record<string, unknown>, context: SkillContext): Promise<SkillResult> {
     const mdContent = this.definition.mdContent;
     const skillName = this.definition.name;
     
-    logger.debug(`执行文档型技能: ${skillName}`, { params });
+    logger.info(`执行文档型技能: ${skillName}`, { params });
     
-    // 1. 检测是否是天气相关技能
-    if (skillName === 'weather' || mdContent.toLowerCase().includes('wttr.in') || mdContent.toLowerCase().includes('open-meteo')) {
-      return this.executeWeatherSkill(params);
-    }
-    
-    // 2. 检测是否是时间相关技能
-    if (skillName === 'time' || mdContent.includes('temporal ')) {
-      return this.executeTemporalSkill(params, mdContent);
-    }
-    
-    // 3. 检测是否是浏览器打开相关
-    if (mdContent.includes('open ') && (mdContent.includes('http://') || mdContent.includes('https://'))) {
-      return this.executeOpenSkill(params, mdContent);
-    }
-    
-    // 4. 检测是否有 curl 命令
-    if (mdContent.includes('curl ')) {
-      return this.executeCurlSkill(params, mdContent);
-    }
-    
-    // 5. 其他情况：返回文档内容让 LLM 理解
+    // 返回文档内容，由执行器的 LLM 后处理来理解和执行
     return {
       success: true,
       data: { 
-        docContent: mdContent.substring(0, 3000),
+        docContent: mdContent,
         params,
+        skillName,
+        isDocSkill: true,
       },
-      message: `文档型技能 "${skillName}" 需要理解后执行。请参考以下文档：\n\n${mdContent.substring(0, 1000)}...`,
+      message: `[文档型技能: ${skillName}]\n\n${mdContent}`,
     };
-  }
-
-  /**
-   * 执行天气技能
-   */
-  private async executeWeatherSkill(params: Record<string, unknown>): Promise<SkillResult> {
-    let query = '';
-    const possibleKeys = ['query', 'city', 'location', 'place', 'name', 'keyword', 'q'];
-    for (const key of possibleKeys) {
-      if (params[key] && typeof params[key] === 'string') {
-        query = params[key] as string;
-        break;
-      }
-    }
-    
-    if (!query) {
-      query = 'Beijing';
-    }
-    
-    const cityCoords: Record<string, { lat: number; lon: number }> = {
-      '北京': { lat: 39.9, lon: 116.4 },
-      '上海': { lat: 31.2, lon: 121.5 },
-      '广州': { lat: 23.1, lon: 113.3 },
-      '深圳': { lat: 22.5, lon: 114.1 },
-      '杭州': { lat: 30.3, lon: 120.2 },
-      '成都': { lat: 30.6, lon: 104.1 },
-      '武汉': { lat: 30.6, lon: 114.3 },
-      '西安': { lat: 34.3, lon: 108.9 },
-      '南京': { lat: 32.1, lon: 118.8 },
-      'beijing': { lat: 39.9, lon: 116.4 },
-      'shanghai': { lat: 31.2, lon: 121.5 },
-      'london': { lat: 51.5, lon: -0.1 },
-      'newyork': { lat: 40.7, lon: -74.0 },
-      'tokyo': { lat: 35.7, lon: 139.7 },
-    };
-    
-    const queryLower = query.toLowerCase();
-    const coords = cityCoords[query] || cityCoords[queryLower] || { lat: 39.9, lon: 116.4 };
-    
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&timezone=auto`;
-    
-    logger.info(`执行天气查询: ${url}`);
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'Baize/3.0', 'Accept': 'application/json' },
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        return { success: false, data: {}, message: `HTTP 请求失败: ${response.status}`, error: `HTTP ${response.status}` };
-      }
-      
-      const data = await response.json() as Record<string, unknown>;
-      const currentWeather = data.current_weather as Record<string, unknown>;
-      
-      if (currentWeather) {
-        const temp = currentWeather.temperature;
-        const windSpeed = currentWeather.windspeed;
-        const windDir = currentWeather.winddirection;
-        const weatherCode = currentWeather.weathercode;
-        
-        const weatherDesc: Record<number, string> = {
-          0: '晴朗', 1: '晴间多云', 2: '多云', 3: '阴天',
-          45: '雾', 48: '雾凇', 51: '小雨', 53: '中雨', 55: '大雨',
-          61: '小雨', 63: '中雨', 65: '大雨', 71: '小雪', 73: '中雪', 75: '大雪',
-          80: '阵雨', 81: '中阵雨', 82: '大阵雨', 95: '雷暴', 96: '雷暴冰雹', 99: '强雷暴'
-        };
-        
-        const desc = weatherDesc[weatherCode as number] || '未知';
-        const windDirs = ['北风', '东北风', '东风', '东南风', '南风', '西南风', '西风', '西北风'];
-        const windDirIndex = Math.round((windDir as number) / 45) % 8;
-        
-        return {
-          success: true,
-          data: { ...data, query },
-          message: `${query}: ${desc}，气温 ${temp}°C，${windDirs[windDirIndex]} ${windSpeed}km/h`,
-        };
-      }
-      
-      return { success: true, data, message: JSON.stringify(data) };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return { success: false, data: {}, message: `天气查询失败: ${errorMsg}`, error: errorMsg };
-    }
-  }
-
-  /**
-   * 执行 temporal 时间技能
-   */
-  private async executeTemporalSkill(params: Record<string, unknown>, mdContent: string): Promise<SkillResult> {
-    const { exec } = require('child_process');
-    
-    // 检查 temporal 是否安装
-    const command = params.command || params.action || 'now';
-    
-    return new Promise((resolve) => {
-      exec(`temporal ${command}`, { timeout: 10000 }, (error: Error | null, stdout: string, stderr: string) => {
-        if (error) {
-          // temporal 未安装，返回文档说明
-          resolve({
-            success: true,
-            data: { needsInstall: true, docContent: mdContent.substring(0, 2000) },
-            message: `temporal 命令未安装。请先安装 temporal 工具，参考文档：\n\n${mdContent.substring(0, 500)}...`,
-          });
-        } else {
-          resolve({
-            success: true,
-            data: { output: stdout },
-            message: stdout || '执行成功',
-          });
-        }
-      });
-    });
-  }
-
-  /**
-   * 执行浏览器打开技能
-   */
-  private async executeOpenSkill(params: Record<string, unknown>, mdContent: string): Promise<SkillResult> {
-    const { exec } = require('child_process');
-    
-    // 提取 URL
-    let url = params.url || params.link || '';
-    if (!url) {
-      const urlMatch = mdContent.match(/https?:\/\/[^\s"']+/);
-      if (urlMatch) {
-        url = urlMatch[0];
-      }
-    }
-    
-    if (!url) {
-      return { success: false, data: {}, message: '未找到要打开的 URL', error: '缺少 URL 参数' };
-    }
-    
-    // 根据平台选择打开命令
-    const openCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-    
-    return new Promise((resolve) => {
-      exec(`${openCmd} "${url}"`, { timeout: 5000 }, (error: Error | null) => {
-        if (error) {
-          resolve({ success: false, data: {}, message: `打开失败: ${error.message}`, error: error.message });
-        } else {
-          resolve({ success: true, data: { url }, message: `已打开: ${url}` });
-        }
-      });
-    });
-  }
-
-  /**
-   * 执行 curl 命令技能
-   */
-  private async executeCurlSkill(params: Record<string, unknown>, mdContent: string): Promise<SkillResult> {
-    // 提取 curl 命令中的 URL
-    const curlMatch = mdContent.match(/curl\s+-s\s+"([^"]+)"/);
-    if (!curlMatch) {
-      return { success: false, data: {}, message: '未找到可执行的 curl 命令', error: '缺少 curl 命令' };
-    }
-    
-    let url = curlMatch[1];
-    
-    // 替换参数
-    for (const [key, value] of Object.entries(params)) {
-      if (typeof value === 'string') {
-        url = url.replace(`{${key}}`, encodeURIComponent(value));
-        url = url.replace(`$${key}`, encodeURIComponent(value));
-      }
-    }
-    
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
-    
-    logger.info(`执行 curl 请求: ${url}`);
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'Baize/3.0' },
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const text = await response.text();
-      
-      return { success: true, data: { output: text }, message: text };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return { success: false, data: {}, message: `请求失败: ${errorMsg}`, error: errorMsg };
-    }
   }
 
   /**
@@ -669,35 +453,10 @@ export class SkillLoader {
     definition.hasJavaScript = fs.existsSync(path.join(absoluteSkillPath, 'main.js'));
     definition.hasShell = fs.existsSync(path.join(absoluteSkillPath, 'run.sh'));
 
-    // 检查是否是文档型技能
-    const isDocSkill = !definition.hasPython && !definition.hasJavaScript && !definition.hasShell;
+    // 判断技能类型
+    const hasImplementation = definition.hasPython || definition.hasJavaScript || definition.hasShell;
     
-    // 检测文档中的可执行命令
-    const docContent = definition.mdContent.toLowerCase();
-    const hasExecutableCommands = 
-      docContent.includes('curl ') ||
-      docContent.includes('temporal ') ||
-      docContent.includes('open ') ||
-      docContent.includes('```bash') ||
-      docContent.includes('```sh') ||
-      docContent.includes('npm ') ||
-      docContent.includes('npx ') ||
-      docContent.includes('node ');
-    
-    if (isDocSkill && hasExecutableCommands) {
-      logger.info(`加载文档型技能: ${definition.name}`, {
-        capabilities: definition.capabilities,
-        riskLevel: definition.riskLevel,
-        type: 'doc-based',
-      });
-    } else if (isDocSkill) {
-      // 纯文档型技能（LLM 理解后执行）
-      logger.info(`加载文档型技能: ${definition.name} (LLM理解模式)`, {
-        capabilities: definition.capabilities,
-        riskLevel: definition.riskLevel,
-        type: 'doc-based',
-      });
-    } else {
+    if (hasImplementation) {
       logger.info(`加载技能: ${definition.name}`, {
         capabilities: definition.capabilities,
         riskLevel: definition.riskLevel,
@@ -705,6 +464,13 @@ export class SkillLoader {
         hasPython: definition.hasPython,
         hasJavaScript: definition.hasJavaScript,
         hasShell: definition.hasShell,
+      });
+    } else {
+      // 文档型技能：只有 SKILL.md，由 LLM 理解和执行
+      logger.info(`加载文档型技能: ${definition.name}`, {
+        capabilities: definition.capabilities,
+        riskLevel: definition.riskLevel,
+        type: 'doc-based',
       });
     }
 
