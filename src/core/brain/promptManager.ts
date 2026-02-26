@@ -19,15 +19,23 @@ const logger = getLogger('core:prompt');
  */
 export class PromptManager {
   // === Layer 1: 核心人格（常驻） ===
-  private corePersonality = `你是白泽，一个智能助手。
+  private corePersonality = `你是白泽，一个可以自我进化的智能助手。
 
-## 输出格式（必须严格遵守）
-只输出一个JSON对象，不要输出其他任何内容。
-必须包含 "action" 字段，值为以下之一：
+## 核心原则
+- 帮助用户解决问题，而不是拒绝用户
+- 当没有对应能力时，主动思考如何提升自己来帮助用户
+- 提升能力的方式：搜索技能市场安装、自进化学习
+
+## 输出格式
+只输出一个JSON对象，必须包含 "action" 字段：
+- "tool_call" - 调用可用工具
 - "ask_missing" - 缺少参数
-- "tool_call" - 调用工具
 - "reply" - 直接回答
-- "unable" - 无法完成`;
+- "unable" - 暂时无法完成（要给出提升能力的方案）
+
+## 重要规则
+- 只能调用"可用工具"中列出的工具
+- 如果用户请求的功能不在可用工具中，思考如何提升能力来帮助用户`;
 
   // === Layer 2: 决策规则（按场景） ===
   private decisionRules = {
@@ -35,32 +43,38 @@ export class PromptManager {
 
 根据用户输入选择一个action：
 
-1. ask_missing - 用户想用工具但没提供必要参数
-   输出: {"action": "ask_missing", "missing": ["缺少的参数名"], "question": "询问用户的话"}
+1. tool_call - 用户请求的功能在"可用工具"中，且参数完整
+   {"action": "tool_call", "tool": "工具名", "params": {"参数名": "参数值"}}
 
-2. tool_call - 用户提供了完整参数，可以调用工具
-   输出: {"action": "tool_call", "tool": "工具名", "params": {"参数名": "参数值"}}
+2. ask_missing - 用户请求的功能在"可用工具"中，但缺参数
+   {"action": "ask_missing", "missing": ["参数名"], "question": "询问用户"}
 
-3. reply - 简单闲聊，不需要工具
-   输出: {"action": "reply", "response": "回复内容"}
+3. unable - 用户请求的功能不在"可用工具"中
+   不要拒绝！要主动提出提升能力的方案：
+   - 可以搜索技能市场，安装相关技能
+   - 可以自进化学习，让用户指导你完成
+   
+   示例：{"action": "unable", "message": "我暂时没有外卖能力。我可以：1.搜索技能市场安装外卖技能 2.自进化学习，你教我如何帮你叫外卖。你想选择哪个？"}
 
-4. unable - 没有对应工具
-   输出: {"action": "unable", "message": "说明原因"}
+4. reply - 简单闲聊，不需要工具
+   {"action": "reply", "response": "回复内容"}
 
-注意：tool和params必须用英文键名！`,
+注意：先检查"可用工具"中是否有对应功能！`,
 
     complex: `## 决策规则
 
-1. 检查用户是否提供了必要参数
-2. 选择正确的action
-3. 只输出JSON，键名用英文`,
+1. 检查"可用工具"中是否有用户需要的功能
+2. 如果有，检查参数是否完整
+3. 如果没有，提出提升能力的方案（搜索市场/自进化）
+4. 只输出JSON`,
 
     followUp: `## 决策规则（追问）
 
 结合上下文判断：
 - 如果上下文有答案，直接回答
 - 如果需要新查询，使用上下文中的参数
-- 只输出JSON格式`
+- 如果没有对应能力，提出提升能力的方案
+- 只输出JSON`
   };
 
   // === Layer 3: 技能定义缓存 ===
@@ -83,6 +97,18 @@ export class PromptManager {
       parts.push('\n## 可用工具\n');
       for (const skillName of options.skills) {
         parts.push(this.getSkillDefinition(skillName));
+      }
+    } else {
+      // 即使没有检测到相关技能，也列出所有可用工具
+      const registry = getSkillRegistry();
+      if (registry && typeof registry.getAll === 'function') {
+        const allSkills = registry.getAll();
+        if (allSkills && allSkills.length > 0) {
+          parts.push('\n## 可用工具\n');
+          for (const skill of allSkills.slice(0, 10)) { // 最多10个
+            parts.push(this.formatSkillDefinitionFromInfo(skill));
+          }
+        }
       }
     }
 
@@ -129,7 +155,6 @@ export class PromptManager {
     
     // 如果没有inputSchema，从描述推断
     if (!params && skill.description) {
-      // 天气技能特殊处理
       if (skill.name === 'weather') {
         params = 'location*: 城市名称';
       }
@@ -140,6 +165,15 @@ export class PromptManager {
     return `### ${skill.name}
 ${skill.description}
 ${paramsStr}
+`;
+  }
+
+  /**
+   * 从SkillInfo格式化技能定义
+   */
+  private formatSkillDefinitionFromInfo(skillInfo: any): string {
+    return `### ${skillInfo.name}
+${skillInfo.description?.substring(0, 50) || ''}
 `;
   }
 

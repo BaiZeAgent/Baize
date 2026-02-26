@@ -133,17 +133,25 @@ export class Brain {
     sessionId: string = 'default'
   ): AsyncGenerator<StreamEvent> {
     const startTime = Date.now();
-    logger.info(`流式处理: ${userInput.substring(0, 50)}...`);
+    
+    // 空输入检查
+    const trimmedInput = userInput?.trim() || '';
+    if (!trimmedInput) {
+      yield this.createErrorEvent('请输入您的问题');
+      return;
+    }
+    
+    logger.info(`流式处理: ${trimmedInput.substring(0, 50)}...`);
 
     // 获取或创建会话
     const session = this.sessionManager.getOrCreateSession(sessionId);
     
     // 添加用户消息到历史
-    this.sessionManager.addMessage(sessionId, 'user', userInput);
+    this.sessionManager.addMessage(sessionId, 'user', trimmedInput);
 
     try {
       // 1. 规则快速匹配
-      const ruleResult = this.ruleMatch(userInput);
+      const ruleResult = this.ruleMatch(trimmedInput);
       if (ruleResult) {
         yield this.createThinkingEvent('matched', `规则匹配: ${ruleResult.reason}`);
         yield* this.streamContent(ruleResult.response || '');
@@ -153,10 +161,10 @@ export class Brain {
       }
 
       // 2. 检测是否是追问
-      const isFollowUp = this.sessionManager.isFollowUp(sessionId, userInput);
+      const isFollowUp = this.sessionManager.isFollowUp(sessionId, trimmedInput);
 
       // 3. 检测相关技能
-      const relevantSkills = this.detectRelevantSkills(userInput);
+      const relevantSkills = this.detectRelevantSkills(trimmedInput);
 
       // 4. 构建提示词（分层架构）
       const contextSummary = isFollowUp 
@@ -173,11 +181,11 @@ export class Brain {
       yield this.createThinkingEvent('decide', '正在分析...');
 
       // 6. 调用LLM决策
-      const history = this.sessionManager.getHistory(sessionId, 6);
+      const history = this.sessionManager.getHistory(sessionId, 10);
       const messages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
         ...history.slice(0, -1), // 不包含刚添加的用户消息
-        { role: 'user', content: userInput }
+        { role: 'user', content: trimmedInput }
       ];
 
       const response = await this.llm.chat(messages, { temperature: 0.3 });
@@ -195,15 +203,11 @@ export class Brain {
           // 检查工具是否存在
           const toolExists = getSkillRegistry().get(decision.tool || '') !== undefined;
           
-          // 如果工具不存在，说明没有这个能力
+          // 如果工具不存在，说明没有这个能力，让LLM的message来引导用户
           if (!toolExists) {
-            yield this.createThinkingEvent('unable', `没有${decision.tool}工具`);
-            // 动态获取可用技能列表
-            const availableSkills = getSkillRegistry().getAll()
-              .filter(s => s.riskLevel !== 'high') // 过滤高风险技能
-              .map(s => `- ${s.name}：${s.description.substring(0, 30)}`)
-              .slice(0, 5); // 最多显示5个
-            const unableMsg = `抱歉，我暂时没有"${decision.tool}"这个能力。\n\n我目前可以帮你：\n${availableSkills.join('\n')}`;
+            yield this.createThinkingEvent('unable', `暂时没有${decision.tool}能力`);
+            // 使用LLM返回的message，如果没有则给出默认的提升能力提示
+            const unableMsg = decision.message || `我暂时没有"${decision.tool}"这个能力。我可以：1.搜索技能市场安装相关技能 2.自进化学习，你教我如何完成这个任务。你想选择哪个？`;
             yield* this.streamContent(unableMsg);
             this.sessionManager.addMessage(sessionId, 'assistant', unableMsg);
             break;
@@ -252,17 +256,9 @@ export class Brain {
           break;
 
         case 'unable':
-          yield this.createThinkingEvent('unable', decision.reason || '没有对应能力');
-          const unableReason = decision.message || decision.reason || '抱歉，我暂时做不到这个。';
-          // 动态获取可用技能列表
-          const skills = getSkillRegistry().getAll()
-            .filter(s => s.riskLevel !== 'high')
-            .map(s => `- ${s.name}：${s.description.substring(0, 30)}`)
-            .slice(0, 5);
-          const alternatives = decision.alternatives?.length 
-            ? '\n\n你可以尝试：\n' + decision.alternatives.map((a, i) => `${i + 1}. ${a}`).join('\n')
-            : '\n\n我目前可以帮你：\n' + skills.join('\n');
-          const unableMsg = unableReason + alternatives;
+          yield this.createThinkingEvent('unable', '思考解决方案');
+          // LLM已经在message中给出了帮助用户的方案
+          const unableMsg = decision.message || '抱歉，我暂时没有这个能力。让我想想如何帮你解决。';
           yield* this.streamContent(unableMsg);
           this.sessionManager.addMessage(sessionId, 'assistant', unableMsg);
           break;
