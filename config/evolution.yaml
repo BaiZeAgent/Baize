@@ -1,0 +1,33 @@
+# 白泽3.0 自进化配置
+
+evolution:
+  enabled: true
+  requireApproval: true
+  maxIterations: 3
+  sandboxEnabled: true
+
+permissions:
+  forbidden:
+    - path: "core/"
+      reason: "核心代码"
+      allowOverride: false
+    - path: "security/"
+      reason: "安全层"
+      allowOverride: false
+    - path: "config/system.yaml"
+      reason: "系统配置"
+      allowOverride: false
+
+  restricted:
+    - path: "skills/*/main.py"
+      reason: "技能代码"
+      autoBackup: true
+    - path: "prompts/"
+      reason: "提示词"
+      autoBackup: true
+
+  free:
+    - path: "skills/new/"
+      reason: "新技能"
+    - path: "memory/content/"
+      reason: "记忆内容"

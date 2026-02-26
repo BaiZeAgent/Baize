@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 - architecture</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 - architecture</h1>
+</header>
+<h1 id="白泽3.0-架构设计文档">白泽3.0 架构设计文档</h1>
+<p><strong>版本</strong>: 3.0.2<br />
+<strong>作者</strong>: 白泽架构团队<br />
+<strong>日期</strong>: 2025年2月<br />
+<strong>状态</strong>: 正式发布</p>
+<hr />
+<h2 id="文档概述">文档概述</h2>
+<h3 id="文档目的">文档目的</h3>
+<p>本文档定义了白泽3.0（Baize
+3.0）的完整技术架构，旨在构建一个<strong>JARVIS级别的AI智能助手系统</strong>。白泽3.0不仅是一个对话机器人，更是一个具备<strong>自主思考、动态规划、自我进化</strong>能力的智能代理系统。</p>
+<h3 id="设计理念">设计理念</h3>
+<pre><code>核心理念：在一个不可靠的LLM之上构建一个可靠的软件系统</code></pre>
+<p>白泽3.0的核心难点不在于”让LLM思考”，而在于如何在一个不可靠的LLM之上构建一个可靠的软件系统。本架构通过分层设计、冗余机制、安全边界和持续学习来解决这个核心矛盾。</p>
+<h3 id="核心特性">核心特性</h3>
+<table>
+<thead>
+<tr class="header">
+<th>特性</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>🧠 六阶段思考协议</td>
+<td>理解→拆解→规划→调度→验收→反思</td>
+</tr>
+<tr class="even">
+<td>🔄 动态技能加载</td>
+<td>运行时加载Python/JS/Shell技能</td>
+</tr>
+<tr class="odd">
+<td>📚 三层记忆系统</td>
+<td>情景记忆+声明式记忆+程序性记忆</td>
+</tr>
+<tr class="even">
+<td>🧬 自进化能力</td>
+<td>能力缺口检测+技能市场+角色化思考</td>
+</tr>
+<tr class="odd">
+<td>🛡️ 安全边界</td>
+<td>禁止区域+限制区域+自由区域</td>
+</tr>
+<tr class="even">
+<td>🎯 上下文管理</td>
+<td>Token预算+滑动窗口+压缩机制</td>
+</tr>
+<tr class="odd">
+<td>🔒 沙箱隔离</td>
+<td>Docker容器+静态分析+资源锁</td>
+</tr>
+<tr class="even">
+<td>💰 成本控制</td>
+<td>预算管理+成本追踪+告警机制</td>
+</tr>
+<tr class="odd">
+<td>💾 状态管理</td>
+<td>Agent状态持久化+恢复机制</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#第一章-系统概述">系统概述</a></li>
+<li><a href="#第二章-分层架构设计">分层架构设计</a></li>
+<li><a href="#第三章-思考调度系统">思考调度系统</a></li>
+<li><a href="#第四章-技能系统">技能系统</a></li>
+<li><a href="#第五章-执行层">执行层</a></li>
+<li><a href="#第六章-调度层">调度层</a></li>
+<li><a href="#第七章-记忆系统">记忆系统</a></li>
+<li><a href="#第八章-安全系统">安全系统</a></li>
+<li><a href="#第九章-自进化系统">自进化系统</a></li>
+<li><a href="#第十章-可观测性">可观测性</a></li>
+<li><a href="#第十一章-交互层">交互层</a></li>
+<li><a href="#第十二章-上下文管理">上下文管理</a></li>
+<li><a href="#第十三章-成本控制">成本控制</a></li>
+<li><a href="#第十四章-状态管理">状态管理</a></li>
+<li><a href="#第十五章-评测体系">评测体系</a></li>
+<li><a href="#第十六章-运维与部署">运维与部署</a></li>
+<li><a href="#第十七章-数据类型定义">数据类型定义</a></li>
+<li><a href="#第十八章-开发路线图">开发路线图</a></li>
+<li><a href="#附录">附录</a></li>
+</ol>
+<hr />
+<h2 id="第一章-系统概述">第一章 系统概述</h2>
+<h3 id="系统定位">1.1 系统定位</h3>
+<p>白泽3.0定位为<strong>个人智能助理</strong>，对标漫威宇宙中的JARVIS系统。它不仅能进行自然语言对话，还能：</p>
+<ul>
+<li>🗂️ 操作文件系统</li>
+<li>🌐 访问网络资源</li>
+<li>⏰ 执行定时任务</li>
+<li>📊 分析数据</li>
+<li>🔧 自我优化升级</li>
+<li>🛒 自主获取新能力</li>
+</ul>
+<h3 id="系统架构总览">1.2 系统架构总览</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                        L9 交互层 (Interaction)                   │
+│                    CLI / HTTP API / WebSocket                    │
+├─────────────────────────────────────────────────────────────────┤
+│                        L8 安全层 (Security)                      │
+│              身份认证 / 权限控制 / 审计日志 / 隐私保护            │
+├─────────────────────────────────────────────────────────────────┤
+│                        L7 决策层 (Thinking)                      │
+│                   六阶段思考协议 / 上下文管理                     │
+├─────────────────────────────────────────────────────────────────┤
+│                        L6 调度层 (Scheduler)                     │
+│              任务调度 / 主动任务 / 资源锁 / DAG调度               │
+├─────────────────────────────────────────────────────────────────┤
+│                        L5 执行层 (Executor)                      │
+│              并行执行 / 沙箱隔离 / 错误恢复 / 状态追踪             │
+├─────────────────────────────────────────────────────────────────┤
+│                        L4 能力层 (Skills)                        │
+│           动态技能加载 / Python-JS-Shell / 技能市场               │
+├─────────────────────────────────────────────────────────────────┤
+│                        L3 知识层 (Knowledge)                     │
+│                 向量存储 / RAG检索 / 语义缓存                     │
+├─────────────────────────────────────────────────────────────────┤
+│                        L2 数据层 (Data)                          │
+│              SQLite存储 / 三层记忆 / 状态持久化                   │
+├─────────────────────────────────────────────────────────────────┤
+│                        L1 可观测层 (Observability)               │
+│           结构化日志 / 分布式追踪 / 性能指标 / 告警               │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="技术栈">1.3 技术栈</h3>
+<table>
+<thead>
+<tr class="header">
+<th>层级</th>
+<th>技术选型</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>L1 可观测层</td>
+<td>Winston + OpenTelemetry</td>
+</tr>
+<tr class="even">
+<td>L2 数据层</td>
+<td>sql.js (SQLite in WASM)</td>
+</tr>
+<tr class="odd">
+<td>L3 知识层</td>
+<td>内存向量存储 / Chroma (可选)</td>
+</tr>
+<tr class="even">
+<td>L4 能力层</td>
+<td>动态加载 + Docker沙箱 + 技能市场</td>
+</tr>
+<tr class="odd">
+<td>L5 执行层</td>
+<td>Node.js spawn + 并行调度</td>
+</tr>
+<tr class="even">
+<td>L6 调度层</td>
+<td>事件驱动 + DAG调度</td>
+</tr>
+<tr class="odd">
+<td>L7 决策层</td>
+<td>LLM驱动 + 六阶段协议</td>
+</tr>
+<tr class="even">
+<td>L8 安全层</td>
+<td>RBAC + 审计日志</td>
+</tr>
+<tr class="odd">
+<td>L9 交互层</td>
+<td>CLI (Inquirer) + HTTP API</td>
+</tr>
+</tbody>
+</table>
+<h3 id="核心设计原则">1.4 核心设计原则</h3>
+<ol type="1">
+<li><strong>分层解耦</strong>：每层独立可测试、可替换</li>
+<li><strong>渐进增强</strong>：从简单到复杂，逐步添加能力</li>
+<li><strong>安全优先</strong>：任何操作都必须经过安全检查</li>
+<li><strong>可观测性</strong>：所有操作都有日志和追踪</li>
+<li><strong>容错设计</strong>：假设任何组件都可能失败</li>
+<li><strong>成本可控</strong>：Token消耗有预算限制</li>
+<li><strong>自主进化</strong>：系统能检测能力缺口并自主获取新能力</li>
+</ol>
+<hr />
+<h2 id="第二章-分层架构设计">第二章 分层架构设计</h2>
+<h3 id="九层架构详解">2.1 九层架构详解</h3>
+<h4 id="l1-可观测层-observability">L1 可观测层 (Observability)</h4>
+<p><strong>职责</strong>：提供系统的”眼睛”和”耳朵”</p>
+<pre><code>┌─────────────────────────────────────┐
+│           可观测层组件               │
+├─────────────────────────────────────┤
+│  ┌─────────┐ ┌─────────┐ ┌────────┐ │
+│  │ 日志系统 │ │ 追踪系统 │ │ 指标系统│ │
+│  │ Winston │ │ Tracing │ │ Metrics│ │
+│  └─────────┘ └─────────┘ └────────┘ │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        告警系统 (Alerting)       ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘</code></pre>
+<p><strong>核心组件</strong>：</p>
+<table>
+<thead>
+<tr class="header">
+<th>组件</th>
+<th>功能</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>日志系统</td>
+<td>结构化日志输出</td>
+<td>Winston</td>
+</tr>
+<tr class="even">
+<td>追踪系统</td>
+<td>请求链路追踪</td>
+<td>TraceContext + Span</td>
+</tr>
+<tr class="odd">
+<td>指标系统</td>
+<td>性能指标收集</td>
+<td>自定义Metrics</td>
+</tr>
+<tr class="even">
+<td>告警系统</td>
+<td>异常告警通知</td>
+<td>阈值触发</td>
+</tr>
+</tbody>
+</table>
+<p><strong>日志格式</strong>：</p>
+<pre><code>2025-02-23 04:45:03 | INFO | [trace-id-xxx] 成本记录 {&quot;module&quot;:&quot;cost:manager&quot;,&quot;provider&quot;:&quot;aliyun&quot;}</code></pre>
+<hr />
+<h4 id="l2-数据层-data">L2 数据层 (Data)</h4>
+<p><strong>职责</strong>：数据的持久化存储</p>
+<pre><code>┌─────────────────────────────────────┐
+│             数据层架构               │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │      SQLite (sql.js)            ││
+│  │    ┌───────────────────────┐    ││
+│  │    │  episodic_memory      │    ││
+│  │    │  declarative_memory   │    ││
+│  │    │  procedural_memory    │    ││
+│  │    │  proactive_tasks      │    ││
+│  │    │  task_history         │    ││
+│  │    │  evolution_history    │    ││
+│  │    │  trust_records        │    ││
+│  │    │  confirmation_history │    ││
+│  │    │  agent_states         │    ││
+│  │    │  capability_gaps      │    ││
+│  │    │  memory_snapshots     │    ││
+│  │    └───────────────────────┘    ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘</code></pre>
+<p><strong>数据库表设计</strong>：</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- 情景记忆表</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> episodic_memory (</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">id</span> <span class="dt">INTEGER</span> <span class="kw">PRIMARY</span> <span class="kw">KEY</span> AUTOINCREMENT,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  content TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">timestamp</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  created_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co">-- 声明式记忆表</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> declarative_memory (</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">key</span> TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">value</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  confidence <span class="dt">REAL</span> <span class="kw">DEFAULT</span> <span class="fl">0.5</span>,</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  times_reinforced <span class="dt">INTEGER</span> <span class="kw">DEFAULT</span> <span class="dv">1</span>,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  created_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span>,</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  updated_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="co">-- 程序性记忆表</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> procedural_memory (</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">key</span> TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">value</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  created_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span>,</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  updated_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a><span class="co">-- Agent状态表</span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> agent_states (</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  conversation_id TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  current_phase TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  thought_process TEXT,</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  executed_tasks TEXT,</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  pending_tasks TEXT,</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  created_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span>,</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  updated_at TEXT <span class="kw">DEFAULT</span> <span class="fu">CURRENT_TIMESTAMP</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a><span class="co">-- 记忆快照表</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> memory_snapshots (</span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  <span class="kw">id</span> TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>  <span class="dt">timestamp</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>  <span class="kw">trigger</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  episodic TEXT,</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  declarative TEXT,</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>  procedural TEXT</span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
+<hr />
+<h4 id="l3-知识层-knowledge">L3 知识层 (Knowledge)</h4>
+<p><strong>职责</strong>：知识的存储、检索和增强</p>
+<pre><code>┌─────────────────────────────────────┐
+│             知识层架构               │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        向量存储                  ││
+│  │  ┌───────────────────────────┐  ││
+│  │  │  MemoryVectorStore        │  ││
+│  │  │  - 余弦相似度计算          │  ││
+│  │  │  - 语义检索               │  ││
+│  │  └───────────────────────────┘  ││
+│  └─────────────────────────────────┘│
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        RAG系统                   ││
+│  │  - 知识添加                      ││
+│  │  - 上下文构建                    ││
+│  │  - 语义缓存                      ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘</code></pre>
+<hr />
+<h4 id="l4-能力层-skills">L4 能力层 (Skills)</h4>
+<p><strong>职责</strong>：技能的动态加载、执行和市场集成</p>
+<pre><code>┌─────────────────────────────────────┐
+│             能力层架构               │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        技能加载器                ││
+│  │  - 动态扫描skills目录            ││
+│  │  - 解析SKILL.md定义              ││
+│  │  - 支持Python/JS/Shell           ││
+│  └─────────────────────────────────┘│
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        技能注册表                ││
+│  │  - 技能查找                      ││
+│  │  - 能力索引                      ││
+│  │  - 版本管理                      ││
+│  └─────────────────────────────────┘│
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        技能市场客户端            ││
+│  │  - 搜索技能                      ││
+│  │  - 下载安装                      ││
+│  │  - 安全验证                      ││
+│  └─────────────────────────────────┘│
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │        沙箱执行器                ││
+│  │  - Docker容器隔离                ││
+│  │  - 资源限制                      ││
+│  │  - 安全审计                      ││
+│  └─────────────────────────────────┘│
+└─────────────────────────────────────┘</code></pre>
+<hr />
+<h4 id="l5-l9-层级简化说明">L5-L9 层级（简化说明）</h4>
+<table>
+<thead>
+<tr class="header">
+<th>层级</th>
+<th>职责</th>
+<th>核心组件</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>L5 执行层</td>
+<td>任务执行</td>
+<td>并行执行器、错误恢复、重试机制、资源管理</td>
+</tr>
+<tr class="even">
+<td>L6 调度层</td>
+<td>任务调度</td>
+<td>DAG调度、主动任务、资源锁</td>
+</tr>
+<tr class="odd">
+<td>L7 决策层</td>
+<td>核心思考</td>
+<td>六阶段思考、上下文管理、重规划机制</td>
+</tr>
+<tr class="even">
+<td>L8 安全层</td>
+<td>安全防护</td>
+<td>认证授权、安全边界、审计、隐私保护</td>
+</tr>
+<tr class="odd">
+<td>L9 交互层</td>
+<td>用户交互</td>
+<td>CLI、HTTP API、WebSocket</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第三章-思考调度系统">第三章 思考调度系统</h2>
+<h3 id="六阶段思考协议">3.1 六阶段思考协议</h3>
+<p>白泽3.0的核心创新是<strong>六阶段思考协议</strong>，模拟人类的思考过程：</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     六阶段思考协议                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐      │
+│  │ 阶段1   │───▶│ 阶段2   │───▶│ 阶段3   │───▶│ 阶段4   │      │
+│  │ 理解    │    │ 拆解    │    │ 规划    │    │ 调度    │      │
+│  └─────────┘    └─────────┘    └─────────┘    └─────────┘      │
+│       │              │              │              │            │
+│       ▼              ▼              ▼              ▼            │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐      │
+│  │解析意图 │    │分解任务 │    │选择技能 │    │安排顺序 │      │
+│  │提取约束 │    │识别依赖 │    │评估风险 │    │并行分组 │      │
+│  └─────────┘    └─────────┘    └─────────┘    └─────────┘      │
+│                                                                 │
+│                      ┌─────────┐    ┌─────────┐                │
+│                      │ 阶段5   │───▶│ 阶段6   │                │
+│                      │ 验收    │    │ 反思    │                │
+│                      └─────────┘    └─────────┘                │
+│                           │              │                      │
+│                           ▼              ▼                      │
+│                      ┌─────────┐    ┌─────────┐                │
+│                      │检查结果 │    │分析失败 │                │
+│                      │收集问题 │    │提出改进 │                │
+│                      └─────────┘    └─────────┘                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="各阶段详解">3.2 各阶段详解</h3>
+<h4 id="阶段1-理解-understanding">阶段1: 理解 (Understanding)</h4>
+<p><strong>目标</strong>：解析用户意图，提取核心需求</p>
+<p><strong>输出</strong>：</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Understanding {</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  literalMeaning<span class="op">:</span> <span class="dt">string</span><span class="op">;</span>    <span class="co">// 字面意思</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  implicitIntent<span class="op">:</span> <span class="dt">string</span><span class="op">;</span>    <span class="co">// 隐含意图</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  context<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;;</span> <span class="co">// 上下文</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  constraints<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span>     <span class="co">// 约束条件</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  coreNeed<span class="op">:</span> <span class="dt">string</span><span class="op">;</span>          <span class="co">// 核心需求</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="阶段2-拆解-decomposition">阶段2: 拆解 (Decomposition)</h4>
+<p><strong>目标</strong>：将复杂任务分解为原子任务</p>
+<p><strong>输出</strong>：</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Decomposition {</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  tasks<span class="op">:</span> Task[]<span class="op">;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  dependencies<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">string</span>[]<span class="op">&gt;;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  parallelGroups<span class="op">:</span> <span class="dt">string</span>[][]<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="阶段3-规划-planning">阶段3: 规划 (Planning)</h4>
+<p><strong>目标</strong>：为每个任务选择技能，评估风险</p>
+<p><strong>输出</strong>：</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Planning {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  skillSelections<span class="op">:</span> SkillSelection[]<span class="op">;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  executionOrder<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  estimatedTime<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  risks<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  needConfirm<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="阶段4-调度-scheduling">阶段4: 调度 (Scheduling)</h4>
+<p><strong>目标</strong>：安排执行顺序和并行策略</p>
+<p><strong>输出</strong>：</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Scheduling {</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  executionId<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  parallelGroups<span class="op">:</span> <span class="dt">string</span>[][]<span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  timeout<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  retryPolicy<span class="op">:</span> RetryPolicy<span class="op">;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="阶段5-验收-validation">阶段5: 验收 (Validation)</h4>
+<p><strong>目标</strong>：检查执行结果</p>
+<p><strong>输出</strong>：</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Validation {</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  passed<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  issues<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  suggestions<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  needRetry<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="阶段6-反思-reflection">阶段6: 反思 (Reflection)</h4>
+<p><strong>目标</strong>：分析失败，提出改进</p>
+<p><strong>输出</strong>：</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Reflection {</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  successRate<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  failureAnalysis<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  rootCauses<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  improvements<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="动态重规划机制">3.3 动态重规划机制</h3>
+<p>当执行过程中发现最初的理解错误时，系统可动态调整计划。</p>
+<p><strong>触发条件</strong>：</p>
+<table>
+<thead>
+<tr class="header">
+<th>条件</th>
+<th>阈值</th>
+<th>动作</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>连续执行失败</td>
+<td>≥2次</td>
+<td>回退到理解阶段</td>
+</tr>
+<tr class="even">
+<td>结果偏差</td>
+<td>&gt;30%</td>
+<td>回退到拆解阶段</td>
+</tr>
+<tr class="odd">
+<td>能力缺口检测</td>
+<td>检测到</td>
+<td>触发自进化流程</td>
+</tr>
+</tbody>
+</table>
+<p><strong>重规划流程</strong>：</p>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ReplanManager {</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">needsReplanning</span>(validation<span class="op">:</span> Validation)<span class="op">:</span> <span class="dt">boolean</span> {</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 连续失败超过阈值</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="kw">this</span><span class="op">.</span><span class="at">consecutiveFailures</span> <span class="op">&gt;=</span> <span class="dv">2</span>) <span class="cf">return</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 问题过多</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (validation<span class="op">.</span><span class="at">issues</span><span class="op">?.</span><span class="at">length</span> <span class="op">&gt;</span> <span class="dv">3</span>) <span class="cf">return</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">generateReplanPrompt</span>(originalUnderstanding<span class="op">:</span> Understanding<span class="op">,</span> validation<span class="op">:</span> Validation)<span class="op">:</span> <span class="dt">string</span> {</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="vs">`</span><span class="sc">${</span>originalUnderstanding<span class="op">.</span><span class="at">coreNeed</span><span class="sc">}</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="vs">    </span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="vs">注意: 之前的尝试失败了。</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="vs">失败原因: </span><span class="sc">${</span>validation<span class="op">.</span><span class="at">issues</span><span class="op">?.</span><span class="fu">join</span>(<span class="st">&#39;, &#39;</span>) <span class="op">||</span> <span class="st">&#39;未知&#39;</span><span class="sc">}</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="vs">请重新分析并制定新的执行计划。`</span><span class="op">;</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="上下文管理策略">3.4 上下文管理策略</h3>
+<h4 id="token预算管理">Token预算管理</h4>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> TokenBudget {</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  total<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>        <span class="co">// 总预算</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  system<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>       <span class="co">// 系统提示词</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  context<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>      <span class="co">// 上下文</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  current<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>      <span class="co">// 当前任务</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  reserved<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>     <span class="co">// 预留</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="co">// 默认预算分配</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> DEFAULT_BUDGET<span class="op">:</span> TokenBudget <span class="op">=</span> {</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  total<span class="op">:</span> <span class="dv">4096</span><span class="op">,</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  system<span class="op">:</span> <span class="dv">500</span><span class="op">,</span>      <span class="co">// 15%</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>  context<span class="op">:</span> <span class="dv">1000</span><span class="op">,</span>    <span class="co">// 25%</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  current<span class="op">:</span> <span class="dv">2000</span><span class="op">,</span>    <span class="co">// 50%</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>  reserved<span class="op">:</span> <span class="dv">596</span><span class="op">,</span>    <span class="co">// 10%</span></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h4 id="滑动窗口机制">滑动窗口机制</h4>
+<pre><code>完整历史:  [理解][拆解][规划][调度][执行][验收][反思]
+滑动窗口:              [规划][调度][执行][验收]
+压缩摘要:  [理解摘要][拆解摘要][规划输出]</code></pre>
+<hr />
+<h2 id="第四章-技能系统">第四章 技能系统</h2>
+<h3 id="技能定义规范">4.1 技能定义规范</h3>
+<h4 id="目录结构">目录结构</h4>
+<pre><code>skills/
+├── {skill_name}/
+│   ├── SKILL.md          # 技能定义（必需）
+│   ├── main.py           # Python实现
+│   ├── main.js           # JavaScript实现
+│   └── run.sh            # Shell实现</code></pre>
+<h4 id="skill.md格式">SKILL.md格式</h4>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> skill_name</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="an">version:</span><span class="co"> 1.0.0</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 技能描述</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="co">  - capability1</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="an">step_by_step:</span><span class="co"> false</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="fu"># 技能说明</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>...</span></code></pre></div>
+<h3 id="技能加载机制">4.2 技能加载机制</h3>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> SkillLoader {</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">loadAll</span>()<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>DynamicSkill[]<span class="op">&gt;;</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">private</span> <span class="kw">async</span> <span class="fu">loadSkill</span>(skillPath<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>DynamicSkill <span class="op">|</span> <span class="dt">null</span><span class="op">&gt;;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="技能执行机制">4.3 技能执行机制</h3>
+<p><strong>执行优先级</strong>：Python &gt; JavaScript &gt; Shell</p>
+<p><strong>跨平台兼容</strong>：</p>
+<table>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>Python命令</th>
+<th>处理方式</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Windows</td>
+<td>python</td>
+<td>检测+fallback</td>
+</tr>
+<tr class="even">
+<td>Linux/macOS</td>
+<td>python3</td>
+<td>直接执行</td>
+</tr>
+</tbody>
+</table>
+<h3 id="沙箱隔离">4.4 沙箱隔离</h3>
+<table>
+<thead>
+<tr class="header">
+<th>级别</th>
+<th>实现方式</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>L1 进程隔离</td>
+<td>Node.js spawn</td>
+<td>低风险技能</td>
+</tr>
+<tr class="even">
+<td>L2 容器隔离</td>
+<td>Docker</td>
+<td>中风险技能</td>
+</tr>
+<tr class="odd">
+<td>L3 虚拟机隔离</td>
+<td>Firecracker</td>
+<td>高风险技能</td>
+</tr>
+</tbody>
+</table>
+<h3 id="资源锁机制">4.5 资源锁机制</h3>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ResourceLockManager {</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">acquire</span>(resource<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> type<span class="op">:</span> <span class="st">&#39;read&#39;</span> <span class="op">|</span> <span class="st">&#39;write&#39;</span><span class="op">,</span> taskId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span><span class="dt">boolean</span><span class="op">&gt;;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">release</span>(resource<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> taskId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p><strong>锁类型</strong>：</p>
+<table>
+<thead>
+<tr class="header">
+<th>锁类型</th>
+<th>说明</th>
+<th>兼容性</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>读锁</td>
+<td>共享锁</td>
+<td>读锁+读锁</td>
+</tr>
+<tr class="even">
+<td>写锁</td>
+<td>排他锁</td>
+<td>独占</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第五章-执行层">第五章 执行层</h2>
+<h3 id="并行执行策略">5.1 并行执行策略</h3>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ParallelExecutor {</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">execute</span>(tasks<span class="op">:</span> Task[]<span class="op">,</span> parallelGroups<span class="op">:</span> <span class="dt">string</span>[][])<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>ExecutionResult<span class="op">&gt;;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">executeStepByStep</span>(tasks<span class="op">:</span> Task[]<span class="op">,</span> stepCallback<span class="op">:</span> StepCallback)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>ExecutionResult<span class="op">&gt;;</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="step_by_step模式">5.2 step_by_step模式</h3>
+<p>某些复杂任务需要逐步执行，每步完成后与思考层通讯。</p>
+<p><strong>触发条件</strong>：技能定义中设置
+<code>step_by_step: true</code></p>
+<h3 id="错误恢复">5.3 错误恢复</h3>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> RetryPolicy {</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  maxRetries<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>      <span class="co">// 最大重试次数</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  initialDelay<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>    <span class="co">// 初始延迟</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  maxDelay<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>        <span class="co">// 最大延迟</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  backoffMultiplier<span class="op">:</span> <span class="dt">number</span><span class="op">;</span> <span class="co">// 退避乘数</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  retryableErrors<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span> <span class="co">// 可重试错误</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> RetryExecutor {</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">execute</span>(task<span class="op">:</span> Task<span class="op">,</span> executor<span class="op">:</span> <span class="bu">Function</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>TaskResult<span class="op">&gt;;</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p><strong>重试策略</strong>：</p>
+<table>
+<thead>
+<tr class="header">
+<th>错误类型</th>
+<th>是否重试</th>
+<th>延迟策略</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>timeout</td>
+<td>是</td>
+<td>指数退避</td>
+</tr>
+<tr class="even">
+<td>network</td>
+<td>是</td>
+<td>指数退避</td>
+</tr>
+<tr class="odd">
+<td>rate limit</td>
+<td>是</td>
+<td>指数退避</td>
+</tr>
+<tr class="even">
+<td>validation</td>
+<td>否</td>
+<td>-</td>
+</tr>
+<tr class="odd">
+<td>permission</td>
+<td>否</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第六章-调度层">第六章 调度层</h2>
+<h3 id="任务调度器">6.1 任务调度器</h3>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DAGScheduler {</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">buildDAG</span>(tasks<span class="op">:</span> Task[]<span class="op">,</span> locks<span class="op">:</span> <span class="bu">Map</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">string</span>[]<span class="op">&gt;</span>)<span class="op">:</span> DAG<span class="op">;</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">topologicalSort</span>(dag<span class="op">:</span> DAG)<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="主动任务系统">6.2 主动任务系统</h3>
+<table>
+<thead>
+<tr class="header">
+<th>触发类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>时间触发</td>
+<td>定时执行</td>
+<td>每天早上8点提醒</td>
+</tr>
+<tr class="even">
+<td>事件触发</td>
+<td>事件驱动</td>
+<td>收到邮件时通知</td>
+</tr>
+<tr class="odd">
+<td>条件触发</td>
+<td>条件满足时</td>
+<td>文件变化时备份</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ProactiveTask {</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  type<span class="op">:</span> <span class="st">&#39;time&#39;</span> <span class="op">|</span> <span class="st">&#39;event&#39;</span> <span class="op">|</span> <span class="st">&#39;condition&#39;</span><span class="op">;</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  triggerConfig<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;;</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  actionConfig<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;;</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  status<span class="op">:</span> TaskStatus<span class="op">;</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第七章-记忆系统">第七章 记忆系统</h2>
+<h3 id="三层记忆架构">7.1 三层记忆架构</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     三层记忆架构                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   情景记忆 (Episodic)                    │   │
+│  │  存储具体的事件和对话，按时间顺序组织                      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                  声明式记忆 (Declarative)                │   │
+│  │  存储事实知识和用户偏好，以键值对形式组织                  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                  程序性记忆 (Procedural)                 │   │
+│  │  存储技能和流程，以过程形式组织                           │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="五维度学习">7.2 五维度学习</h3>
+<table>
+<thead>
+<tr class="header">
+<th>维度</th>
+<th>说明</th>
+<th>存储位置</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>用户偏好学习</td>
+<td>记录用户偏好</td>
+<td>声明式记忆</td>
+</tr>
+<tr class="even">
+<td>任务模式学习</td>
+<td>记录成功模式</td>
+<td>程序性记忆</td>
+</tr>
+<tr class="odd">
+<td>错误恢复学习</td>
+<td>记录解决方案</td>
+<td>程序性记忆</td>
+</tr>
+<tr class="even">
+<td>技能进化学习</td>
+<td>优化技能参数</td>
+<td>程序性记忆</td>
+</tr>
+<tr class="odd">
+<td>知识积累学习</td>
+<td>持续学习知识</td>
+<td>声明式记忆</td>
+</tr>
+</tbody>
+</table>
+<h3 id="记忆管理">7.3 记忆管理</h3>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MemorySystem {</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 情景记忆</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">recordEpisode</span>(type<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> content<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">getEpisodes</span>(type<span class="op">?:</span> <span class="dt">string</span><span class="op">,</span> limit<span class="op">?:</span> <span class="dt">number</span>)<span class="op">:</span> EpisodicMemory[]<span class="op">;</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 声明式记忆</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">remember</span>(key<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> value<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> confidence<span class="op">?:</span> <span class="dt">number</span>)<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">recall</span>(key<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> DeclarativeMemory <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 程序性记忆</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">learnProcedure</span>(key<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> procedure<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">getProcedure</span>(key<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> ProceduralMemory <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="记忆回滚">7.4 记忆回滚</h3>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MemoryRollback {</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">createSnapshot</span>(trigger<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> MemorySnapshot<span class="op">;</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rollback</span>(snapshotId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">listSnapshots</span>(limit<span class="op">?:</span> <span class="dt">number</span>)<span class="op">:</span> MemorySnapshot[]<span class="op">;</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第八章-安全系统">第八章 安全系统</h2>
+<h3 id="安全边界">8.1 安全边界</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     安全边界设计                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    禁止区域 (DENIED)                     │   │
+│  │  core/ security/ config/system.yaml                      │   │
+│  │  行为: 拒绝所有修改请求                                  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    限制区域 (CONFIRM)                    │   │
+│  │  skills/ prompts/ memory/                                │   │
+│  │  行为: 需要用户确认后才能修改                            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    自由区域 (AUTO)                       │   │
+│  │  data/ logs/ temp/                                       │   │
+│  │  行为: 自动执行，无需确认                                │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="权限控制">8.2 权限控制</h3>
+<table>
+<thead>
+<tr class="header">
+<th>角色</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>guest</td>
+<td>chat</td>
+</tr>
+<tr class="even">
+<td>user</td>
+<td>chat, execute_skill, view_memory</td>
+</tr>
+<tr class="odd">
+<td>developer</td>
+<td>user + manage_skills</td>
+</tr>
+<tr class="even">
+<td>admin</td>
+<td>所有权限</td>
+</tr>
+</tbody>
+</table>
+<h3 id="审计日志">8.3 审计日志</h3>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> AuditLog {</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  userId<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  action<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  resource<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  result<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  timestamp<span class="op">:</span> <span class="bu">Date</span><span class="op">;</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>  details<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;;</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第九章-自进化系统">第九章 自进化系统</h2>
+<h3 id="概述">9.1 概述</h3>
+<p>自进化系统是白泽3.0的核心能力之一，使系统能够：</p>
+<ol type="1">
+<li><strong>检测能力缺口</strong> - 识别当前无法完成的任务</li>
+<li><strong>自主获取能力</strong> - 从技能市场安装或自主开发</li>
+<li><strong>安全进化</strong> - 通过角色化思考确保安全</li>
+<li><strong>可回滚</strong> - 支持进化失败后恢复</li>
+</ol>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     自进化系统架构                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│                      ┌─────────────┐                            │
+│                      │  用户请求   │                            │
+│                      └─────────────┘                            │
+│                            │                                    │
+│                            ▼                                    │
+│                 ┌──────────────────┐                            │
+│                 │   思考引擎       │                            │
+│                 └──────────────────┘                            │
+│                            │                                    │
+│                            ▼                                    │
+│                 ┌──────────────────┐                            │
+│                 │  能力缺口检测    │◄─────────────────┐         │
+│                 └──────────────────┘                  │         │
+│                            │                          │         │
+│              ┌─────────────┴─────────────┐           │         │
+│              ▼                           ▼           │         │
+│     ┌────────────────┐          ┌────────────────┐   │         │
+│     │  无缺口        │          │  检测到缺口    │   │         │
+│     │  正常执行      │          └────────────────┘   │         │
+│     └────────────────┘                  │           │         │
+│                                         ▼           │         │
+│                              ┌──────────────────┐   │         │
+│                              │  技能市场搜索    │   │         │
+│                              └──────────────────┘   │         │
+│                                         │           │         │
+│                         ┌───────────────┴───────┐   │         │
+│                         ▼                       ▼   │         │
+│                  ┌────────────┐         ┌────────────┐│         │
+│                  │ 找到技能   │         │ 未找到     ││         │
+│                  └────────────┘         └────────────┘│         │
+│                         │                       │    │         │
+│                         ▼                       ▼    │         │
+│                  ┌────────────┐         ┌────────────┐│         │
+│                  │ 用户确认   │         │ 自主开发   ││         │
+│                  │ 安装技能   │         │ 新技能     ││         │
+│                  └────────────┘         └────────────┘│         │
+│                         │                       │    │         │
+│                         └───────────┬───────────┘    │         │
+│                                     ▼                │         │
+│                           ┌──────────────────┐       │         │
+│                           │  角色化思考审批  │       │         │
+│                           └──────────────────┘       │         │
+│                                     │                │         │
+│                                     ▼                │         │
+│                           ┌──────────────────┐       │         │
+│                           │  安装/执行技能   │───────┘         │
+│                           └──────────────────┘                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="能力缺口检测">9.2 能力缺口检测</h3>
+<h4 id="检测机制">检测机制</h4>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> CapabilityGap {</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  detectedAt<span class="op">:</span> <span class="bu">Date</span><span class="op">;</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  userInput<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  understanding<span class="op">:</span> Understanding<span class="op">;</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  missingCapabilities<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>  suggestedSkills<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>  confidence<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>  resolution<span class="op">:</span> <span class="st">&#39;pending&#39;</span> <span class="op">|</span> <span class="st">&#39;installing&#39;</span> <span class="op">|</span> <span class="st">&#39;developing&#39;</span> <span class="op">|</span> <span class="st">&#39;resolved&#39;</span> <span class="op">|</span> <span class="st">&#39;rejected&#39;</span><span class="op">;</span></span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> CapabilityGapDetector {</span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">detect</span>(understanding<span class="op">:</span> Understanding<span class="op">,</span> availableSkills<span class="op">:</span> Skill[])<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>CapabilityGap <span class="op">|</span> <span class="dt">null</span><span class="op">&gt;;</span></span>
+<span id="cb33-14"><a href="#cb33-14" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="触发条件">触发条件</h4>
+<table>
+<thead>
+<tr class="header">
+<th>条件</th>
+<th>说明</th>
+<th>置信度</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>无匹配技能</td>
+<td>任务类型无对应技能</td>
+<td>高</td>
+</tr>
+<tr class="even">
+<td>技能执行失败</td>
+<td>现有技能无法完成任务</td>
+<td>中</td>
+</tr>
+<tr class="odd">
+<td>用户显式请求</td>
+<td>用户明确要求新能力</td>
+<td>高</td>
+</tr>
+<tr class="even">
+<td>频繁失败模式</td>
+<td>同类任务多次失败</td>
+<td>中</td>
+</tr>
+</tbody>
+</table>
+<h4 id="决策流程">决策流程</h4>
+<pre><code>检测到能力缺口
+    ↓
+评估置信度
+    ↓
+置信度 &gt;= 0.8 → 直接提示用户
+    ↓
+用户确认
+    ↓
+搜索技能市场
+    ├── 找到 → 提示安装
+    └── 未找到 → 提示开发</code></pre>
+<h3 id="技能市场集成">9.3 技能市场集成</h3>
+<h4 id="市场架构">市场架构</h4>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     技能市场架构                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   技能市场服务端                         │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │   │
+│  │  │ 技能仓库    │  │ 搜索引擎    │  │ 安全扫描    │      │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                            ▲ HTTPS                              │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   技能市场客户端                         │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │   │
+│  │  │ 搜索接口    │  │ 下载管理    │  │ 本地缓存    │      │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h4 id="客户端接口">客户端接口</h4>
+<div class="sourceCode" id="cb36"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> SkillMarketClient {</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">search</span>(query<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> options<span class="op">?:</span> SearchOptions)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>SkillSearchResult[]<span class="op">&gt;;</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">getSkillDetails</span>(skillId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>SkillDetails<span class="op">&gt;;</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">download</span>(skillId<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> version<span class="op">?:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>SkillPackage<span class="op">&gt;;</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">install</span>(pkg<span class="op">:</span> SkillPackage)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>InstallResult<span class="op">&gt;;</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> SkillSearchResult {</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>  description<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>  capabilities<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>  downloads<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>  rating<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>  verified<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span></span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>  versions<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="安全验证">安全验证</h4>
+<div class="sourceCode" id="cb37"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> SkillSecurityValidator {</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">validate</span>(pkg<span class="op">:</span> SkillPackage)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>ValidationResult<span class="op">&gt;</span> {</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> checks <span class="op">=</span> [</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="fu">checkSignature</span>(pkg)<span class="op">,</span>      <span class="co">// 数字签名验证</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="fu">checkDependencies</span>(pkg)<span class="op">,</span>   <span class="co">// 依赖安全检查</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="fu">checkCodeAnalysis</span>(pkg)<span class="op">,</span>   <span class="co">// 静态代码分析</span></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="fu">checkPermissions</span>(pkg)<span class="op">,</span>    <span class="co">// 权限检查</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">;</span></span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> { passed<span class="op">:</span> results<span class="op">.</span><span class="fu">every</span>(r <span class="kw">=&gt;</span> r<span class="op">.</span><span class="at">passed</span>)<span class="op">,</span> issues<span class="op">:</span> [<span class="op">...</span>] }<span class="op">;</span></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="安装流程">安装流程</h4>
+<pre><code>1. 用户确认安装
+2. 下载技能包
+3. 安全验证
+4. 解压到skills目录
+5. 注册到技能注册表
+6. 记录安装历史
+7. 通知用户安装完成</code></pre>
+<h3 id="角色化思考">9.4 角色化思考</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     角色团队设计                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
+│  │产品经理 │  │ 开发者  │  │ 测试者  │  │安全审计 │           │
+│  │  PM     │  │  Dev    │  │ Tester  │  │ Auditor │           │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
+│       │            │            │            │                  │
+│       ▼            ▼            ▼            ▼                  │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
+│  │需求分析 │  │代码生成 │  │功能测试 │  │安全扫描 │           │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="进化流程">9.5 进化流程</h3>
+<pre><code>触发方式: 用户请求 / 能力缺口检测 / 技能市场发现
+    ↓
+产品经理: 分析需求
+    ↓
+开发者: 生成代码
+    ↓
+测试者: 功能测试
+    ↓
+安全审计员: 安全扫描
+    ↓
+审查员: 代码审查
+    ↓
+用户: 最终确认
+    ↓
+执行安装
+    ↓
+记录进化历史</code></pre>
+<h3 id="安全审计机制">9.6 安全审计机制</h3>
+<ul>
+<li>静态代码扫描</li>
+<li>红队测试</li>
+<li>依赖安全检查</li>
+</ul>
+<h3 id="回滚机制">9.7 回滚机制</h3>
+<div class="sourceCode" id="cb41"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> EvolutionRollback {</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">createCheckpoint</span>(requestId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>Checkpoint<span class="op">&gt;;</span></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">rollback</span>(checkpointId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;;</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="用户确认策略">9.8 用户确认策略</h3>
+<table>
+<thead>
+<tr class="header">
+<th>场景</th>
+<th>确认方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>安装市场技能</td>
+<td>单次确认</td>
+<td>显示技能信息和风险等级</td>
+</tr>
+<tr class="even">
+<td>自主开发技能</td>
+<td>详细确认</td>
+<td>显示代码和测试结果</td>
+</tr>
+<tr class="odd">
+<td>高风险技能</td>
+<td>强制确认</td>
+<td>需要用户明确同意</td>
+</tr>
+<tr class="even">
+<td>低风险技能</td>
+<td>可配置</td>
+<td>用户可设置自动安装</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第十章-可观测性">第十章 可观测性</h2>
+<h3 id="日志系统">10.1 日志系统</h3>
+<div class="sourceCode" id="cb42"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> BaizeLogger {</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">static</span> <span class="fu">setup</span>()<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="分布式追踪">10.2 分布式追踪</h3>
+<div class="sourceCode" id="cb43"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TracingManager {</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">startTrace</span>(metadata<span class="op">?:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;</span>)<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">startSpan</span>(name<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> metadata<span class="op">?:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">unknown</span><span class="op">&gt;</span>)<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="性能指标">10.3 性能指标</h3>
+<table>
+<thead>
+<tr class="header">
+<th>指标</th>
+<th>说明</th>
+<th>目标值</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>意图识别准确率</td>
+<td>正确识别用户意图的比例</td>
+<td>&gt;95%</td>
+</tr>
+<tr class="even">
+<td>任务拆解成功率</td>
+<td>正确拆解复杂任务的比例</td>
+<td>&gt;90%</td>
+</tr>
+<tr class="odd">
+<td>技能执行成功率</td>
+<td>技能正确执行的比例</td>
+<td>&gt;95%</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第十一章-交互层">第十一章 交互层</h2>
+<h3 id="cli交互">11.1 CLI交互</h3>
+<div class="sourceCode" id="cb44"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> start          <span class="co"># 启动交互模式</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> chat <span class="st">&quot;你好&quot;</span>    <span class="co"># 单次对话</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> skill list     <span class="co"># 列出技能</span></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> skill install weather  <span class="co"># 安装技能</span></span></code></pre></div>
+<h3 id="http-api">11.2 HTTP API</h3>
+<table>
+<thead>
+<tr class="header">
+<th>端点</th>
+<th>方法</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>/health</td>
+<td>GET</td>
+<td>健康检查</td>
+</tr>
+<tr class="even">
+<td>/api/chat</td>
+<td>POST</td>
+<td>对话</td>
+</tr>
+<tr class="odd">
+<td>/api/skills</td>
+<td>GET</td>
+<td>技能列表</td>
+</tr>
+<tr class="even">
+<td>/api/skills/install</td>
+<td>POST</td>
+<td>安装技能</td>
+</tr>
+<tr class="odd">
+<td>/api/market/search</td>
+<td>GET</td>
+<td>搜索技能市场</td>
+</tr>
+</tbody>
+</table>
+<h3 id="思考过程可视化">11.3 思考过程可视化</h3>
+<div class="sourceCode" id="cb45"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ThinkingProgress {</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  phase<span class="op">:</span> <span class="st">&#39;understanding&#39;</span> <span class="op">|</span> <span class="st">&#39;decomposing&#39;</span> <span class="op">|</span> <span class="st">&#39;planning&#39;</span> <span class="op">|</span> <span class="st">&#39;scheduling&#39;</span> <span class="op">|</span> <span class="st">&#39;executing&#39;</span> <span class="op">|</span> <span class="st">&#39;validating&#39;</span><span class="op">;</span></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  message<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  progress<span class="op">:</span> <span class="dt">number</span><span class="op">;</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第十二章-上下文管理">第十二章 上下文管理</h2>
+<h3 id="token预算分配">12.1 Token预算分配</h3>
+<pre><code>总预算: 4096 tokens
+├── 系统提示词: 500 tokens (15%)
+├── 上下文历史: 1000 tokens (25%)
+├── 当前任务: 2000 tokens (50%)
+└── 预留: 596 tokens (10%)</code></pre>
+<h3 id="上下文压缩策略">12.2 上下文压缩策略</h3>
+<table>
+<thead>
+<tr class="header">
+<th>内容类型</th>
+<th>压缩方式</th>
+<th>压缩比</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>对话历史</td>
+<td>摘要提取</td>
+<td>10:1</td>
+</tr>
+<tr class="even">
+<td>任务列表</td>
+<td>仅保留ID和状态</td>
+<td>5:1</td>
+</tr>
+<tr class="odd">
+<td>错误信息</td>
+<td>仅保留关键错误</td>
+<td>8:1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="语义缓存">12.3 语义缓存</h3>
+<div class="sourceCode" id="cb47"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> SemanticCache {</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="kw">get</span>(query<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> threshold<span class="op">?:</span> <span class="dt">number</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span><span class="dt">string</span> <span class="op">|</span> <span class="dt">null</span><span class="op">&gt;;</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="kw">set</span>(query<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> response<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> ttl<span class="op">?:</span> <span class="dt">number</span>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;;</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第十三章-成本控制">第十三章 成本控制</h2>
+<h3 id="预算配置">13.1 预算配置</h3>
+<div class="sourceCode" id="cb48"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> CostConfig {</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  dailyBudget<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>      <span class="co">// 每日预算（美元）</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  perTaskBudget<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>    <span class="co">// 单任务预算</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>  alertThreshold<span class="op">:</span> <span class="dt">number</span><span class="op">;</span>   <span class="co">// 告警阈值（百分比）</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>  hardLimit<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span>       <span class="co">// 是否硬限制</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> DEFAULT_CONFIG<span class="op">:</span> CostConfig <span class="op">=</span> {</span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a>  dailyBudget<span class="op">:</span> <span class="dv">10</span><span class="op">,</span>          <span class="co">// $10/天</span></span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a>  perTaskBudget<span class="op">:</span> <span class="fl">0.5</span><span class="op">,</span>       <span class="co">// $0.5/任务</span></span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a>  alertThreshold<span class="op">:</span> <span class="dv">80</span><span class="op">,</span>       <span class="co">// 80%告警</span></span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a>  hardLimit<span class="op">:</span> <span class="kw">true</span><span class="op">,</span>          <span class="co">// 超限拒绝</span></span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="成本追踪">13.2 成本追踪</h3>
+<div class="sourceCode" id="cb49"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> CostManager {</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">canProceed</span>(estimatedTokens<span class="op">:</span> <span class="dt">number</span><span class="op">,</span> model<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">boolean</span><span class="op">;</span></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">recordUsage</span>(provider<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> model<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> inputTokens<span class="op">:</span> <span class="dt">number</span><span class="op">,</span> outputTokens<span class="op">:</span> <span class="dt">number</span>)<span class="op">:</span> CostRecord<span class="op">;</span></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">getStats</span>()<span class="op">:</span> CostStats<span class="op">;</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="模型定价">13.3 模型定价</h3>
+<table>
+<thead>
+<tr class="header">
+<th>模型</th>
+<th>输入价格 (<span
+class="math inline">/1<em>K</em><em>t</em><em>o</em><em>k</em><em>e</em><em>n</em><em>s</em>)|<em>输</em><em>出</em><em>价</em><em>格</em>(</span>/1K
+tokens)</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>qwen-max</td>
+<td>0.002</td>
+<td>0.006</td>
+</tr>
+<tr class="even">
+<td>qwen-plus</td>
+<td>0.0004</td>
+<td>0.0012</td>
+</tr>
+<tr class="odd">
+<td>glm-4</td>
+<td>0.001</td>
+<td>0.001</td>
+</tr>
+<tr class="even">
+<td>gpt-4</td>
+<td>0.03</td>
+<td>0.06</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第十四章-状态管理">第十四章 状态管理</h2>
+<h3 id="agent状态">14.1 Agent状态</h3>
+<div class="sourceCode" id="cb50"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> AgentState {</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>  conversationId<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>  currentPhase<span class="op">:</span> <span class="st">&#39;thinking&#39;</span> <span class="op">|</span> <span class="st">&#39;executing&#39;</span> <span class="op">|</span> <span class="st">&#39;waiting&#39;</span> <span class="op">|</span> <span class="st">&#39;completed&#39;</span><span class="op">;</span></span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>  thoughtProcess<span class="op">:</span> ThoughtProcess<span class="op">;</span></span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>  executedTasks<span class="op">:</span> TaskResult[]<span class="op">;</span></span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>  pendingTasks<span class="op">:</span> Task[]<span class="op">;</span></span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>  createdAt<span class="op">:</span> <span class="bu">Date</span><span class="op">;</span></span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>  updatedAt<span class="op">:</span> <span class="bu">Date</span><span class="op">;</span></span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="状态持久化">14.2 状态持久化</h3>
+<div class="sourceCode" id="cb51"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> StateManager {</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">save</span>(state<span class="op">:</span> AgentState)<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">restore</span>(conversationId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> AgentState <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">listIncomplete</span>()<span class="op">:</span> AgentState[]<span class="op">;</span></span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">markComplete</span>(conversationId<span class="op">:</span> <span class="dt">string</span>)<span class="op">:</span> <span class="dt">void</span><span class="op">;</span></span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第十五章-评测体系">第十五章 评测体系</h2>
+<h3 id="基准测试集">15.1 基准测试集</h3>
+<div class="sourceCode" id="cb52"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> BenchmarkCase {</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>  category<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>  input<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>  expectedOutput<span class="op">:</span> ExpectedOutput<span class="op">;</span></span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a>  evaluationCriteria<span class="op">:</span> EvaluationCriteria<span class="op">;</span></span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="评测指标">15.2 评测指标</h3>
+<table>
+<thead>
+<tr class="header">
+<th>指标</th>
+<th>说明</th>
+<th>目标值</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>意图识别准确率</td>
+<td>正确识别用户意图的比例</td>
+<td>&gt;95%</td>
+</tr>
+<tr class="even">
+<td>任务拆解成功率</td>
+<td>正确拆解复杂任务的比例</td>
+<td>&gt;90%</td>
+</tr>
+<tr class="odd">
+<td>技能执行成功率</td>
+<td>技能正确执行的比例</td>
+<td>&gt;95%</td>
+</tr>
+<tr class="even">
+<td>端到端成功率</td>
+<td>完整任务成功完成的比例</td>
+<td>&gt;85%</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="第十六章-运维与部署">第十六章 运维与部署</h2>
+<h3 id="部署架构">16.1 部署架构</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     部署架构                                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    负载均衡器                            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                            │                                    │
+│         ┌──────────────────┼──────────────────┐                │
+│         ▼                  ▼                  ▼                │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
+│  │  白泽实例1  │    │  白泽实例2  │    │  白泽实例3  │        │
+│  └─────────────┘    └─────────────┘    └─────────────┘        │
+│                            │                                    │
+│                            ▼                                    │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    共享存储                              │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="灰度发布">16.2 灰度发布</h3>
+<div class="sourceCode" id="cb54"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> CanaryDeployer {</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">deploy</span>(newVersion<span class="op">:</span> <span class="dt">string</span><span class="op">,</span> config<span class="op">:</span> CanaryConfig)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;;</span></span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="第十七章-数据类型定义">第十七章 数据类型定义</h2>
+<h3 id="枚举类型">17.1 枚举类型</h3>
+<div class="sourceCode" id="cb55"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> TaskStatus { PENDING<span class="op">,</span> RUNNING<span class="op">,</span> COMPLETED<span class="op">,</span> FAILED<span class="op">,</span> CANCELLED }</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> RiskLevel { LOW<span class="op">,</span> MEDIUM<span class="op">,</span> HIGH<span class="op">,</span> CRITICAL }</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> EvolutionPermission { DENIED<span class="op">,</span> CONFIRM<span class="op">,</span> AUTO }</span></code></pre></div>
+<h3 id="核心接口">17.2 核心接口</h3>
+<div class="sourceCode" id="cb56"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ThoughtProcess { understanding<span class="op">,</span> decomposition<span class="op">,</span> planning<span class="op">,</span> scheduling<span class="op">,</span> validation<span class="op">,</span> reflection }</span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> Task { id<span class="op">,</span> description<span class="op">,</span> <span class="kw">type</span><span class="op">,</span> skillName<span class="op">,</span> params<span class="op">,</span> riskLevel<span class="op">,</span> dependencies }</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> SkillResult { success<span class="op">,</span> data<span class="op">,</span> message<span class="op">,</span> error }</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> CapabilityGap { id<span class="op">,</span> missingCapabilities<span class="op">,</span> suggestedSkills<span class="op">,</span> confidence<span class="op">,</span> resolution }</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> AgentState { conversationId<span class="op">,</span> currentPhase<span class="op">,</span> thoughtProcess<span class="op">,</span> executedTasks<span class="op">,</span> pendingTasks }</span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> CostConfig { dailyBudget<span class="op">,</span> perTaskBudget<span class="op">,</span> alertThreshold<span class="op">,</span> hardLimit }</span></code></pre></div>
+<hr />
+<h2 id="第十八章-开发路线图">第十八章 开发路线图</h2>
+<h3 id="里程碑规划">18.1 里程碑规划</h3>
+<pre><code>M1: 核心框架 ✅
+M2: 思考引擎 ✅
+M3: 技能系统 ✅
+M4: 记忆系统 ✅
+M5: 安全系统 ✅
+M6: 自进化系统 ✅
+    ├── 角色化思考 ✅
+    ├── 能力缺口检测 ✅
+    ├── 技能市场集成 ✅
+    └── 安全审计 ✅
+M7: 基础设施 ✅
+    ├── 上下文管理 ✅
+    ├── 成本控制 ✅
+    ├── 状态管理 ✅
+    ├── 资源锁 ✅
+    ├── 语义缓存 ✅
+    └── 记忆回滚 ✅
+M8: 评测体系 (计划中)
+M9: 生产就绪 (计划中)</code></pre>
+<h3 id="版本规划">18.2 版本规划</h3>
+<table>
+<thead>
+<tr class="header">
+<th>版本</th>
+<th>发布时间</th>
+<th>主要特性</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>v3.0.0</td>
+<td>2025 Q1</td>
+<td>核心架构、六阶段思考、动态技能</td>
+</tr>
+<tr class="even">
+<td>v3.0.1</td>
+<td>2025 Q1</td>
+<td>能力缺口检测、技能市场设计</td>
+</tr>
+<tr class="odd">
+<td>v3.0.2</td>
+<td>2025 Q1</td>
+<td>上下文管理、成本控制、状态管理</td>
+</tr>
+<tr class="even">
+<td>v3.1.0</td>
+<td>2025 Q2</td>
+<td>完善自进化、评测体系</td>
+</tr>
+<tr class="odd">
+<td>v3.2.0</td>
+<td>2025 Q3</td>
+<td>多模态、多Agent</td>
+</tr>
+<tr class="even">
+<td>v3.3.0</td>
+<td>2025 Q4</td>
+<td>技能市场公测、生产就绪</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="附录">附录</h2>
+<h3 id="a.-配置文件示例">A. 配置文件示例</h3>
+<h4 id="a.1-系统配置-configsystem.yaml">A.1 系统配置
+(config/system.yaml)</h4>
+<div class="sourceCode" id="cb58"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;3.0&quot;</span></span>
+<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;白泽&quot;</span></span>
+<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a><span class="fu">mode</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;production&quot;</span></span>
+<span id="cb58-4"><a href="#cb58-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-5"><a href="#cb58-5" aria-hidden="true" tabindex="-1"></a><span class="fu">logging</span><span class="kw">:</span></span>
+<span id="cb58-6"><a href="#cb58-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">level</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;info&quot;</span></span>
+<span id="cb58-7"><a href="#cb58-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">file</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;logs/baize.log&quot;</span></span>
+<span id="cb58-8"><a href="#cb58-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-9"><a href="#cb58-9" aria-hidden="true" tabindex="-1"></a><span class="fu">database</span><span class="kw">:</span></span>
+<span id="cb58-10"><a href="#cb58-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">path</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;data/baize.db&quot;</span></span>
+<span id="cb58-11"><a href="#cb58-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-12"><a href="#cb58-12" aria-hidden="true" tabindex="-1"></a><span class="fu">executor</span><span class="kw">:</span></span>
+<span id="cb58-13"><a href="#cb58-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">maxWorkers</span><span class="kw">:</span><span class="at"> </span><span class="dv">5</span></span>
+<span id="cb58-14"><a href="#cb58-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">timeout</span><span class="kw">:</span><span class="at"> </span><span class="dv">300000</span></span></code></pre></div>
+<h4 id="a.2-llm配置-configllm.yaml">A.2 LLM配置 (config/llm.yaml)</h4>
+<div class="sourceCode" id="cb59"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;aliyun&quot;</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a><span class="fu">providers</span><span class="kw">:</span></span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">aliyun</span><span class="kw">:</span></span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;openai-compatible&quot;</span></span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">baseURL</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://dashscope.aliyuncs.com/compatible-mode/v1&quot;</span></span>
+<span id="cb59-8"><a href="#cb59-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">model</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;qwen-max&quot;</span></span>
+<span id="cb59-9"><a href="#cb59-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-10"><a href="#cb59-10" aria-hidden="true" tabindex="-1"></a><span class="fu">costControl</span><span class="kw">:</span></span>
+<span id="cb59-11"><a href="#cb59-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">dailyBudget</span><span class="kw">:</span><span class="at"> </span><span class="dv">10</span></span>
+<span id="cb59-12"><a href="#cb59-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">perTaskBudget</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.5</span></span>
+<span id="cb59-13"><a href="#cb59-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">alertThreshold</span><span class="kw">:</span><span class="at"> </span><span class="dv">80</span></span>
+<span id="cb59-14"><a href="#cb59-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">hardLimit</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div>
+<h4 id="a.3-进化配置-configevolution.yaml">A.3 进化配置
+(config/evolution.yaml)</h4>
+<div class="sourceCode" id="cb60"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">evolution</span><span class="kw">:</span></span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span></span>
+<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">capabilityGapDetection</span><span class="kw">:</span></span>
+<span id="cb60-5"><a href="#cb60-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb60-6"><a href="#cb60-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">confidenceThreshold</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.8</span></span>
+<span id="cb60-7"><a href="#cb60-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">autoPrompt</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb60-8"><a href="#cb60-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span></span>
+<span id="cb60-9"><a href="#cb60-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">skillMarket</span><span class="kw">:</span></span>
+<span id="cb60-10"><a href="#cb60-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb60-11"><a href="#cb60-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">endpoint</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://market.baize.ai&quot;</span></span>
+<span id="cb60-12"><a href="#cb60-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">autoInstall</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb60-13"><a href="#cb60-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">verifiedOnly</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb60-14"><a href="#cb60-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span></span>
+<span id="cb60-15"><a href="#cb60-15" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb60-16"><a href="#cb60-16" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">path</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;core/&quot;</span></span>
+<span id="cb60-17"><a href="#cb60-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">permission</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;denied&quot;</span></span>
+<span id="cb60-18"><a href="#cb60-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">path</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;skills/&quot;</span></span>
+<span id="cb60-19"><a href="#cb60-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">permission</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;confirm&quot;</span></span></code></pre></div>
+<h3 id="b.-技能开发指南">B. 技能开发指南</h3>
+<h4 id="b.1-创建新技能">B.1 创建新技能</h4>
+<div class="sourceCode" id="cb61"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> skills/my_skill</span></code></pre></div>
+<h4 id="b.2-skill.md模板">B.2 SKILL.md模板</h4>
+<div class="sourceCode" id="cb62"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> my_skill</span></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 我的技能</span></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span></span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a><span class="co">  - my_capability</span></span>
+<span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low</span></span>
+<span id="cb62-7"><a href="#cb62-7" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb62-8"><a href="#cb62-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-9"><a href="#cb62-9" aria-hidden="true" tabindex="-1"></a><span class="fu"># 功能说明</span></span>
+<span id="cb62-10"><a href="#cb62-10" aria-hidden="true" tabindex="-1"></a>...</span></code></pre></div>
+<h3 id="c.-api参考">C. API参考</h3>
+<table>
+<thead>
+<tr class="header">
+<th>端点</th>
+<th>方法</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>/health</td>
+<td>GET</td>
+<td>健康检查</td>
+</tr>
+<tr class="even">
+<td>/api/chat</td>
+<td>POST</td>
+<td>对话</td>
+</tr>
+<tr class="odd">
+<td>/api/skills</td>
+<td>GET</td>
+<td>技能列表</td>
+</tr>
+<tr class="even">
+<td>/api/skills/install</td>
+<td>POST</td>
+<td>安装技能</td>
+</tr>
+<tr class="odd">
+<td>/api/market/search</td>
+<td>GET</td>
+<td>搜索市场</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="文档修订历史">文档修订历史</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 30%" />
+<col style="width: 45%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>版本</th>
+<th>日期</th>
+<th>修订内容</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>3.0.0</td>
+<td>2025-02-22</td>
+<td>初始版本</td>
+</tr>
+<tr class="even">
+<td>3.0.1</td>
+<td>2025-02-23</td>
+<td>新增能力缺口检测、技能市场集成章节</td>
+</tr>
+<tr class="odd">
+<td>3.0.2</td>
+<td>2025-02-23</td>
+<td>新增上下文管理、成本控制、状态管理等章节，完善所有P0/P1功能</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>文档结束</strong></p>
+<p><em>白泽3.0 - 让AI真正成为你的智能助手</em></p>
+</body>
+</html>

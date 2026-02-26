@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 - API</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 - API</h1>
+</header>
+<h1 id="白泽3.0-api-接口文档">白泽3.0 API 接口文档</h1>
+<p><strong>版本</strong>: 3.0.2<br />
+<strong>适用对象</strong>: 第三方开发者、GUI开发者<br />
+<strong>最后更新</strong>: 2025年2月</p>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#1-概述">概述</a></li>
+<li><a href="#2-rest-api">REST API</a></li>
+<li><a href="#3-websocket-api">WebSocket API</a></li>
+<li><a href="#4-cli-接口">CLI 接口</a></li>
+<li><a href="#5-技能开发接口">技能开发接口</a></li>
+<li><a href="#6-sdk-使用">SDK 使用</a></li>
+<li><a href="#7-错误处理">错误处理</a></li>
+</ol>
+<hr />
+<h2 id="概述">1. 概述</h2>
+<h3 id="api-基础信息">1.1 API 基础信息</h3>
+<table>
+<thead>
+<tr class="header">
+<th>项目</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>基础URL</td>
+<td><code>http://localhost:3000</code></td>
+</tr>
+<tr class="even">
+<td>协议</td>
+<td>HTTP/1.1, WebSocket</td>
+</tr>
+<tr class="odd">
+<td>数据格式</td>
+<td>JSON</td>
+</tr>
+<tr class="even">
+<td>字符编码</td>
+<td>UTF-8</td>
+</tr>
+<tr class="odd">
+<td>认证方式</td>
+<td>API Key（可选）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="快速开始">1.2 快速开始</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 启动服务</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> start</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 或启动HTTP服务</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> dist/interaction/api.js</span></code></pre></div>
+<h3 id="通用响应格式">1.3 通用响应格式</h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 成功响应</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;success&quot;</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;data&quot;</span><span class="op">:</span> { <span class="op">...</span> }<span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;message&quot;</span><span class="op">:</span> <span class="st">&quot;操作成功&quot;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co">// 错误响应</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;success&quot;</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;error&quot;</span><span class="op">:</span> <span class="st">&quot;错误信息&quot;</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;code&quot;</span><span class="op">:</span> <span class="st">&quot;ERROR_CODE&quot;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="rest-api">2. REST API</h2>
+<h3 id="健康检查">2.1 健康检查</h3>
+<p><strong>GET</strong> <code>/health</code></p>
+<p>检查服务是否正常运行。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/health</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;healthy&quot;</span><span class="fu">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;3.0.2&quot;</span><span class="fu">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;uptime&quot;</span><span class="fu">:</span> <span class="dv">3600</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h3 id="对话接口">2.2 对话接口</h3>
+<h4 id="发送消息">2.2.1 发送消息</h4>
+<p><strong>POST</strong> <code>/api/chat</code></p>
+<p>发送消息并获取回复。</p>
+<p><strong>请求参数</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>message</td>
+<td>string</td>
+<td>是</td>
+<td>用户消息</td>
+</tr>
+<tr class="even">
+<td>conversationId</td>
+<td>string</td>
+<td>否</td>
+<td>会话ID（用于多轮对话）</td>
+</tr>
+<tr class="odd">
+<td>context</td>
+<td>object</td>
+<td>否</td>
+<td>额外上下文</td>
+</tr>
+</tbody>
+</table>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST http://localhost:3000/api/chat <span class="dt">\</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;message&quot;: &quot;你好，请介绍一下你自己&quot;,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;conversationId&quot;: &quot;conv_001&quot;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="st">  }&#39;</span></span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;conversationId&quot;</span><span class="fu">:</span> <span class="st">&quot;conv_001&quot;</span><span class="fu">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;response&quot;</span><span class="fu">:</span> <span class="st">&quot;你好！我是白泽，一个智能助手...&quot;</span><span class="fu">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;thoughtProcess&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;understanding&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;coreNeed&quot;</span><span class="fu">:</span> <span class="st">&quot;自我介绍&quot;</span><span class="fu">,</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;isSimpleChat&quot;</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">},</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;duration&quot;</span><span class="fu">:</span> <span class="fl">1.5</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">},</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;tasks&quot;</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;cost&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;tokens&quot;</span><span class="fu">:</span> <span class="dv">150</span><span class="fu">,</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;cost&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.001</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="获取对话历史">2.2.2 获取对话历史</h4>
+<p><strong>GET</strong>
+<code>/api/chat/history/:conversationId</code></p>
+<p>获取指定会话的对话历史。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/chat/history/conv_001</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;conversationId&quot;</span><span class="fu">:</span> <span class="st">&quot;conv_001&quot;</span><span class="fu">,</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;messages&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;role&quot;</span><span class="fu">:</span> <span class="st">&quot;user&quot;</span><span class="fu">,</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;content&quot;</span><span class="fu">:</span> <span class="st">&quot;你好&quot;</span><span class="fu">,</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-02-23T10:00:00Z&quot;</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;role&quot;</span><span class="fu">:</span> <span class="st">&quot;assistant&quot;</span><span class="fu">,</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;content&quot;</span><span class="fu">:</span> <span class="st">&quot;你好！我是白泽...&quot;</span><span class="fu">,</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-02-23T10:00:02Z&quot;</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h3 id="技能接口">2.3 技能接口</h3>
+<h4 id="获取技能列表">2.3.1 获取技能列表</h4>
+<p><strong>GET</strong> <code>/api/skills</code></p>
+<p>获取所有已加载的技能。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/skills</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;skills&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;chat&quot;</span><span class="fu">,</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;对话技能&quot;</span><span class="fu">,</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;capabilities&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;chat&quot;</span><span class="ot">,</span> <span class="st">&quot;conversation&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;riskLevel&quot;</span><span class="fu">:</span> <span class="st">&quot;low&quot;</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;file&quot;</span><span class="fu">,</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;文件操作技能&quot;</span><span class="fu">,</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;capabilities&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;file&quot;</span><span class="ot">,</span> <span class="st">&quot;read&quot;</span><span class="ot">,</span> <span class="st">&quot;write&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;riskLevel&quot;</span><span class="fu">:</span> <span class="st">&quot;medium&quot;</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;time&quot;</span><span class="fu">,</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;时间查询技能&quot;</span><span class="fu">,</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;capabilities&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;time&quot;</span><span class="ot">,</span> <span class="st">&quot;datetime&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;riskLevel&quot;</span><span class="fu">:</span> <span class="st">&quot;low&quot;</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;total&quot;</span><span class="fu">:</span> <span class="dv">3</span></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="执行技能">2.3.2 执行技能</h4>
+<p><strong>POST</strong> <code>/api/skills/execute</code></p>
+<p>直接执行指定技能。</p>
+<p><strong>请求参数</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>skillName</td>
+<td>string</td>
+<td>是</td>
+<td>技能名称</td>
+</tr>
+<tr class="even">
+<td>params</td>
+<td>object</td>
+<td>是</td>
+<td>技能参数</td>
+</tr>
+</tbody>
+</table>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST http://localhost:3000/api/skills/execute <span class="dt">\</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;skillName&quot;: &quot;time&quot;,</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;params&quot;: {</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="st">      &quot;format&quot;: &quot;%Y-%m-%d %H:%M:%S&quot;</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="st">  }&#39;</span></span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;result&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-02-23 10:30:00&quot;</span><span class="fu">,</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;duration&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.05</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="安装技能">2.3.3 安装技能</h4>
+<p><strong>POST</strong> <code>/api/skills/install</code></p>
+<p>从技能市场安装技能。</p>
+<p><strong>请求参数</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>skillId</td>
+<td>string</td>
+<td>是</td>
+<td>技能ID</td>
+</tr>
+<tr class="even">
+<td>version</td>
+<td>string</td>
+<td>否</td>
+<td>版本号</td>
+</tr>
+</tbody>
+</table>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST http://localhost:3000/api/skills/install <span class="dt">\</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;skillId&quot;: &quot;weather&quot;,</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;version&quot;: &quot;1.0.0&quot;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="st">  }&#39;</span></span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;skillName&quot;</span><span class="fu">:</span> <span class="st">&quot;weather&quot;</span><span class="fu">,</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;1.0.0&quot;</span><span class="fu">,</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;skills/weather&quot;</span><span class="fu">,</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;技能安装成功&quot;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h3 id="技能市场接口">2.4 技能市场接口</h3>
+<h4 id="搜索技能">2.4.1 搜索技能</h4>
+<p><strong>GET</strong> <code>/api/market/search</code></p>
+<p>搜索技能市场中的技能。</p>
+<p><strong>请求参数</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>q</td>
+<td>string</td>
+<td>是</td>
+<td>搜索关键词</td>
+</tr>
+<tr class="even">
+<td>category</td>
+<td>string</td>
+<td>否</td>
+<td>分类</td>
+</tr>
+<tr class="odd">
+<td>limit</td>
+<td>number</td>
+<td>否</td>
+<td>返回数量</td>
+</tr>
+</tbody>
+</table>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="st">&quot;http://localhost:3000/api/market/search?q=weather&amp;limit=10&quot;</span></span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;results&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;weather&quot;</span><span class="fu">,</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;weather&quot;</span><span class="fu">,</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;天气查询技能&quot;</span><span class="fu">,</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;capabilities&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;weather&quot;</span><span class="ot">,</span> <span class="st">&quot;forecast&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;downloads&quot;</span><span class="fu">:</span> <span class="dv">10000</span><span class="fu">,</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;rating&quot;</span><span class="fu">:</span> <span class="fl">4.8</span><span class="fu">,</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;verified&quot;</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;total&quot;</span><span class="fu">:</span> <span class="dv">1</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="获取技能详情">2.4.2 获取技能详情</h4>
+<p><strong>GET</strong> <code>/api/market/skill/:skillId</code></p>
+<p>获取技能市场中的技能详情。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/market/skill/weather</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;weather&quot;</span><span class="fu">,</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;weather&quot;</span><span class="fu">,</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;天气查询技能&quot;</span><span class="fu">,</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;capabilities&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;weather&quot;</span><span class="ot">,</span> <span class="st">&quot;forecast&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;downloads&quot;</span><span class="fu">:</span> <span class="dv">10000</span><span class="fu">,</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;rating&quot;</span><span class="fu">:</span> <span class="fl">4.8</span><span class="fu">,</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;verified&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;versions&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;1.0.0&quot;</span><span class="ot">,</span> <span class="st">&quot;1.1.0&quot;</span><span class="ot">,</span> <span class="st">&quot;2.0.0&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;author&quot;</span><span class="fu">:</span> <span class="st">&quot;baize-team&quot;</span><span class="fu">,</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;license&quot;</span><span class="fu">:</span> <span class="st">&quot;MIT&quot;</span><span class="fu">,</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;readme&quot;</span><span class="fu">:</span> <span class="st">&quot;# Weather Skill</span><span class="ch">\n\n</span><span class="st">...&quot;</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h3 id="记忆接口">2.5 记忆接口</h3>
+<h4 id="获取记忆统计">2.5.1 获取记忆统计</h4>
+<p><strong>GET</strong> <code>/api/memory/stats</code></p>
+<p>获取记忆系统统计信息。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/memory/stats</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;episodic&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;total&quot;</span><span class="fu">:</span> <span class="dv">150</span><span class="fu">,</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;byType&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;conversation&quot;</span><span class="fu">:</span> <span class="dv">100</span><span class="fu">,</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;task&quot;</span><span class="fu">:</span> <span class="dv">50</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">},</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;declarative&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;total&quot;</span><span class="fu">:</span> <span class="dv">30</span><span class="fu">,</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;topKeys&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;user.preference&quot;</span><span class="ot">,</span> <span class="st">&quot;system.config&quot;</span><span class="ot">]</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">},</span></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;procedural&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;total&quot;</span><span class="fu">:</span> <span class="dv">10</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="查询记忆">2.5.2 查询记忆</h4>
+<p><strong>GET</strong> <code>/api/memory/search</code></p>
+<p>搜索记忆内容。</p>
+<p><strong>请求参数</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>q</td>
+<td>string</td>
+<td>是</td>
+<td>搜索关键词</td>
+</tr>
+<tr class="even">
+<td>type</td>
+<td>string</td>
+<td>否</td>
+<td>记忆类型</td>
+</tr>
+<tr class="odd">
+<td>limit</td>
+<td>number</td>
+<td>否</td>
+<td>返回数量</td>
+</tr>
+</tbody>
+</table>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="st">&quot;http://localhost:3000/api/memory/search?q=文件&amp;type=episodic&quot;</span></span></code></pre></div>
+<hr />
+<h3 id="成本接口">2.6 成本接口</h3>
+<h4 id="获取成本统计">2.6.1 获取成本统计</h4>
+<p><strong>GET</strong> <code>/api/cost/stats</code></p>
+<p>获取成本使用统计。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/cost/stats</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;today&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.05</span><span class="fu">,</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;yesterday&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.</span><span class="dv">12</span><span class="fu">,</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;thisWeek&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.</span><span class="dv">35</span><span class="fu">,</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;thisMonth&quot;</span><span class="fu">:</span> <span class="fl">1.20</span><span class="fu">,</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;dailyBudget&quot;</span><span class="fu">:</span> <span class="dv">10</span><span class="fu">,</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;usagePercent&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.</span><span class="dv">5</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="获取成本配置">2.6.2 获取成本配置</h4>
+<p><strong>GET</strong> <code>/api/cost/config</code></p>
+<p>获取当前成本配置。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/cost/config</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;dailyBudget&quot;</span><span class="fu">:</span> <span class="dv">10</span><span class="fu">,</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;perTaskBudget&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.</span><span class="dv">5</span><span class="fu">,</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;alertThreshold&quot;</span><span class="fu">:</span> <span class="dv">80</span><span class="fu">,</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;hardLimit&quot;</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="更新成本配置">2.6.3 更新成本配置</h4>
+<p><strong>PUT</strong> <code>/api/cost/config</code></p>
+<p>更新成本配置。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> PUT http://localhost:3000/api/cost/config <span class="dt">\</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;dailyBudget&quot;: 20,</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;alertThreshold&quot;: 90</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="st">  }&#39;</span></span></code></pre></div>
+<hr />
+<h3 id="任务接口">2.7 任务接口</h3>
+<h4 id="获取任务列表">2.7.1 获取任务列表</h4>
+<p><strong>GET</strong> <code>/api/tasks</code></p>
+<p>获取任务列表（包括主动任务）。</p>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb27"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> http://localhost:3000/api/tasks</span></code></pre></div>
+<p><strong>响应示例</strong>:</p>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;tasks&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;task_001&quot;</span><span class="fu">,</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;time&quot;</span><span class="fu">,</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;trigger&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;time&quot;</span><span class="fu">,</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">&quot;cron&quot;</span><span class="fu">:</span> <span class="st">&quot;0 8 * * *&quot;</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">},</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;action&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>          <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;notify&quot;</span><span class="fu">,</span></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>          <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;早上好！&quot;</span></span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>        <span class="fu">},</span></span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;active&quot;</span></span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="创建主动任务">2.7.2 创建主动任务</h4>
+<p><strong>POST</strong> <code>/api/tasks</code></p>
+<p>创建新的主动任务。</p>
+<p><strong>请求参数</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>type</td>
+<td>string</td>
+<td>是</td>
+<td>任务类型</td>
+</tr>
+<tr class="even">
+<td>trigger</td>
+<td>object</td>
+<td>是</td>
+<td>触发配置</td>
+</tr>
+<tr class="odd">
+<td>action</td>
+<td>object</td>
+<td>是</td>
+<td>动作配置</td>
+</tr>
+</tbody>
+</table>
+<p><strong>请求示例</strong>:</p>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST http://localhost:3000/api/tasks <span class="dt">\</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;type&quot;: &quot;reminder&quot;,</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;trigger&quot;: {</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="st">      &quot;type&quot;: &quot;time&quot;,</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="st">      &quot;datetime&quot;: &quot;2025-02-24T09:00:00Z&quot;</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="st">    },</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="st">    &quot;action&quot;: {</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a><span class="st">      &quot;type&quot;: &quot;notify&quot;,</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a><span class="st">      &quot;message&quot;: &quot;开会提醒&quot;</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a><span class="st">  }&#39;</span></span></code></pre></div>
+<hr />
+<h2 id="websocket-api">3. WebSocket API</h2>
+<h3 id="连接">3.1 连接</h3>
+<p><strong>WebSocket URL</strong>:
+<code>ws://localhost:3000/ws</code></p>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> ws <span class="op">=</span> <span class="kw">new</span> <span class="bu">WebSocket</span>(<span class="st">&#39;ws://localhost:3000/ws&#39;</span>)<span class="op">;</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="at">onopen</span> <span class="op">=</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;已连接&#39;</span>)<span class="op">;</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="at">onmessage</span> <span class="op">=</span> (<span class="bu">event</span>) <span class="kw">=&gt;</span> {</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> data <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">event</span><span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;收到消息:&#39;</span><span class="op">,</span> data)<span class="op">;</span></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="消息格式">3.2 消息格式</h3>
+<p>所有消息均为JSON格式：</p>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> WSMessage {</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  type<span class="op">:</span> <span class="dt">string</span><span class="op">;</span>      <span class="co">// 消息类型</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  id<span class="op">?:</span> <span class="dt">string</span><span class="op">;</span>       <span class="co">// 消息ID（用于响应匹配）</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  data<span class="op">?:</span> <span class="dt">any</span><span class="op">;</span>        <span class="co">// 消息数据</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="消息类型">3.3 消息类型</h3>
+<h4 id="发送消息-1">3.3.1 发送消息</h4>
+<p><strong>客户端发送</strong>:</p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;chat&quot;</span><span class="fu">,</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;msg_001&quot;</span><span class="fu">,</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;你好&quot;</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><strong>服务端响应</strong>:</p>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;chat_response&quot;</span><span class="fu">,</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;msg_001&quot;</span><span class="fu">,</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;response&quot;</span><span class="fu">:</span> <span class="st">&quot;你好！我是白泽...&quot;</span><span class="fu">,</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;conversationId&quot;</span><span class="fu">:</span> <span class="st">&quot;conv_001&quot;</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="思考过程推送">3.3.2 思考过程推送</h4>
+<p><strong>服务端推送</strong>:</p>
+<div class="sourceCode" id="cb34"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;thinking_progress&quot;</span><span class="fu">,</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;phase&quot;</span><span class="fu">:</span> <span class="st">&quot;understanding&quot;</span><span class="fu">,</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;正在理解您的需求...&quot;</span><span class="fu">,</span></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;progress&quot;</span><span class="fu">:</span> <span class="dv">20</span></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><strong>阶段说明</strong>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>阶段</th>
+<th>说明</th>
+<th>进度</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>understanding</td>
+<td>理解用户意图</td>
+<td>0-20%</td>
+</tr>
+<tr class="even">
+<td>decomposing</td>
+<td>拆解任务</td>
+<td>20-40%</td>
+</tr>
+<tr class="odd">
+<td>planning</td>
+<td>制定计划</td>
+<td>40-60%</td>
+</tr>
+<tr class="even">
+<td>scheduling</td>
+<td>调度执行</td>
+<td>60-80%</td>
+</tr>
+<tr class="odd">
+<td>executing</td>
+<td>执行任务</td>
+<td>80-95%</td>
+</tr>
+<tr class="even">
+<td>completed</td>
+<td>完成</td>
+<td>100%</td>
+</tr>
+</tbody>
+</table>
+<h4 id="任务执行推送">3.3.3 任务执行推送</h4>
+<p><strong>服务端推送</strong>:</p>
+<div class="sourceCode" id="cb35"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;task_progress&quot;</span><span class="fu">,</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;taskId&quot;</span><span class="fu">:</span> <span class="st">&quot;task_001&quot;</span><span class="fu">,</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;running&quot;</span><span class="fu">,</span></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;skillName&quot;</span><span class="fu">:</span> <span class="st">&quot;file&quot;</span><span class="fu">,</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;正在创建文件...&quot;</span></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="成本告警">3.3.4 成本告警</h4>
+<p><strong>服务端推送</strong>:</p>
+<div class="sourceCode" id="cb36"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;cost_alert&quot;</span><span class="fu">,</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;level&quot;</span><span class="fu">:</span> <span class="st">&quot;warning&quot;</span><span class="fu">,</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;已使用80%的日预算&quot;</span><span class="fu">,</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;usage&quot;</span><span class="fu">:</span> <span class="fl">8.5</span><span class="fu">,</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;budget&quot;</span><span class="fu">:</span> <span class="dv">10</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="完整示例">3.4 完整示例</h3>
+<div class="sourceCode" id="cb37"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co">// GUI 客户端示例</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> BaizeClient {</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">constructor</span>(url <span class="op">=</span> <span class="st">&#39;ws://localhost:3000/ws&#39;</span>) {</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">ws</span> <span class="op">=</span> <span class="kw">new</span> <span class="bu">WebSocket</span>(url)<span class="op">;</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">callbacks</span> <span class="op">=</span> <span class="kw">new</span> <span class="bu">Map</span>()<span class="op">;</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">ws</span><span class="op">.</span><span class="at">onmessage</span> <span class="op">=</span> (<span class="bu">event</span>) <span class="kw">=&gt;</span> {</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> message <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">event</span><span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="fu">handleMessage</span>(message)<span class="op">;</span></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>    }<span class="op">;</span></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 发送消息</span></span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>  <span class="kw">async</span> <span class="fu">chat</span>(message) {</span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> id <span class="op">=</span> <span class="vs">`msg_</span><span class="sc">${</span><span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>()<span class="sc">}</span><span class="vs">`</span><span class="op">;</span></span>
+<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">new</span> <span class="bu">Promise</span>((resolve) <span class="kw">=&gt;</span> {</span>
+<span id="cb37-18"><a href="#cb37-18" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="at">callbacks</span><span class="op">.</span><span class="fu">set</span>(id<span class="op">,</span> resolve)<span class="op">;</span></span>
+<span id="cb37-19"><a href="#cb37-19" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb37-20"><a href="#cb37-20" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="at">ws</span><span class="op">.</span><span class="fu">send</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb37-21"><a href="#cb37-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;chat&#39;</span><span class="op">,</span></span>
+<span id="cb37-22"><a href="#cb37-22" aria-hidden="true" tabindex="-1"></a>        id<span class="op">,</span></span>
+<span id="cb37-23"><a href="#cb37-23" aria-hidden="true" tabindex="-1"></a>        <span class="dt">data</span><span class="op">:</span> { message }</span>
+<span id="cb37-24"><a href="#cb37-24" aria-hidden="true" tabindex="-1"></a>      }))<span class="op">;</span></span>
+<span id="cb37-25"><a href="#cb37-25" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb37-26"><a href="#cb37-26" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb37-27"><a href="#cb37-27" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb37-28"><a href="#cb37-28" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 处理消息</span></span>
+<span id="cb37-29"><a href="#cb37-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">handleMessage</span>(message) {</span>
+<span id="cb37-30"><a href="#cb37-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (message<span class="op">.</span><span class="at">id</span> <span class="op">&amp;&amp;</span> <span class="kw">this</span><span class="op">.</span><span class="at">callbacks</span><span class="op">.</span><span class="fu">has</span>(message<span class="op">.</span><span class="at">id</span>)) {</span>
+<span id="cb37-31"><a href="#cb37-31" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> callback <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="at">callbacks</span><span class="op">.</span><span class="fu">get</span>(message<span class="op">.</span><span class="at">id</span>)<span class="op">;</span></span>
+<span id="cb37-32"><a href="#cb37-32" aria-hidden="true" tabindex="-1"></a>      <span class="fu">callback</span>(message<span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb37-33"><a href="#cb37-33" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="at">callbacks</span><span class="op">.</span><span class="fu">delete</span>(message<span class="op">.</span><span class="at">id</span>)<span class="op">;</span></span>
+<span id="cb37-34"><a href="#cb37-34" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb37-35"><a href="#cb37-35" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb37-36"><a href="#cb37-36" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 处理推送消息</span></span>
+<span id="cb37-37"><a href="#cb37-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> (message<span class="op">.</span><span class="at">type</span>) {</span>
+<span id="cb37-38"><a href="#cb37-38" aria-hidden="true" tabindex="-1"></a>      <span class="cf">case</span> <span class="st">&#39;thinking_progress&#39;</span><span class="op">:</span></span>
+<span id="cb37-39"><a href="#cb37-39" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">onThinkingProgress</span><span class="op">?.</span>(message<span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb37-40"><a href="#cb37-40" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb37-41"><a href="#cb37-41" aria-hidden="true" tabindex="-1"></a>      <span class="cf">case</span> <span class="st">&#39;task_progress&#39;</span><span class="op">:</span></span>
+<span id="cb37-42"><a href="#cb37-42" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">onTaskProgress</span><span class="op">?.</span>(message<span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb37-43"><a href="#cb37-43" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb37-44"><a href="#cb37-44" aria-hidden="true" tabindex="-1"></a>      <span class="cf">case</span> <span class="st">&#39;cost_alert&#39;</span><span class="op">:</span></span>
+<span id="cb37-45"><a href="#cb37-45" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">onCostAlert</span><span class="op">?.</span>(message<span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb37-46"><a href="#cb37-46" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb37-47"><a href="#cb37-47" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb37-48"><a href="#cb37-48" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb37-49"><a href="#cb37-49" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb37-50"><a href="#cb37-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-51"><a href="#cb37-51" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用示例</span></span>
+<span id="cb37-52"><a href="#cb37-52" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> client <span class="op">=</span> <span class="kw">new</span> <span class="fu">BaizeClient</span>()<span class="op">;</span></span>
+<span id="cb37-53"><a href="#cb37-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-54"><a href="#cb37-54" aria-hidden="true" tabindex="-1"></a>client<span class="op">.</span><span class="at">onThinkingProgress</span> <span class="op">=</span> (data) <span class="kw">=&gt;</span> {</span>
+<span id="cb37-55"><a href="#cb37-55" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`思考进度: </span><span class="sc">${</span>data<span class="op">.</span><span class="at">progress</span><span class="sc">}</span><span class="vs">% - </span><span class="sc">${</span>data<span class="op">.</span><span class="at">message</span><span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb37-56"><a href="#cb37-56" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb37-57"><a href="#cb37-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-58"><a href="#cb37-58" aria-hidden="true" tabindex="-1"></a>client<span class="op">.</span><span class="at">onTaskProgress</span> <span class="op">=</span> (data) <span class="kw">=&gt;</span> {</span>
+<span id="cb37-59"><a href="#cb37-59" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`任务进度: </span><span class="sc">${</span>data<span class="op">.</span><span class="at">skillName</span><span class="sc">}</span><span class="vs"> - </span><span class="sc">${</span>data<span class="op">.</span><span class="at">status</span><span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb37-60"><a href="#cb37-60" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb37-61"><a href="#cb37-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-62"><a href="#cb37-62" aria-hidden="true" tabindex="-1"></a><span class="co">// 发送消息</span></span>
+<span id="cb37-63"><a href="#cb37-63" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">chat</span>(<span class="st">&#39;你好&#39;</span>)<span class="op">;</span></span>
+<span id="cb37-64"><a href="#cb37-64" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;回复:&#39;</span><span class="op">,</span> response<span class="op">.</span><span class="at">response</span>)<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="cli-接口">4. CLI 接口</h2>
+<h3 id="命令列表">4.1 命令列表</h3>
+<table>
+<thead>
+<tr class="header">
+<th>命令</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>baize start</code></td>
+<td>启动交互模式</td>
+</tr>
+<tr class="even">
+<td><code>baize chat &lt;message&gt;</code></td>
+<td>单次对话</td>
+</tr>
+<tr class="odd">
+<td><code>baize skill list</code></td>
+<td>列出技能</td>
+</tr>
+<tr class="even">
+<td><code>baize skill install &lt;name&gt;</code></td>
+<td>安装技能</td>
+</tr>
+<tr class="odd">
+<td><code>baize task list</code></td>
+<td>列出任务</td>
+</tr>
+<tr class="even">
+<td><code>baize task create</code></td>
+<td>创建任务</td>
+</tr>
+<tr class="odd">
+<td><code>baize cost stats</code></td>
+<td>成本统计</td>
+</tr>
+<tr class="even">
+<td><code>baize memory search &lt;query&gt;</code></td>
+<td>搜索记忆</td>
+</tr>
+</tbody>
+</table>
+<h3 id="命令详解">4.2 命令详解</h3>
+<h4 id="启动交互模式">4.2.1 启动交互模式</h4>
+<div class="sourceCode" id="cb38"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> start <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="ex">选项:</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--provider</span> <span class="op">&lt;</span>name<span class="op">&gt;</span>    指定LLM提供商</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--debug</span>              调试模式</span></code></pre></div>
+<h4 id="单次对话">4.2.2 单次对话</h4>
+<div class="sourceCode" id="cb39"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> chat <span class="st">&quot;你好&quot;</span> <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a><span class="ex">选项:</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--provider</span> <span class="op">&lt;</span>name<span class="op">&gt;</span>    指定LLM提供商</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>  <span class="ex">--json</span>               JSON格式输出</span></code></pre></div>
+<p><strong>输出示例</strong>:</p>
+<div class="sourceCode" id="cb40"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;response&quot;</span><span class="fu">:</span> <span class="st">&quot;你好！我是白泽...&quot;</span><span class="fu">,</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;duration&quot;</span><span class="fu">:</span> <span class="fl">1.5</span><span class="fu">,</span></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;cost&quot;</span><span class="fu">:</span> <span class="dv">0</span><span class="er">.001</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="技能管理">4.2.3 技能管理</h4>
+<div class="sourceCode" id="cb41"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 列出技能</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> skill list</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 安装技能</span></span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> skill install weather</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 执行技能</span></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> skill exec time <span class="at">--params</span> <span class="st">&#39;{&quot;format&quot;:&quot;%Y-%m-%d&quot;}&#39;</span></span></code></pre></div>
+<h4 id="任务管理">4.2.4 任务管理</h4>
+<div class="sourceCode" id="cb42"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 列出任务</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> task list</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 创建定时任务</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> task create <span class="at">--type</span> time <span class="at">--cron</span> <span class="st">&quot;0 8 * * *&quot;</span> <span class="at">--action</span> <span class="st">&quot;notify&quot;</span> <span class="at">--message</span> <span class="st">&quot;早上好&quot;</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 删除任务</span></span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a><span class="ex">baize</span> task delete <span class="op">&lt;</span>task-id<span class="op">&gt;</span></span></code></pre></div>
+<h3 id="程序化调用">4.3 程序化调用</h3>
+<div class="sourceCode" id="cb43"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 从代码调用CLI</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { exec } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;child_process&#39;</span>)<span class="op">;</span></span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a><span class="co">// 单次对话</span></span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a><span class="fu">exec</span>(<span class="st">&#39;node dist/cli/index.js chat &quot;你好&quot; --json&#39;</span><span class="op">,</span> (error<span class="op">,</span> stdout) <span class="kw">=&gt;</span> {</span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span>error) {</span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> result <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(stdout)<span class="op">;</span></span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(result<span class="op">.</span><span class="at">response</span>)<span class="op">;</span></span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="技能开发接口">5. 技能开发接口</h2>
+<h3 id="技能输入格式">5.1 技能输入格式</h3>
+<p>技能通过环境变量 <code>BAIZE_PARAMS</code> 接收参数：</p>
+<div class="sourceCode" id="cb44"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>    <span class="er">//</span> <span class="er">技能参数</span></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;context&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;userId&quot;</span><span class="fu">:</span> <span class="st">&quot;user_001&quot;</span><span class="fu">,</span></span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;conversationId&quot;</span><span class="fu">:</span> <span class="st">&quot;conv_001&quot;</span></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="技能输出格式">5.2 技能输出格式</h3>
+<p>技能必须输出JSON格式到stdout：</p>
+<div class="sourceCode" id="cb45"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>    <span class="er">//</span> <span class="er">返回数据</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;执行成功&quot;</span></span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="技能参数规范">5.3 技能参数规范</h3>
+<h4 id="chat-技能">chat 技能</h4>
+<div class="sourceCode" id="cb46"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;要发送的消息&quot;</span><span class="fu">,</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;history&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span> <span class="dt">&quot;role&quot;</span><span class="fu">:</span> <span class="st">&quot;user&quot;</span><span class="fu">,</span> <span class="dt">&quot;content&quot;</span><span class="fu">:</span> <span class="st">&quot;历史消息&quot;</span> <span class="fu">}</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="file-技能">file 技能</h4>
+<div class="sourceCode" id="cb47"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;action&quot;</span><span class="fu">:</span> <span class="st">&quot;read|write|create|delete|exists&quot;</span><span class="fu">,</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;文件路径&quot;</span><span class="fu">,</span></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;content&quot;</span><span class="fu">:</span> <span class="st">&quot;文件内容（写入时）&quot;</span><span class="fu">,</span></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;encoding&quot;</span><span class="fu">:</span> <span class="st">&quot;utf-8&quot;</span></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="time-技能">time 技能</h4>
+<div class="sourceCode" id="cb48"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;format&quot;</span><span class="fu">:</span> <span class="st">&quot;%Y-%m-%d %H:%M:%S&quot;</span><span class="fu">,</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;timezone&quot;</span><span class="fu">:</span> <span class="st">&quot;UTC&quot;</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="技能开发模板">5.4 技能开发模板</h3>
+<h4 id="javascript-模板">JavaScript 模板</h4>
+<div class="sourceCode" id="cb49"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env node</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a><span class="co"> * 技能名称 - JavaScript实现</span></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">main</span>() {</span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 获取参数</span></span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> input <span class="op">=</span> { <span class="dt">params</span><span class="op">:</span> {} }<span class="op">;</span></span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>) {</span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>      input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>)<span class="op">;</span></span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> { params <span class="op">=</span> {} } <span class="op">=</span> input<span class="op">;</span></span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb49-17"><a href="#cb49-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 执行技能逻辑</span></span>
+<span id="cb49-18"><a href="#cb49-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> result <span class="op">=</span> <span class="fu">execute</span>(params)<span class="op">;</span></span>
+<span id="cb49-19"><a href="#cb49-19" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb49-20"><a href="#cb49-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 返回成功结果</span></span>
+<span id="cb49-21"><a href="#cb49-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb49-22"><a href="#cb49-22" aria-hidden="true" tabindex="-1"></a>      <span class="dt">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb49-23"><a href="#cb49-23" aria-hidden="true" tabindex="-1"></a>      <span class="dt">data</span><span class="op">:</span> result<span class="op">,</span></span>
+<span id="cb49-24"><a href="#cb49-24" aria-hidden="true" tabindex="-1"></a>      <span class="dt">message</span><span class="op">:</span> <span class="st">&#39;执行成功&#39;</span></span>
+<span id="cb49-25"><a href="#cb49-25" aria-hidden="true" tabindex="-1"></a>    }))<span class="op">;</span></span>
+<span id="cb49-26"><a href="#cb49-26" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb49-27"><a href="#cb49-27" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb49-28"><a href="#cb49-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 返回错误结果</span></span>
+<span id="cb49-29"><a href="#cb49-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb49-30"><a href="#cb49-30" aria-hidden="true" tabindex="-1"></a>      <span class="dt">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb49-31"><a href="#cb49-31" aria-hidden="true" tabindex="-1"></a>      <span class="dt">error</span><span class="op">:</span> error<span class="op">.</span><span class="at">message</span></span>
+<span id="cb49-32"><a href="#cb49-32" aria-hidden="true" tabindex="-1"></a>    }))<span class="op">;</span></span>
+<span id="cb49-33"><a href="#cb49-33" aria-hidden="true" tabindex="-1"></a>    <span class="bu">process</span><span class="op">.</span><span class="fu">exit</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb49-34"><a href="#cb49-34" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb49-35"><a href="#cb49-35" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb49-36"><a href="#cb49-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-37"><a href="#cb49-37" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">execute</span>(params) {</span>
+<span id="cb49-38"><a href="#cb49-38" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 实现技能逻辑</span></span>
+<span id="cb49-39"><a href="#cb49-39" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {}<span class="op">;</span></span>
+<span id="cb49-40"><a href="#cb49-40" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb49-41"><a href="#cb49-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-42"><a href="#cb49-42" aria-hidden="true" tabindex="-1"></a><span class="fu">main</span>()<span class="op">;</span></span></code></pre></div>
+<h4 id="python-模板">Python 模板</h4>
+<div class="sourceCode" id="cb50"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env python3</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a><span class="co">&quot;&quot;&quot;</span></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a><span class="co">技能名称 - Python实现</span></span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a><span class="co">&quot;&quot;&quot;</span></span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> main():</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span>:</span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 获取参数</span></span>
+<span id="cb50-13"><a href="#cb50-13" aria-hidden="true" tabindex="-1"></a>        params <span class="op">=</span> {}</span>
+<span id="cb50-14"><a href="#cb50-14" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb50-15"><a href="#cb50-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="st">&#39;BAIZE_PARAMS&#39;</span> <span class="kw">in</span> os.environ:</span>
+<span id="cb50-16"><a href="#cb50-16" aria-hidden="true" tabindex="-1"></a>            input_data <span class="op">=</span> json.loads(os.environ[<span class="st">&#39;BAIZE_PARAMS&#39;</span>])</span>
+<span id="cb50-17"><a href="#cb50-17" aria-hidden="true" tabindex="-1"></a>            params <span class="op">=</span> input_data.get(<span class="st">&#39;params&#39;</span>, {})</span>
+<span id="cb50-18"><a href="#cb50-18" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb50-19"><a href="#cb50-19" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 执行技能逻辑</span></span>
+<span id="cb50-20"><a href="#cb50-20" aria-hidden="true" tabindex="-1"></a>        result <span class="op">=</span> execute(params)</span>
+<span id="cb50-21"><a href="#cb50-21" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb50-22"><a href="#cb50-22" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 返回成功结果</span></span>
+<span id="cb50-23"><a href="#cb50-23" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(json.dumps({</span>
+<span id="cb50-24"><a href="#cb50-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;success&#39;</span>: <span class="va">True</span>,</span>
+<span id="cb50-25"><a href="#cb50-25" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;data&#39;</span>: result,</span>
+<span id="cb50-26"><a href="#cb50-26" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;message&#39;</span>: <span class="st">&#39;执行成功&#39;</span></span>
+<span id="cb50-27"><a href="#cb50-27" aria-hidden="true" tabindex="-1"></a>        }))</span>
+<span id="cb50-28"><a href="#cb50-28" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb50-29"><a href="#cb50-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb50-30"><a href="#cb50-30" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 返回错误结果</span></span>
+<span id="cb50-31"><a href="#cb50-31" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(json.dumps({</span>
+<span id="cb50-32"><a href="#cb50-32" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;success&#39;</span>: <span class="va">False</span>,</span>
+<span id="cb50-33"><a href="#cb50-33" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;error&#39;</span>: <span class="bu">str</span>(e)</span>
+<span id="cb50-34"><a href="#cb50-34" aria-hidden="true" tabindex="-1"></a>        }))</span>
+<span id="cb50-35"><a href="#cb50-35" aria-hidden="true" tabindex="-1"></a>        sys.exit(<span class="dv">1</span>)</span>
+<span id="cb50-36"><a href="#cb50-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-37"><a href="#cb50-37" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> execute(params):</span>
+<span id="cb50-38"><a href="#cb50-38" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 实现技能逻辑</span></span>
+<span id="cb50-39"><a href="#cb50-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {}</span>
+<span id="cb50-40"><a href="#cb50-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-41"><a href="#cb50-41" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">__name__</span> <span class="op">==</span> <span class="st">&#39;__main__&#39;</span>:</span>
+<span id="cb50-42"><a href="#cb50-42" aria-hidden="true" tabindex="-1"></a>    main()</span></code></pre></div>
+<hr />
+<h2 id="sdk-使用">6. SDK 使用</h2>
+<h3 id="javascripttypescript-sdk">6.1 JavaScript/TypeScript SDK</h3>
+<div class="sourceCode" id="cb51"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { BaizeClient } <span class="im">from</span> <span class="st">&#39;baize-sdk&#39;</span><span class="op">;</span></span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a><span class="co">// 创建客户端</span></span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> client <span class="op">=</span> <span class="kw">new</span> <span class="fu">BaizeClient</span>({</span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>  baseURL<span class="op">:</span> <span class="st">&#39;http://localhost:3000&#39;</span><span class="op">,</span></span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// apiKey: &#39;your-api-key&#39;  // 可选</span></span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true" tabindex="-1"></a><span class="co">// 发送消息</span></span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">chat</span>(<span class="st">&#39;你好&#39;</span>)<span class="op">;</span></span>
+<span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(response<span class="op">.</span><span class="at">content</span>)<span class="op">;</span></span>
+<span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a><span class="co">// 执行技能</span></span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> result <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">executeSkill</span>(<span class="st">&#39;time&#39;</span><span class="op">,</span> {</span>
+<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a>  format<span class="op">:</span> <span class="st">&#39;%Y-%m-%d&#39;</span></span>
+<span id="cb51-16"><a href="#cb51-16" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(result<span class="op">.</span><span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a><span class="co">// 搜索技能市场</span></span>
+<span id="cb51-20"><a href="#cb51-20" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> skills <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">searchMarket</span>(<span class="st">&#39;weather&#39;</span>)<span class="op">;</span></span>
+<span id="cb51-21"><a href="#cb51-21" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(skills)<span class="op">;</span></span>
+<span id="cb51-22"><a href="#cb51-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-23"><a href="#cb51-23" aria-hidden="true" tabindex="-1"></a><span class="co">// 安装技能</span></span>
+<span id="cb51-24"><a href="#cb51-24" aria-hidden="true" tabindex="-1"></a><span class="cf">await</span> client<span class="op">.</span><span class="fu">installSkill</span>(<span class="st">&#39;weather&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="python-sdk">6.2 Python SDK</h3>
+<div class="sourceCode" id="cb52"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> baize <span class="im">import</span> BaizeClient</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 创建客户端</span></span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>client <span class="op">=</span> BaizeClient(base_url<span class="op">=</span><span class="st">&#39;http://localhost:3000&#39;</span>)</span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 发送消息</span></span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>response <span class="op">=</span> client.chat(<span class="st">&#39;你好&#39;</span>)</span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(response.content)</span>
+<span id="cb52-9"><a href="#cb52-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-10"><a href="#cb52-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 执行技能</span></span>
+<span id="cb52-11"><a href="#cb52-11" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> client.execute_skill(<span class="st">&#39;time&#39;</span>, {</span>
+<span id="cb52-12"><a href="#cb52-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;format&#39;</span>: <span class="st">&#39;%Y-%m-</span><span class="sc">%d</span><span class="st">&#39;</span></span>
+<span id="cb52-13"><a href="#cb52-13" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb52-14"><a href="#cb52-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(result.data)</span></code></pre></div>
+<h3 id="http-直接调用">6.3 HTTP 直接调用</h3>
+<div class="sourceCode" id="cb53"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 使用 curl</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST http://localhost:3000/api/chat <span class="dt">\</span></span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;message&quot;: &quot;你好&quot;}&#39;</span></span></code></pre></div>
+<hr />
+<h2 id="错误处理">7. 错误处理</h2>
+<h3 id="错误码">7.1 错误码</h3>
+<table>
+<thead>
+<tr class="header">
+<th>错误码</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SUCCESS</td>
+<td>成功</td>
+</tr>
+<tr class="even">
+<td>INVALID_PARAMS</td>
+<td>参数无效</td>
+</tr>
+<tr class="odd">
+<td>SKILL_NOT_FOUND</td>
+<td>技能不存在</td>
+</tr>
+<tr class="even">
+<td>SKILL_ERROR</td>
+<td>技能执行错误</td>
+</tr>
+<tr class="odd">
+<td>LLM_ERROR</td>
+<td>LLM调用错误</td>
+</tr>
+<tr class="even">
+<td>BUDGET_EXCEEDED</td>
+<td>预算超限</td>
+</tr>
+<tr class="odd">
+<td>PERMISSION_DENIED</td>
+<td>权限不足</td>
+</tr>
+<tr class="even">
+<td>INTERNAL_ERROR</td>
+<td>内部错误</td>
+</tr>
+</tbody>
+</table>
+<h3 id="错误响应格式">7.2 错误响应格式</h3>
+<div class="sourceCode" id="cb54"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;error&quot;</span><span class="fu">:</span> <span class="st">&quot;错误描述&quot;</span><span class="fu">,</span></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;code&quot;</span><span class="fu">:</span> <span class="st">&quot;ERROR_CODE&quot;</span><span class="fu">,</span></span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;details&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;field&quot;</span><span class="fu">:</span> <span class="st">&quot;message&quot;</span><span class="fu">,</span></span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;reason&quot;</span><span class="fu">:</span> <span class="st">&quot;消息不能为空&quot;</span></span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="错误处理示例">7.3 错误处理示例</h3>
+<div class="sourceCode" id="cb55"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> {</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">chat</span>(<span class="st">&#39;你好&#39;</span>)<span class="op">;</span></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>} <span class="cf">catch</span> (error) {</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (error<span class="op">.</span><span class="at">code</span> <span class="op">===</span> <span class="st">&#39;BUDGET_EXCEEDED&#39;</span>) {</span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;预算已用完，请充值&#39;</span>)<span class="op">;</span></span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (error<span class="op">.</span><span class="at">code</span> <span class="op">===</span> <span class="st">&#39;SKILL_NOT_FOUND&#39;</span>) {</span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;技能不存在&#39;</span>)<span class="op">;</span></span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;发生错误:&#39;</span><span class="op">,</span> error<span class="op">.</span><span class="at">message</span>)<span class="op">;</span></span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="附录">附录</h2>
+<h3 id="a.-完整api列表">A. 完整API列表</h3>
+<table>
+<thead>
+<tr class="header">
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>GET</td>
+<td>/health</td>
+<td>健康检查</td>
+</tr>
+<tr class="even">
+<td>POST</td>
+<td>/api/chat</td>
+<td>发送消息</td>
+</tr>
+<tr class="odd">
+<td>GET</td>
+<td>/api/chat/history/:id</td>
+<td>获取历史</td>
+</tr>
+<tr class="even">
+<td>GET</td>
+<td>/api/skills</td>
+<td>技能列表</td>
+</tr>
+<tr class="odd">
+<td>POST</td>
+<td>/api/skills/execute</td>
+<td>执行技能</td>
+</tr>
+<tr class="even">
+<td>POST</td>
+<td>/api/skills/install</td>
+<td>安装技能</td>
+</tr>
+<tr class="odd">
+<td>GET</td>
+<td>/api/market/search</td>
+<td>搜索市场</td>
+</tr>
+<tr class="even">
+<td>GET</td>
+<td>/api/market/skill/:id</td>
+<td>技能详情</td>
+</tr>
+<tr class="odd">
+<td>GET</td>
+<td>/api/memory/stats</td>
+<td>记忆统计</td>
+</tr>
+<tr class="even">
+<td>GET</td>
+<td>/api/memory/search</td>
+<td>搜索记忆</td>
+</tr>
+<tr class="odd">
+<td>GET</td>
+<td>/api/cost/stats</td>
+<td>成本统计</td>
+</tr>
+<tr class="even">
+<td>GET</td>
+<td>/api/cost/config</td>
+<td>成本配置</td>
+</tr>
+<tr class="odd">
+<td>PUT</td>
+<td>/api/cost/config</td>
+<td>更新配置</td>
+</tr>
+<tr class="even">
+<td>GET</td>
+<td>/api/tasks</td>
+<td>任务列表</td>
+</tr>
+<tr class="odd">
+<td>POST</td>
+<td>/api/tasks</td>
+<td>创建任务</td>
+</tr>
+<tr class="even">
+<td>DELETE</td>
+<td>/api/tasks/:id</td>
+<td>删除任务</td>
+</tr>
+</tbody>
+</table>
+<h3 id="b.-websocket-消息类型">B. WebSocket 消息类型</h3>
+<table>
+<thead>
+<tr class="header">
+<th>类型</th>
+<th>方向</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>chat</td>
+<td>C→S</td>
+<td>发送消息</td>
+</tr>
+<tr class="even">
+<td>chat_response</td>
+<td>S→C</td>
+<td>消息响应</td>
+</tr>
+<tr class="odd">
+<td>thinking_progress</td>
+<td>S→C</td>
+<td>思考进度</td>
+</tr>
+<tr class="even">
+<td>task_progress</td>
+<td>S→C</td>
+<td>任务进度</td>
+</tr>
+<tr class="odd">
+<td>cost_alert</td>
+<td>S→C</td>
+<td>成本告警</td>
+</tr>
+</tbody>
+</table>
+<h3 id="c.-相关链接">C. 相关链接</h3>
+<ul>
+<li><a href="./DEVELOPMENT.md">开发文档</a></li>
+<li><a href="./architecture.md">架构设计</a></li>
+<li><a href="./DEPLOYMENT.md">部署文档</a></li>
+</ul>
+</body>
+</html>

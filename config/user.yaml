@@ -1,0 +1,16 @@
+# 白泽3.0 用户配置
+
+user:
+  name: ""
+  preferences: {}
+
+confirmation:
+  autoTrustThreshold: 3
+  timeout: 300
+
+notifications:
+  channels:
+    - "system"
+  quietHours:
+    start: "23:00"
+    end: "07:00"

@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 技能开发文档</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 技能开发文档</h1>
+</header>
+<h1 id="白泽3.0-技能开发文档">白泽3.0 技能开发文档</h1>
+<p><strong>版本</strong>: 3.0.2<br />
+<strong>适用对象</strong>: 技能开发者、技能共享者<br />
+<strong>最后更新</strong>: 2025年2月</p>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#1-技能概述">技能概述</a></li>
+<li><a href="#2-技能开发规范">技能开发规范</a></li>
+<li><a href="#3-可用接口与功能">可用接口与功能</a></li>
+<li><a href="#4-技能开发模板">技能开发模板</a></li>
+<li><a href="#5-技能调试">技能调试</a></li>
+<li><a href="#6-技能发布">技能发布</a></li>
+<li><a href="#7-最佳实践">最佳实践</a></li>
+<li><a href="#8-示例技能">示例技能</a></li>
+</ol>
+<hr />
+<h2 id="技能概述">1. 技能概述</h2>
+<h3 id="什么是技能">1.1 什么是技能？</h3>
+<p>技能是白泽3.0的能力扩展单元，每个技能负责完成特定类型的任务。</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                     技能架构                                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  用户输入 ──▶ 思考引擎 ──▶ 技能选择 ──▶ 技能执行 ──▶ 结果返回   │
+│                                                                 │
+│  技能组成:                                                       │
+│  ┌─────────────┐                                               │
+│  │  SKILL.md   │  ← 技能定义（必需）                            │
+│  ├─────────────┤                                               │
+│  │  main.js    │  ← JavaScript实现                             │
+│  │  main.py    │  ← Python实现                                 │
+│  │  run.sh     │  ← Shell实现                                  │
+│  └─────────────┘                                               │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="技能类型">1.2 技能类型</h3>
+<table>
+<thead>
+<tr class="header">
+<th>类型</th>
+<th>风险等级</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>信息查询</td>
+<td>low</td>
+<td>只读操作，无副作用</td>
+<td>time、weather</td>
+</tr>
+<tr class="even">
+<td>文件操作</td>
+<td>medium</td>
+<td>读写文件系统</td>
+<td>file、fs</td>
+</tr>
+<tr class="odd">
+<td>网络请求</td>
+<td>medium</td>
+<td>调用外部API</td>
+<td>http、weather</td>
+</tr>
+<tr class="even">
+<td>系统操作</td>
+<td>high</td>
+<td>修改系统配置</td>
+<td>system</td>
+</tr>
+<tr class="odd">
+<td>危险操作</td>
+<td>critical</td>
+<td>高风险操作</td>
+<td>exec</td>
+</tr>
+</tbody>
+</table>
+<h3 id="技能执行流程">1.3 技能执行流程</h3>
+<pre><code>1. 思考引擎分析用户输入
+2. 匹配技能能力标签
+3. 选择最合适的技能
+4. 准备技能参数
+5. 执行技能
+6. 返回结果</code></pre>
+<hr />
+<h2 id="技能开发规范">2. 技能开发规范</h2>
+<h3 id="目录结构">2.1 目录结构</h3>
+<pre><code>skills/
+└── {skill_name}/           # 技能目录（小写，下划线分隔）
+    ├── SKILL.md            # 技能定义（必需）
+    ├── main.js             # JavaScript实现
+    ├── main.py             # Python实现
+    ├── run.sh              # Shell实现
+    ├── README.md           # 技能说明（可选）
+    ├── tests/              # 测试文件（可选）
+    │   └── test.js
+    └── assets/             # 资源文件（可选）
+        └── icon.png</code></pre>
+<h3 id="skill.md-规范">2.2 SKILL.md 规范</h3>
+<p>SKILL.md 是技能的定义文件，<strong>必须存在</strong>。</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 必需字段</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> skill_name              # 技能名称（小写，下划线分隔）</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="an">version:</span><span class="co"> 1.0.0               # 版本号（语义化版本）</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 技能描述          # 简短描述（一句话）</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span><span class="co">                # 能力标签列表</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">  - capability_1</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">  - capability_2</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low              # 风险等级: low/medium/high/critical</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 可选字段</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> 作者名称</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="an">license:</span><span class="co"> MIT</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="an">homepage:</span><span class="co"> https://example.com</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="an">repository:</span><span class="co"> https://github.com/xxx/xxx</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="an">keywords:</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co">  - 关键词1</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="co">  - 关键词2</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="an">step_by_step:</span><span class="co"> false          # 是否逐步执行</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="an">dependencies:</span><span class="co">                # 依赖</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="co">  - npm: axios</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="co">  - pip: requests</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="fu"># 技能名称</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a><span class="fu">## 功能说明</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>详细描述技能的功能...</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参数说明</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 参数 <span class="pp">|</span> 类型 <span class="pp">|</span> 必填 <span class="pp">|</span> 说明 <span class="pp">|</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a><span class="pp">|-----|------|------|------|</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> param1 <span class="pp">|</span> string <span class="pp">|</span> 是 <span class="pp">|</span> 参数1说明 <span class="pp">|</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> param2 <span class="pp">|</span> number <span class="pp">|</span> 否 <span class="pp">|</span> 参数2说明 <span class="pp">|</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a><span class="fu">## 使用示例</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>用户说: &quot;帮我查询xxx&quot;</span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>系统调用: skill_name</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a><span class="fu">## 返回值说明</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>成功返回:</span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a><span class="in">```json</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="er">...</span> <span class="fu">}</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h2 id="注意事项">注意事项</h2>
+<ul>
+<li>注意事项1</li>
+<li>注意事项2</li>
+</ul>
+<pre><code>
+### 2.3 字段详解
+
+#### name（必需）
+
+- 格式：小写字母、数字、下划线
+- 长度：2-50个字符
+- 示例：`weather`, `file_manager`, `http_request`
+
+#### version（必需）
+
+- 格式：语义化版本 `MAJOR.MINOR.PATCH`
+- 示例：`1.0.0`, `2.1.3`
+
+#### description（必需）
+
+- 长度：10-200个字符
+- 语言：中文或英文
+- 要求：简洁明了，一句话描述
+
+#### capabilities（必需）
+
+- 格式：能力标签数组
+- 用途：用于技能匹配
+- 建议：3-10个标签
+- 示例：
+
+```yaml
+capabilities:
+  - weather          # 天气查询
+  - forecast         # 天气预报
+  - temperature      # 温度查询</code></pre>
+<h4 id="risk_level必需">risk_level（必需）</h4>
+<table>
+<thead>
+<tr class="header">
+<th>等级</th>
+<th>说明</th>
+<th>用户确认</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>low</td>
+<td>只读、无副作用</td>
+<td>不需要</td>
+</tr>
+<tr class="even">
+<td>medium</td>
+<td>可能修改数据</td>
+<td>首次需要</td>
+</tr>
+<tr class="odd">
+<td>high</td>
+<td>重要操作</td>
+<td>每次需要</td>
+</tr>
+<tr class="even">
+<td>critical</td>
+<td>危险操作</td>
+<td>强制确认</td>
+</tr>
+</tbody>
+</table>
+<h4 id="step_by_step可选">step_by_step（可选）</h4>
+<ul>
+<li>类型：boolean</li>
+<li>默认：false</li>
+<li>用途：复杂任务逐步执行，每步与用户确认</li>
+</ul>
+<hr />
+<h2 id="可用接口与功能">3. 可用接口与功能</h2>
+<h3 id="参数接收">3.1 参数接收</h3>
+<p>技能通过环境变量 <code>BAIZE_PARAMS</code> 接收参数。</p>
+<h4 id="参数格式">参数格式</h4>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;params&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="er">//</span> <span class="er">技能参数（来自思考引擎）</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;param1&quot;</span><span class="fu">:</span> <span class="st">&quot;value1&quot;</span><span class="fu">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;param2&quot;</span><span class="fu">:</span> <span class="st">&quot;value2&quot;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;context&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="er">//</span> <span class="er">执行上下文</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;userId&quot;</span><span class="fu">:</span> <span class="st">&quot;user_001&quot;</span><span class="fu">,</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;conversationId&quot;</span><span class="fu">:</span> <span class="st">&quot;conv_001&quot;</span><span class="fu">,</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-02-23T10:00:00Z&quot;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="javascript-获取参数">JavaScript 获取参数</h4>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">main</span>() {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> input <span class="op">=</span> { <span class="dt">params</span><span class="op">:</span> {}<span class="op">,</span> <span class="dt">context</span><span class="op">:</span> {} }<span class="op">;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 方式1: 从环境变量获取</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>) {</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>)<span class="op">;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 方式2: 从标准输入获取</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span><span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>) {</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> stdinData <span class="op">=</span> <span class="st">&#39;&#39;</span><span class="op">;</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> buffer <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> chunk<span class="op">;</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> ((chunk <span class="op">=</span> <span class="bu">process</span><span class="op">.</span><span class="at">stdin</span><span class="op">.</span><span class="fu">read</span>()) <span class="op">!==</span> <span class="kw">null</span>) {</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>      buffer<span class="op">.</span><span class="fu">push</span>(chunk)<span class="op">;</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (buffer<span class="op">.</span><span class="at">length</span> <span class="op">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>      stdinData <span class="op">=</span> buffer<span class="op">.</span><span class="fu">join</span>(<span class="st">&#39;&#39;</span>)<span class="op">;</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(stdinData)<span class="op">;</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> { params<span class="op">,</span> context } <span class="op">=</span> input<span class="op">;</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 使用参数...</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="python-获取参数">Python 获取参数</h4>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> main():</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    input_data <span class="op">=</span> {<span class="st">&#39;params&#39;</span>: {}, <span class="st">&#39;context&#39;</span>: {}}</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 方式1: 从环境变量获取</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="st">&#39;BAIZE_PARAMS&#39;</span> <span class="kw">in</span> os.environ:</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        input_data <span class="op">=</span> json.loads(os.environ[<span class="st">&#39;BAIZE_PARAMS&#39;</span>])</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 方式2: 从标准输入获取</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>        stdin_data <span class="op">=</span> sys.stdin.read()</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> stdin_data:</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>            input_data <span class="op">=</span> json.loads(stdin_data)</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    params <span class="op">=</span> input_data.get(<span class="st">&#39;params&#39;</span>, {})</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    context <span class="op">=</span> input_data.get(<span class="st">&#39;context&#39;</span>, {})</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 使用参数...</span></span></code></pre></div>
+<h3 id="结果返回">3.2 结果返回</h3>
+<p>技能必须输出JSON格式到 <strong>stdout</strong>。</p>
+<h4 id="成功响应">成功响应</h4>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;data&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="er">//</span> <span class="er">返回数据（任意结构）</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;result&quot;</span><span class="fu">:</span> <span class="st">&quot;...&quot;</span><span class="fu">,</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;items&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="er">...</span><span class="ot">]</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;操作成功&quot;</span>  <span class="er">//</span> <span class="er">可选，用户可见的消息</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="失败响应">失败响应</h4>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;success&quot;</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;error&quot;</span><span class="fu">:</span> <span class="st">&quot;错误描述&quot;</span><span class="fu">,</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;code&quot;</span><span class="fu">:</span> <span class="st">&quot;ERROR_CODE&quot;</span>  <span class="er">//</span> <span class="er">可选，错误码</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="javascript-返回结果">JavaScript 返回结果</h4>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 成功</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">data</span><span class="op">:</span> { <span class="dt">result</span><span class="op">:</span> <span class="st">&#39;done&#39;</span> }<span class="op">,</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">message</span><span class="op">:</span> <span class="st">&#39;操作成功&#39;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>}))<span class="op">;</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co">// 失败</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">error</span><span class="op">:</span> <span class="st">&#39;文件不存在&#39;</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>}))<span class="op">;</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="bu">process</span><span class="op">.</span><span class="fu">exit</span>(<span class="dv">1</span>)<span class="op">;</span>  <span class="co">// 非零退出码表示失败</span></span></code></pre></div>
+<h4 id="python-返回结果">Python 返回结果</h4>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 成功</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(json.dumps({</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;success&#39;</span>: <span class="va">True</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;data&#39;</span>: {<span class="st">&#39;result&#39;</span>: <span class="st">&#39;done&#39;</span>},</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;message&#39;</span>: <span class="st">&#39;操作成功&#39;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 失败</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(json.dumps({</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;success&#39;</span>: <span class="va">False</span>,</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;error&#39;</span>: <span class="st">&#39;文件不存在&#39;</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>sys.exit(<span class="dv">1</span>)  <span class="co"># 非零退出码表示失败</span></span></code></pre></div>
+<h3 id="可用功能">3.3 可用功能</h3>
+<h4 id="文件系统操作">3.3.1 文件系统操作</h4>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> fs <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;fs&#39;</span>)<span class="op">;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co">// 读取文件</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> content <span class="op">=</span> fs<span class="op">.</span><span class="fu">readFileSync</span>(<span class="st">&#39;/path/to/file&#39;</span><span class="op">,</span> <span class="st">&#39;utf-8&#39;</span>)<span class="op">;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co">// 写入文件</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>fs<span class="op">.</span><span class="fu">writeFileSync</span>(<span class="st">&#39;/path/to/file&#39;</span><span class="op">,</span> content)<span class="op">;</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="co">// 检查文件存在</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> exists <span class="op">=</span> fs<span class="op">.</span><span class="fu">existsSync</span>(<span class="st">&#39;/path/to/file&#39;</span>)<span class="op">;</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="co">// 创建目录</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>fs<span class="op">.</span><span class="fu">mkdirSync</span>(<span class="st">&#39;/path/to/dir&#39;</span><span class="op">,</span> { <span class="dt">recursive</span><span class="op">:</span> <span class="kw">true</span> })<span class="op">;</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="co">// 列出目录</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> files <span class="op">=</span> fs<span class="op">.</span><span class="fu">readdirSync</span>(<span class="st">&#39;/path/to/dir&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Python</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 读取文件</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">&#39;/path/to/file&#39;</span>, <span class="st">&#39;r&#39;</span>, encoding<span class="op">=</span><span class="st">&#39;utf-8&#39;</span>) <span class="im">as</span> f:</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    content <span class="op">=</span> f.read()</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 写入文件</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">&#39;/path/to/file&#39;</span>, <span class="st">&#39;w&#39;</span>, encoding<span class="op">=</span><span class="st">&#39;utf-8&#39;</span>) <span class="im">as</span> f:</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    f.write(content)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查文件存在</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>exists <span class="op">=</span> os.path.exists(<span class="st">&#39;/path/to/file&#39;</span>)</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 创建目录</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>os.makedirs(<span class="st">&#39;/path/to/dir&#39;</span>, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 列出目录</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>files <span class="op">=</span> os.listdir(<span class="st">&#39;/path/to/dir&#39;</span>)</span></code></pre></div>
+<h4 id="网络请求">3.3.2 网络请求</h4>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript (Node.js 18+)</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用 fetch</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(<span class="st">&#39;https://api.example.com/data&#39;</span>)<span class="op">;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> data <span class="op">=</span> <span class="cf">await</span> response<span class="op">.</span><span class="fu">json</span>()<span class="op">;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用 axios（需要安装）</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> axios <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;axios&#39;</span>)<span class="op">;</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> axios<span class="op">.</span><span class="fu">get</span>(<span class="st">&#39;https://api.example.com/data&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Python</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> urllib.request</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 使用 urllib</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> urllib.request.urlopen(<span class="st">&#39;https://api.example.com/data&#39;</span>) <span class="im">as</span> response:</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> json.loads(response.read().decode(<span class="st">&#39;utf-8&#39;</span>))</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 使用 requests（需要安装）</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> requests</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>response <span class="op">=</span> requests.get(<span class="st">&#39;https://api.example.com/data&#39;</span>)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> response.json()</span></code></pre></div>
+<h4 id="环境变量">3.3.3 环境变量</h4>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> apiKey <span class="op">=</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">MY_API_KEY</span><span class="op">;</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> homeDir <span class="op">=</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">HOME</span><span class="op">;</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">PATH</span><span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Python</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>api_key <span class="op">=</span> os.environ.get(<span class="st">&#39;MY_API_KEY&#39;</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>home_dir <span class="op">=</span> os.environ.get(<span class="st">&#39;HOME&#39;</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>path <span class="op">=</span> os.environ.get(<span class="st">&#39;PATH&#39;</span>)</span></code></pre></div>
+<h4 id="执行命令">3.3.4 执行命令</h4>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { execSync } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;child_process&#39;</span>)<span class="op">;</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> result <span class="op">=</span> <span class="fu">execSync</span>(<span class="st">&#39;ls -la&#39;</span><span class="op">,</span> { <span class="dt">encoding</span><span class="op">:</span> <span class="st">&#39;utf-8&#39;</span> })<span class="op">;</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(result)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Python</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> subprocess</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> subprocess.run([<span class="st">&#39;ls&#39;</span>, <span class="st">&#39;-la&#39;</span>], capture_output<span class="op">=</span><span class="va">True</span>, text<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(result.stdout)</span></code></pre></div>
+<h4 id="时间日期">3.3.5 时间日期</h4>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">// JavaScript</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> now <span class="op">=</span> <span class="kw">new</span> <span class="bu">Date</span>()<span class="op">;</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> formatted <span class="op">=</span> now<span class="op">.</span><span class="fu">toISOString</span>()<span class="op">;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> timestamp <span class="op">=</span> <span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>()<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Python</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datetime <span class="im">import</span> datetime</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>now <span class="op">=</span> datetime.now()</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>formatted <span class="op">=</span> now.isoformat()</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>timestamp <span class="op">=</span> <span class="bu">int</span>(now.timestamp())</span></code></pre></div>
+<h3 id="可用的node.js模块">3.4 可用的Node.js模块</h3>
+<table>
+<thead>
+<tr class="header">
+<th>模块</th>
+<th>说明</th>
+<th>可用性</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>fs</td>
+<td>文件系统</td>
+<td>✅</td>
+</tr>
+<tr class="even">
+<td>path</td>
+<td>路径处理</td>
+<td>✅</td>
+</tr>
+<tr class="odd">
+<td>os</td>
+<td>操作系统</td>
+<td>✅</td>
+</tr>
+<tr class="even">
+<td>crypto</td>
+<td>加密</td>
+<td>✅</td>
+</tr>
+<tr class="odd">
+<td>http/https</td>
+<td>HTTP客户端</td>
+<td>✅</td>
+</tr>
+<tr class="even">
+<td>child_process</td>
+<td>执行命令</td>
+<td>✅</td>
+</tr>
+<tr class="odd">
+<td>util</td>
+<td>工具函数</td>
+<td>✅</td>
+</tr>
+<tr class="even">
+<td>axios</td>
+<td>HTTP客户端</td>
+<td>需安装</td>
+</tr>
+<tr class="odd">
+<td>lodash</td>
+<td>工具库</td>
+<td>需安装</td>
+</tr>
+</tbody>
+</table>
+<h3 id="可用的python库">3.5 可用的Python库</h3>
+<table>
+<thead>
+<tr class="header">
+<th>库</th>
+<th>说明</th>
+<th>可用性</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>os</td>
+<td>操作系统</td>
+<td>✅ 内置</td>
+</tr>
+<tr class="even">
+<td>sys</td>
+<td>系统功能</td>
+<td>✅ 内置</td>
+</tr>
+<tr class="odd">
+<td>json</td>
+<td>JSON处理</td>
+<td>✅ 内置</td>
+</tr>
+<tr class="even">
+<td>datetime</td>
+<td>日期时间</td>
+<td>✅ 内置</td>
+</tr>
+<tr class="odd">
+<td>urllib</td>
+<td>HTTP客户端</td>
+<td>✅ 内置</td>
+</tr>
+<tr class="even">
+<td>subprocess</td>
+<td>执行命令</td>
+<td>✅ 内置</td>
+</tr>
+<tr class="odd">
+<td>requests</td>
+<td>HTTP客户端</td>
+<td>需安装</td>
+</tr>
+<tr class="even">
+<td>numpy</td>
+<td>数值计算</td>
+<td>需安装</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="技能开发模板">4. 技能开发模板</h2>
+<h3 id="javascript-完整模板">4.1 JavaScript 完整模板</h3>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env node</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"> * 技能名称 - JavaScript实现</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"> * </span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="co"> * 功能描述</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="co">// ==================== 配置 ====================</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> CONFIG <span class="op">=</span> {</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">timeout</span><span class="op">:</span> <span class="dv">30000</span><span class="op">,</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">maxRetries</span><span class="op">:</span> <span class="dv">3</span><span class="op">,</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a><span class="co">// ==================== 主函数 ====================</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">main</span>() {</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 1. 获取参数</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> input <span class="op">=</span> <span class="fu">getInput</span>()<span class="op">;</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> { params<span class="op">,</span> context } <span class="op">=</span> input<span class="op">;</span></span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 2. 验证参数</span></span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">validateParams</span>(params)<span class="op">;</span></span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 3. 执行技能逻辑</span></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> result <span class="op">=</span> <span class="fu">execute</span>(params<span class="op">,</span> context)<span class="op">;</span></span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 4. 返回成功结果</span></span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">outputSuccess</span>(result)<span class="op">;</span></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 5. 返回错误结果</span></span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">outputError</span>(error)<span class="op">;</span></span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a>    <span class="bu">process</span><span class="op">.</span><span class="fu">exit</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a><span class="co">// ==================== 辅助函数 ====================</span></span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a><span class="co"> * 获取输入参数</span></span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">getInput</span>() {</span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> input <span class="op">=</span> { <span class="dt">params</span><span class="op">:</span> {}<span class="op">,</span> <span class="dt">context</span><span class="op">:</span> {} }<span class="op">;</span></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 从环境变量获取</span></span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>) {</span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span> {</span>
+<span id="cb23-50"><a href="#cb23-50" aria-hidden="true" tabindex="-1"></a>      input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span>)<span class="op">;</span></span>
+<span id="cb23-51"><a href="#cb23-51" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">catch</span> (e) {</span>
+<span id="cb23-52"><a href="#cb23-52" aria-hidden="true" tabindex="-1"></a>      <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;参数解析失败&#39;</span>)<span class="op">;</span></span>
+<span id="cb23-53"><a href="#cb23-53" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb23-54"><a href="#cb23-54" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb23-55"><a href="#cb23-55" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb23-56"><a href="#cb23-56" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> input<span class="op">;</span></span>
+<span id="cb23-57"><a href="#cb23-57" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-58"><a href="#cb23-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-59"><a href="#cb23-59" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb23-60"><a href="#cb23-60" aria-hidden="true" tabindex="-1"></a><span class="co"> * 验证参数</span></span>
+<span id="cb23-61"><a href="#cb23-61" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb23-62"><a href="#cb23-62" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">validateParams</span>(params) {</span>
+<span id="cb23-63"><a href="#cb23-63" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 检查必需参数</span></span>
+<span id="cb23-64"><a href="#cb23-64" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span>params<span class="op">.</span><span class="at">required_param</span>) {</span>
+<span id="cb23-65"><a href="#cb23-65" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;缺少必需参数: required_param&#39;</span>)<span class="op">;</span></span>
+<span id="cb23-66"><a href="#cb23-66" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb23-67"><a href="#cb23-67" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb23-68"><a href="#cb23-68" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 检查参数类型</span></span>
+<span id="cb23-69"><a href="#cb23-69" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="kw">typeof</span> params<span class="op">.</span><span class="at">required_param</span> <span class="op">!==</span> <span class="st">&#39;string&#39;</span>) {</span>
+<span id="cb23-70"><a href="#cb23-70" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;参数类型错误: required_param 应为字符串&#39;</span>)<span class="op">;</span></span>
+<span id="cb23-71"><a href="#cb23-71" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb23-72"><a href="#cb23-72" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-73"><a href="#cb23-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-74"><a href="#cb23-74" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb23-75"><a href="#cb23-75" aria-hidden="true" tabindex="-1"></a><span class="co"> * 执行技能逻辑</span></span>
+<span id="cb23-76"><a href="#cb23-76" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb23-77"><a href="#cb23-77" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">execute</span>(params<span class="op">,</span> context) {</span>
+<span id="cb23-78"><a href="#cb23-78" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> { required_param<span class="op">,</span> optional_param } <span class="op">=</span> params<span class="op">;</span></span>
+<span id="cb23-79"><a href="#cb23-79" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb23-80"><a href="#cb23-80" aria-hidden="true" tabindex="-1"></a>  <span class="co">// </span><span class="al">TODO</span><span class="co">: 实现技能逻辑</span></span>
+<span id="cb23-81"><a href="#cb23-81" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb23-82"><a href="#cb23-82" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb23-83"><a href="#cb23-83" aria-hidden="true" tabindex="-1"></a>    <span class="dt">result</span><span class="op">:</span> <span class="st">&#39;done&#39;</span><span class="op">,</span></span>
+<span id="cb23-84"><a href="#cb23-84" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 其他返回数据...</span></span>
+<span id="cb23-85"><a href="#cb23-85" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb23-86"><a href="#cb23-86" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-87"><a href="#cb23-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-88"><a href="#cb23-88" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb23-89"><a href="#cb23-89" aria-hidden="true" tabindex="-1"></a><span class="co"> * 输出成功结果</span></span>
+<span id="cb23-90"><a href="#cb23-90" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb23-91"><a href="#cb23-91" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">outputSuccess</span>(data<span class="op">,</span> message <span class="op">=</span> <span class="st">&#39;执行成功&#39;</span>) {</span>
+<span id="cb23-92"><a href="#cb23-92" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb23-93"><a href="#cb23-93" aria-hidden="true" tabindex="-1"></a>    <span class="dt">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb23-94"><a href="#cb23-94" aria-hidden="true" tabindex="-1"></a>    data<span class="op">,</span></span>
+<span id="cb23-95"><a href="#cb23-95" aria-hidden="true" tabindex="-1"></a>    message<span class="op">,</span></span>
+<span id="cb23-96"><a href="#cb23-96" aria-hidden="true" tabindex="-1"></a>  }))<span class="op">;</span></span>
+<span id="cb23-97"><a href="#cb23-97" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-98"><a href="#cb23-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-99"><a href="#cb23-99" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb23-100"><a href="#cb23-100" aria-hidden="true" tabindex="-1"></a><span class="co"> * 输出错误结果</span></span>
+<span id="cb23-101"><a href="#cb23-101" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb23-102"><a href="#cb23-102" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">outputError</span>(error) {</span>
+<span id="cb23-103"><a href="#cb23-103" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb23-104"><a href="#cb23-104" aria-hidden="true" tabindex="-1"></a>    <span class="dt">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb23-105"><a href="#cb23-105" aria-hidden="true" tabindex="-1"></a>    <span class="dt">error</span><span class="op">:</span> error<span class="op">.</span><span class="at">message</span> <span class="op">||</span> <span class="bu">String</span>(error)<span class="op">,</span></span>
+<span id="cb23-106"><a href="#cb23-106" aria-hidden="true" tabindex="-1"></a>  }))<span class="op">;</span></span>
+<span id="cb23-107"><a href="#cb23-107" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb23-108"><a href="#cb23-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-109"><a href="#cb23-109" aria-hidden="true" tabindex="-1"></a><span class="co">// ==================== 执行 ====================</span></span>
+<span id="cb23-110"><a href="#cb23-110" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-111"><a href="#cb23-111" aria-hidden="true" tabindex="-1"></a><span class="fu">main</span>()<span class="op">;</span></span></code></pre></div>
+<h3 id="python-完整模板">4.2 Python 完整模板</h3>
+<div class="sourceCode" id="cb24"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env python3</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="co">&quot;&quot;&quot;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co">技能名称 - Python实现</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="co">功能描述</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="co">&quot;&quot;&quot;</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> Dict, Any, Optional</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 配置 ====================</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>CONFIG <span class="op">=</span> {</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;timeout&#39;</span>: <span class="dv">30000</span>,</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;max_retries&#39;</span>: <span class="dv">3</span>,</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 主函数 ====================</span></span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> main():</span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span>:</span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 1. 获取参数</span></span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>        input_data <span class="op">=</span> get_input()</span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a>        params <span class="op">=</span> input_data.get(<span class="st">&#39;params&#39;</span>, {})</span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a>        context <span class="op">=</span> input_data.get(<span class="st">&#39;context&#39;</span>, {})</span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 2. 验证参数</span></span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a>        validate_params(params)</span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb24-32"><a href="#cb24-32" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 3. 执行技能逻辑</span></span>
+<span id="cb24-33"><a href="#cb24-33" aria-hidden="true" tabindex="-1"></a>        result <span class="op">=</span> execute(params, context)</span>
+<span id="cb24-34"><a href="#cb24-34" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb24-35"><a href="#cb24-35" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 4. 返回成功结果</span></span>
+<span id="cb24-36"><a href="#cb24-36" aria-hidden="true" tabindex="-1"></a>        output_success(result)</span>
+<span id="cb24-37"><a href="#cb24-37" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb24-38"><a href="#cb24-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb24-39"><a href="#cb24-39" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 5. 返回错误结果</span></span>
+<span id="cb24-40"><a href="#cb24-40" aria-hidden="true" tabindex="-1"></a>        output_error(e)</span>
+<span id="cb24-41"><a href="#cb24-41" aria-hidden="true" tabindex="-1"></a>        sys.exit(<span class="dv">1</span>)</span>
+<span id="cb24-42"><a href="#cb24-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-43"><a href="#cb24-43" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 辅助函数 ====================</span></span>
+<span id="cb24-44"><a href="#cb24-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-45"><a href="#cb24-45" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_input() <span class="op">-&gt;</span> Dict[<span class="bu">str</span>, Any]:</span>
+<span id="cb24-46"><a href="#cb24-46" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;获取输入参数&quot;&quot;&quot;</span></span>
+<span id="cb24-47"><a href="#cb24-47" aria-hidden="true" tabindex="-1"></a>    input_data <span class="op">=</span> {<span class="st">&#39;params&#39;</span>: {}, <span class="st">&#39;context&#39;</span>: {}}</span>
+<span id="cb24-48"><a href="#cb24-48" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-49"><a href="#cb24-49" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 从环境变量获取</span></span>
+<span id="cb24-50"><a href="#cb24-50" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="st">&#39;BAIZE_PARAMS&#39;</span> <span class="kw">in</span> os.environ:</span>
+<span id="cb24-51"><a href="#cb24-51" aria-hidden="true" tabindex="-1"></a>        <span class="cf">try</span>:</span>
+<span id="cb24-52"><a href="#cb24-52" aria-hidden="true" tabindex="-1"></a>            input_data <span class="op">=</span> json.loads(os.environ[<span class="st">&#39;BAIZE_PARAMS&#39;</span>])</span>
+<span id="cb24-53"><a href="#cb24-53" aria-hidden="true" tabindex="-1"></a>        <span class="cf">except</span> json.JSONDecodeError:</span>
+<span id="cb24-54"><a href="#cb24-54" aria-hidden="true" tabindex="-1"></a>            <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">&#39;参数解析失败&#39;</span>)</span>
+<span id="cb24-55"><a href="#cb24-55" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-56"><a href="#cb24-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> input_data</span>
+<span id="cb24-57"><a href="#cb24-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-58"><a href="#cb24-58" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> validate_params(params: Dict[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb24-59"><a href="#cb24-59" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;验证参数&quot;&quot;&quot;</span></span>
+<span id="cb24-60"><a href="#cb24-60" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 检查必需参数</span></span>
+<span id="cb24-61"><a href="#cb24-61" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="st">&#39;required_param&#39;</span> <span class="kw">not</span> <span class="kw">in</span> params:</span>
+<span id="cb24-62"><a href="#cb24-62" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">&#39;缺少必需参数: required_param&#39;</span>)</span>
+<span id="cb24-63"><a href="#cb24-63" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-64"><a href="#cb24-64" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 检查参数类型</span></span>
+<span id="cb24-65"><a href="#cb24-65" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> <span class="bu">isinstance</span>(params[<span class="st">&#39;required_param&#39;</span>], <span class="bu">str</span>):</span>
+<span id="cb24-66"><a href="#cb24-66" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> <span class="pp">TypeError</span>(<span class="st">&#39;参数类型错误: required_param 应为字符串&#39;</span>)</span>
+<span id="cb24-67"><a href="#cb24-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-68"><a href="#cb24-68" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> execute(params: Dict[<span class="bu">str</span>, Any], context: Dict[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> Dict[<span class="bu">str</span>, Any]:</span>
+<span id="cb24-69"><a href="#cb24-69" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;执行技能逻辑&quot;&quot;&quot;</span></span>
+<span id="cb24-70"><a href="#cb24-70" aria-hidden="true" tabindex="-1"></a>    required_param <span class="op">=</span> params[<span class="st">&#39;required_param&#39;</span>]</span>
+<span id="cb24-71"><a href="#cb24-71" aria-hidden="true" tabindex="-1"></a>    optional_param <span class="op">=</span> params.get(<span class="st">&#39;optional_param&#39;</span>, <span class="st">&#39;default&#39;</span>)</span>
+<span id="cb24-72"><a href="#cb24-72" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-73"><a href="#cb24-73" aria-hidden="true" tabindex="-1"></a>    <span class="co"># </span><span class="al">TODO</span><span class="co">: 实现技能逻辑</span></span>
+<span id="cb24-74"><a href="#cb24-74" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-75"><a href="#cb24-75" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {</span>
+<span id="cb24-76"><a href="#cb24-76" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;result&#39;</span>: <span class="st">&#39;done&#39;</span>,</span>
+<span id="cb24-77"><a href="#cb24-77" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 其他返回数据...</span></span>
+<span id="cb24-78"><a href="#cb24-78" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb24-79"><a href="#cb24-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-80"><a href="#cb24-80" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> output_success(data: Dict[<span class="bu">str</span>, Any], message: <span class="bu">str</span> <span class="op">=</span> <span class="st">&#39;执行成功&#39;</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb24-81"><a href="#cb24-81" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;输出成功结果&quot;&quot;&quot;</span></span>
+<span id="cb24-82"><a href="#cb24-82" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(json.dumps({</span>
+<span id="cb24-83"><a href="#cb24-83" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;success&#39;</span>: <span class="va">True</span>,</span>
+<span id="cb24-84"><a href="#cb24-84" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;data&#39;</span>: data,</span>
+<span id="cb24-85"><a href="#cb24-85" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;message&#39;</span>: message,</span>
+<span id="cb24-86"><a href="#cb24-86" aria-hidden="true" tabindex="-1"></a>    }, ensure_ascii<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb24-87"><a href="#cb24-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-88"><a href="#cb24-88" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> output_error(error: <span class="pp">Exception</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb24-89"><a href="#cb24-89" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;输出错误结果&quot;&quot;&quot;</span></span>
+<span id="cb24-90"><a href="#cb24-90" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(json.dumps({</span>
+<span id="cb24-91"><a href="#cb24-91" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;success&#39;</span>: <span class="va">False</span>,</span>
+<span id="cb24-92"><a href="#cb24-92" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;error&#39;</span>: <span class="bu">str</span>(error),</span>
+<span id="cb24-93"><a href="#cb24-93" aria-hidden="true" tabindex="-1"></a>    }, ensure_ascii<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb24-94"><a href="#cb24-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-95"><a href="#cb24-95" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 执行 ====================</span></span>
+<span id="cb24-96"><a href="#cb24-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-97"><a href="#cb24-97" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">__name__</span> <span class="op">==</span> <span class="st">&#39;__main__&#39;</span>:</span>
+<span id="cb24-98"><a href="#cb24-98" aria-hidden="true" tabindex="-1"></a>    main()</span></code></pre></div>
+<h3 id="shell-模板">4.3 Shell 模板</h3>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 技能名称 - Shell实现</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 功能描述</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="bu">set</span> <span class="at">-e</span>  <span class="co"># 遇错退出</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 配置 ====================</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a><span class="va">TIMEOUT</span><span class="op">=</span>30</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a><span class="va">MAX_RETRIES</span><span class="op">=</span>3</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 主函数 ====================</span></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a><span class="fu">main()</span> <span class="kw">{</span></span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. 获取参数</span></span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">input</span><span class="op">=</span><span class="st">&quot;</span><span class="va">${BAIZE_PARAMS</span><span class="op">:-</span><span class="va">}</span><span class="st">&quot;</span></span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">params</span><span class="op">=</span><span class="st">&quot;&quot;</span></span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">[[</span> <span class="ot">-n</span> <span class="st">&quot;</span><span class="va">$input</span><span class="st">&quot;</span> <span class="kw">]];</span> <span class="cf">then</span></span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>        <span class="va">params</span><span class="op">=</span><span class="va">$(</span><span class="bu">echo</span> <span class="st">&quot;</span><span class="va">$input</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="ex">jq</span> <span class="at">-r</span> <span class="st">&#39;.params&#39;</span><span class="va">)</span></span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">fi</span></span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. 验证参数</span></span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">[[</span> <span class="ot">-z</span> <span class="st">&quot;</span><span class="va">$(</span><span class="bu">echo</span> <span class="st">&quot;</span><span class="va">$params</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="ex">jq</span> <span class="at">-r</span> <span class="st">&#39;.required_param // empty&#39;</span><span class="va">)</span><span class="st">&quot;</span> <span class="kw">]];</span> <span class="cf">then</span></span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>        <span class="ex">output_error</span> <span class="st">&quot;缺少必需参数: required_param&quot;</span></span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>        <span class="bu">exit</span> 1</span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">fi</span></span>
+<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 3. 执行技能逻辑</span></span>
+<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">result</span></span>
+<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a>    <span class="va">result</span><span class="op">=</span><span class="va">$(</span><span class="ex">execute</span> <span class="st">&quot;</span><span class="va">$params</span><span class="st">&quot;</span><span class="va">)</span></span>
+<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 4. 返回成功结果</span></span>
+<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a>    <span class="ex">output_success</span> <span class="st">&quot;</span><span class="va">$result</span><span class="st">&quot;</span></span>
+<span id="cb25-38"><a href="#cb25-38" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb25-39"><a href="#cb25-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-40"><a href="#cb25-40" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 辅助函数 ====================</span></span>
+<span id="cb25-41"><a href="#cb25-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-42"><a href="#cb25-42" aria-hidden="true" tabindex="-1"></a><span class="fu">execute()</span> <span class="kw">{</span></span>
+<span id="cb25-43"><a href="#cb25-43" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">params</span><span class="op">=</span><span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span></span>
+<span id="cb25-44"><a href="#cb25-44" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">required_param</span><span class="op">=</span><span class="va">$(</span><span class="bu">echo</span> <span class="st">&quot;</span><span class="va">$params</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="ex">jq</span> <span class="at">-r</span> <span class="st">&#39;.required_param&#39;</span><span class="va">)</span></span>
+<span id="cb25-45"><a href="#cb25-45" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb25-46"><a href="#cb25-46" aria-hidden="true" tabindex="-1"></a>    <span class="co"># </span><span class="al">TODO</span><span class="co">: 实现技能逻辑</span></span>
+<span id="cb25-47"><a href="#cb25-47" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb25-48"><a href="#cb25-48" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&#39;{&quot;result&quot;: &quot;done&quot;}&#39;</span></span>
+<span id="cb25-49"><a href="#cb25-49" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb25-50"><a href="#cb25-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-51"><a href="#cb25-51" aria-hidden="true" tabindex="-1"></a><span class="fu">output_success()</span> <span class="kw">{</span></span>
+<span id="cb25-52"><a href="#cb25-52" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">data</span><span class="op">=</span><span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span></span>
+<span id="cb25-53"><a href="#cb25-53" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&quot;{</span><span class="dt">\&quot;</span><span class="st">success</span><span class="dt">\&quot;</span><span class="st">: true, </span><span class="dt">\&quot;</span><span class="st">data</span><span class="dt">\&quot;</span><span class="st">: </span><span class="va">$data</span><span class="st">, </span><span class="dt">\&quot;</span><span class="st">message</span><span class="dt">\&quot;</span><span class="st">: </span><span class="dt">\&quot;</span><span class="st">执行成功</span><span class="dt">\&quot;</span><span class="st">}&quot;</span></span>
+<span id="cb25-54"><a href="#cb25-54" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb25-55"><a href="#cb25-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-56"><a href="#cb25-56" aria-hidden="true" tabindex="-1"></a><span class="fu">output_error()</span> <span class="kw">{</span></span>
+<span id="cb25-57"><a href="#cb25-57" aria-hidden="true" tabindex="-1"></a>    <span class="bu">local</span> <span class="va">error</span><span class="op">=</span><span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span></span>
+<span id="cb25-58"><a href="#cb25-58" aria-hidden="true" tabindex="-1"></a>    <span class="bu">echo</span> <span class="st">&quot;{</span><span class="dt">\&quot;</span><span class="st">success</span><span class="dt">\&quot;</span><span class="st">: false, </span><span class="dt">\&quot;</span><span class="st">error</span><span class="dt">\&quot;</span><span class="st">: </span><span class="dt">\&quot;</span><span class="va">$error</span><span class="dt">\&quot;</span><span class="st">}&quot;</span></span>
+<span id="cb25-59"><a href="#cb25-59" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb25-60"><a href="#cb25-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-61"><a href="#cb25-61" aria-hidden="true" tabindex="-1"></a><span class="co"># ==================== 执行 ====================</span></span>
+<span id="cb25-62"><a href="#cb25-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-63"><a href="#cb25-63" aria-hidden="true" tabindex="-1"></a><span class="ex">main</span> <span class="st">&quot;</span><span class="va">$@</span><span class="st">&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="技能调试">5. 技能调试</h2>
+<h3 id="直接测试">5.1 直接测试</h3>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># JavaScript 技能</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;{&quot;params&quot;:{&quot;param1&quot;:&quot;value1&quot;}}&#39;</span> <span class="kw">|</span> <span class="ex">node</span> skills/my_skill/main.js</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Python 技能</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;{&quot;params&quot;:{&quot;param1&quot;:&quot;value1&quot;}}&#39;</span> <span class="kw">|</span> <span class="ex">python3</span> skills/my_skill/main.py</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Shell 技能</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="va">BAIZE_PARAMS</span><span class="op">=</span><span class="st">&#39;{&quot;params&quot;:{&quot;param1&quot;:&quot;value1&quot;}}&#39;</span> <span class="fu">bash</span> skills/my_skill/run.sh</span></code></pre></div>
+<h3 id="使用环境变量测试">5.2 使用环境变量测试</h3>
+<div class="sourceCode" id="cb27"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 设置环境变量</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">BAIZE_PARAMS</span><span class="op">=</span><span class="st">&#39;{&quot;params&quot;:{&quot;param1&quot;:&quot;value1&quot;},&quot;context&quot;:{&quot;userId&quot;:&quot;test&quot;}}&#39;</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 运行技能</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> skills/my_skill/main.js</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看输出</span></span></code></pre></div>
+<h3 id="在白泽系统中测试">5.3 在白泽系统中测试</h3>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 启动白泽</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> start</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 输入触发技能的消息</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="ex">你:</span> 帮我查询天气</span></code></pre></div>
+<h3 id="查看日志">5.4 查看日志</h3>
+<div class="sourceCode" id="cb29"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看技能执行日志</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span> <span class="at">-f</span> logs/baize.log <span class="kw">|</span> <span class="fu">grep</span> <span class="st">&quot;my_skill&quot;</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看错误日志</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="fu">grep</span> <span class="st">&quot;ERROR&quot;</span> logs/baize.log <span class="kw">|</span> <span class="fu">grep</span> <span class="st">&quot;my_skill&quot;</span></span></code></pre></div>
+<h3 id="调试技巧">5.5 调试技巧</h3>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 在技能中添加调试输出（输出到 stderr）</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="st">&#39;调试信息:&#39;</span><span class="op">,</span> params)<span class="op">;</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="co">// 使用 try-catch 捕获详细错误</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> {</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>} <span class="cf">catch</span> (error) {</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="st">&#39;详细错误:&#39;</span><span class="op">,</span> error<span class="op">.</span><span class="at">stack</span>)<span class="op">;</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">throw</span> error<span class="op">;</span></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<hr />
+<h2 id="技能发布">6. 技能发布</h2>
+<h3 id="发布前检查清单">6.1 发布前检查清单</h3>
+<ul class="task-list">
+<li><label><input type="checkbox" />SKILL.md 完整且格式正确</label></li>
+<li><label><input type="checkbox" />实现文件存在且可执行</label></li>
+<li><label><input type="checkbox" />参数验证完整</label></li>
+<li><label><input type="checkbox" />错误处理完善</label></li>
+<li><label><input type="checkbox" />测试通过</label></li>
+<li><label><input type="checkbox" />文档完整</label></li>
+</ul>
+<h3 id="本地测试">6.2 本地测试</h3>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. 检查文件结构</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-la</span> skills/my_skill/</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. 检查 SKILL.md 格式</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> skills/my_skill/SKILL.md</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. 测试技能执行</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;{&quot;params&quot;:{...}}&#39;</span> <span class="kw">|</span> <span class="ex">node</span> skills/my_skill/main.js</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. 在白泽中测试</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> start</span></code></pre></div>
+<h3 id="发布到技能市场">6.3 发布到技能市场</h3>
+<h4 id="方式1-提交到官方仓库">方式1: 提交到官方仓库</h4>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Fork 官方技能仓库</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/baize-ai/skills.git</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> skills</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. 添加技能</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> <span class="at">-r</span> /path/to/my_skill ./</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. 提交 PR</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add my_skill</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat: 添加 my_skill 技能&quot;</span></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push origin main</span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 然后在 GitHub 上创建 Pull Request</span></span></code></pre></div>
+<h4 id="方式2-自建技能仓库">方式2: 自建技能仓库</h4>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># config/evolution.yaml</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">skillMarket</span><span class="kw">:</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">enabled</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">repositories</span><span class="kw">:</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;官方市场&quot;</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">url</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://market.baize.ai&quot;</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;私有市场&quot;</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">url</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://your-market.example.com&quot;</span></span></code></pre></div>
+<h3 id="技能市场要求">6.4 技能市场要求</h3>
+<table>
+<thead>
+<tr class="header">
+<th>要求</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>格式规范</td>
+<td>SKILL.md 格式正确</td>
+</tr>
+<tr class="even">
+<td>安全检查</td>
+<td>无危险代码</td>
+</tr>
+<tr class="odd">
+<td>功能完整</td>
+<td>能正常执行</td>
+</tr>
+<tr class="even">
+<td>文档完整</td>
+<td>有使用说明</td>
+</tr>
+<tr class="odd">
+<td>测试覆盖</td>
+<td>有基本测试</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="最佳实践">7. 最佳实践</h2>
+<h3 id="参数设计">7.1 参数设计</h3>
+<div class="sourceCode" id="cb34"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 好的参数设计</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">params</span><span class="kw">:</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">action</span><span class="kw">:</span><span class="at"> read</span><span class="co">        # 动作类型</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">path</span><span class="kw">:</span><span class="at"> /path/to/file</span><span class="co"> # 文件路径</span></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">encoding</span><span class="kw">:</span><span class="at"> utf-8</span><span class="co">     # 可选参数有默认值</span></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 不好的参数设计</span></span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a><span class="fu">params</span><span class="kw">:</span></span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">p1</span><span class="kw">:</span><span class="at"> xxx</span><span class="co">  # 参数名不清晰</span></span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">p2</span><span class="kw">:</span><span class="at"> xxx</span><span class="co">  # 没有默认值</span></span></code></pre></div>
+<h3 id="错误处理">7.2 错误处理</h3>
+<div class="sourceCode" id="cb35"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 好的错误处理</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> {</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> result <span class="op">=</span> <span class="fu">doSomething</span>()<span class="op">;</span></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> result<span class="op">;</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>} <span class="cf">catch</span> (error) {</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (error<span class="op">.</span><span class="at">code</span> <span class="op">===</span> <span class="st">&#39;ENOENT&#39;</span>) {</span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;文件不存在，请检查路径&#39;</span>)<span class="op">;</span></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (error<span class="op">.</span><span class="at">code</span> <span class="op">===</span> <span class="st">&#39;EACCES&#39;</span>) {</span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;没有权限访问该文件&#39;</span>)<span class="op">;</span></span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="vs">`操作失败: </span><span class="sc">${</span>error<span class="op">.</span><span class="at">message</span><span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a><span class="co">// 不好的错误处理</span></span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> {</span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a>} <span class="cf">catch</span> (error) {</span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">throw</span> error<span class="op">;</span>  <span class="co">// 直接抛出，用户看不懂</span></span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="性能优化">7.3 性能优化</h3>
+<div class="sourceCode" id="cb36"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 好的做法：设置超时</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> controller <span class="op">=</span> <span class="kw">new</span> <span class="fu">AbortController</span>()<span class="op">;</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> timeout <span class="op">=</span> <span class="pp">setTimeout</span>(() <span class="kw">=&gt;</span> controller<span class="op">.</span><span class="fu">abort</span>()<span class="op">,</span> <span class="dv">30000</span>)<span class="op">;</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> {</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> <span class="fu">fetch</span>(url<span class="op">,</span> { <span class="dt">signal</span><span class="op">:</span> controller<span class="op">.</span><span class="at">signal</span> })<span class="op">;</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>} <span class="cf">finally</span> {</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>  <span class="pp">clearTimeout</span>(timeout)<span class="op">;</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a><span class="co">// 好的做法：批量处理</span></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> results <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (<span class="kw">const</span> item <span class="kw">of</span> items) {</span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>  results<span class="op">.</span><span class="fu">push</span>(<span class="fu">processItem</span>(item))<span class="op">;</span></span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a><span class="cf">return</span> results<span class="op">;</span></span></code></pre></div>
+<h3 id="安全考虑">7.4 安全考虑</h3>
+<div class="sourceCode" id="cb37"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 好的做法：验证路径</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">safePath</span>(basePath<span class="op">,</span> userPath) {</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> resolved <span class="op">=</span> path<span class="op">.</span><span class="fu">resolve</span>(basePath<span class="op">,</span> userPath)<span class="op">;</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span>resolved<span class="op">.</span><span class="fu">startsWith</span>(basePath)) {</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;非法路径&#39;</span>)<span class="op">;</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> resolved<span class="op">;</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a><span class="co">// 好的做法：限制操作范围</span></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> ALLOWED_DIRS <span class="op">=</span> [<span class="st">&#39;/tmp&#39;</span><span class="op">,</span> <span class="st">&#39;/home/user/data&#39;</span>]<span class="op">;</span></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">isAllowed</span>(filePath) {</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> ALLOWED_DIRS<span class="op">.</span><span class="fu">some</span>(dir <span class="kw">=&gt;</span> filePath<span class="op">.</span><span class="fu">startsWith</span>(dir))<span class="op">;</span></span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="日志记录">7.5 日志记录</h3>
+<div class="sourceCode" id="cb38"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 好的做法：记录关键信息</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="vs">`[</span><span class="sc">${</span><span class="kw">new</span> <span class="bu">Date</span>()<span class="op">.</span><span class="fu">toISOString</span>()<span class="sc">}</span><span class="vs">] 开始执行: </span><span class="sc">${</span>params<span class="op">.</span><span class="at">action</span><span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="vs">`[</span><span class="sc">${</span><span class="kw">new</span> <span class="bu">Date</span>()<span class="op">.</span><span class="fu">toISOString</span>()<span class="sc">}</span><span class="vs">] 执行完成, 耗时: </span><span class="sc">${</span>duration<span class="sc">}</span><span class="vs">ms`</span>)<span class="op">;</span></span></code></pre></div>
+<hr />
+<h2 id="示例技能">8. 示例技能</h2>
+<h3 id="天气查询技能">8.1 天气查询技能</h3>
+<p><strong>SKILL.md</strong>:</p>
+<div class="sourceCode" id="cb39"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> weather</span></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a><span class="an">version:</span><span class="co"> 1.0.0</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 天气查询技能，支持国内外城市天气</span></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span></span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a><span class="co">  - weather</span></span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="co">  - forecast</span></span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a><span class="co">  - temperature</span></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low</span></span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> baize-team</span></span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a><span class="fu"># 天气查询技能</span></span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a><span class="fu">## 功能说明</span></span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>查询指定城市的天气信息</span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参数说明</span></span>
+<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 参数 <span class="pp">|</span> 类型 <span class="pp">|</span> 必填 <span class="pp">|</span> 说明 <span class="pp">|</span></span>
+<span id="cb39-20"><a href="#cb39-20" aria-hidden="true" tabindex="-1"></a><span class="pp">|-----|------|------|------|</span></span>
+<span id="cb39-21"><a href="#cb39-21" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> city <span class="pp">|</span> string <span class="pp">|</span> 是 <span class="pp">|</span> 城市名称 <span class="pp">|</span></span>
+<span id="cb39-22"><a href="#cb39-22" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> days <span class="pp">|</span> number <span class="pp">|</span> 否 <span class="pp">|</span> 预报天数，默认1 <span class="pp">|</span></span>
+<span id="cb39-23"><a href="#cb39-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-24"><a href="#cb39-24" aria-hidden="true" tabindex="-1"></a><span class="fu">## 使用示例</span></span>
+<span id="cb39-25"><a href="#cb39-25" aria-hidden="true" tabindex="-1"></a>用户说: &quot;北京天气怎么样&quot;</span>
+<span id="cb39-26"><a href="#cb39-26" aria-hidden="true" tabindex="-1"></a>系统调用: weather</span></code></pre></div>
+<p><strong>main.js</strong>:</p>
+<div class="sourceCode" id="cb40"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env node</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a><span class="co">/**</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a><span class="co"> * 天气查询技能</span></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> https <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;https&#39;</span>)<span class="op">;</span></span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">main</span>() {</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span> <span class="op">||</span> <span class="st">&#39;{}&#39;</span>)<span class="op">;</span></span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> { city<span class="op">,</span> days <span class="op">=</span> <span class="dv">1</span> } <span class="op">=</span> input<span class="op">.</span><span class="at">params</span> <span class="op">||</span> {}<span class="op">;</span></span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span>city) {</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>      <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;请指定城市名称&#39;</span>)<span class="op">;</span></span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb40-17"><a href="#cb40-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 模拟天气查询（实际应调用天气API）</span></span>
+<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> weather <span class="op">=</span> {</span>
+<span id="cb40-19"><a href="#cb40-19" aria-hidden="true" tabindex="-1"></a>      city<span class="op">,</span></span>
+<span id="cb40-20"><a href="#cb40-20" aria-hidden="true" tabindex="-1"></a>      <span class="dt">temperature</span><span class="op">:</span> <span class="st">&#39;25°C&#39;</span><span class="op">,</span></span>
+<span id="cb40-21"><a href="#cb40-21" aria-hidden="true" tabindex="-1"></a>      <span class="dt">condition</span><span class="op">:</span> <span class="st">&#39;晴&#39;</span><span class="op">,</span></span>
+<span id="cb40-22"><a href="#cb40-22" aria-hidden="true" tabindex="-1"></a>      <span class="dt">humidity</span><span class="op">:</span> <span class="st">&#39;60%&#39;</span><span class="op">,</span></span>
+<span id="cb40-23"><a href="#cb40-23" aria-hidden="true" tabindex="-1"></a>      <span class="dt">forecast</span><span class="op">:</span> [</span>
+<span id="cb40-24"><a href="#cb40-24" aria-hidden="true" tabindex="-1"></a>        { <span class="dt">date</span><span class="op">:</span> <span class="st">&#39;今天&#39;</span><span class="op">,</span> <span class="dt">temp</span><span class="op">:</span> <span class="st">&#39;25°C&#39;</span><span class="op">,</span> <span class="dt">condition</span><span class="op">:</span> <span class="st">&#39;晴&#39;</span> }<span class="op">,</span></span>
+<span id="cb40-25"><a href="#cb40-25" aria-hidden="true" tabindex="-1"></a>        { <span class="dt">date</span><span class="op">:</span> <span class="st">&#39;明天&#39;</span><span class="op">,</span> <span class="dt">temp</span><span class="op">:</span> <span class="st">&#39;23°C&#39;</span><span class="op">,</span> <span class="dt">condition</span><span class="op">:</span> <span class="st">&#39;多云&#39;</span> }<span class="op">,</span></span>
+<span id="cb40-26"><a href="#cb40-26" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb40-27"><a href="#cb40-27" aria-hidden="true" tabindex="-1"></a>    }<span class="op">;</span></span>
+<span id="cb40-28"><a href="#cb40-28" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb40-29"><a href="#cb40-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb40-30"><a href="#cb40-30" aria-hidden="true" tabindex="-1"></a>      <span class="dt">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb40-31"><a href="#cb40-31" aria-hidden="true" tabindex="-1"></a>      <span class="dt">data</span><span class="op">:</span> weather<span class="op">,</span></span>
+<span id="cb40-32"><a href="#cb40-32" aria-hidden="true" tabindex="-1"></a>      <span class="dt">message</span><span class="op">:</span> <span class="vs">`</span><span class="sc">${</span>city<span class="sc">}</span><span class="vs">今天</span><span class="sc">${</span>weather<span class="op">.</span><span class="at">condition</span><span class="sc">}</span><span class="vs">，气温</span><span class="sc">${</span>weather<span class="op">.</span><span class="at">temperature</span><span class="sc">}</span><span class="vs">`</span></span>
+<span id="cb40-33"><a href="#cb40-33" aria-hidden="true" tabindex="-1"></a>    }))<span class="op">;</span></span>
+<span id="cb40-34"><a href="#cb40-34" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb40-35"><a href="#cb40-35" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb40-36"><a href="#cb40-36" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb40-37"><a href="#cb40-37" aria-hidden="true" tabindex="-1"></a>      <span class="dt">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb40-38"><a href="#cb40-38" aria-hidden="true" tabindex="-1"></a>      <span class="dt">error</span><span class="op">:</span> error<span class="op">.</span><span class="at">message</span></span>
+<span id="cb40-39"><a href="#cb40-39" aria-hidden="true" tabindex="-1"></a>    }))<span class="op">;</span></span>
+<span id="cb40-40"><a href="#cb40-40" aria-hidden="true" tabindex="-1"></a>    <span class="bu">process</span><span class="op">.</span><span class="fu">exit</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb40-41"><a href="#cb40-41" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb40-42"><a href="#cb40-42" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb40-43"><a href="#cb40-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-44"><a href="#cb40-44" aria-hidden="true" tabindex="-1"></a><span class="fu">main</span>()<span class="op">;</span></span></code></pre></div>
+<h3 id="计算器技能">8.2 计算器技能</h3>
+<p><strong>SKILL.md</strong>:</p>
+<div class="sourceCode" id="cb41"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> calculator</span></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="an">version:</span><span class="co"> 1.0.0</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 数学计算技能</span></span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="co">  - calculate</span></span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a><span class="co">  - math</span></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a><span class="co">  - compute</span></span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low</span></span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a><span class="fu"># 计算器技能</span></span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参数说明</span></span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 参数 <span class="pp">|</span> 类型 <span class="pp">|</span> 必填 <span class="pp">|</span> 说明 <span class="pp">|</span></span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a><span class="pp">|-----|------|------|------|</span></span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> expression <span class="pp">|</span> string <span class="pp">|</span> 是 <span class="pp">|</span> 数学表达式 <span class="pp">|</span></span></code></pre></div>
+<p><strong>main.js</strong>:</p>
+<div class="sourceCode" id="cb42"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env node</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">main</span>() {</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> input <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">parse</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">BAIZE_PARAMS</span> <span class="op">||</span> <span class="st">&#39;{}&#39;</span>)<span class="op">;</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> { expression } <span class="op">=</span> input<span class="op">.</span><span class="at">params</span> <span class="op">||</span> {}<span class="op">;</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span>expression) {</span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>      <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;请提供计算表达式&#39;</span>)<span class="op">;</span></span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 安全计算（仅允许数字和基本运算符）</span></span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span><span class="ss">/</span><span class="sc">^[\d\s+\-*/().]+$</span><span class="ss">/</span><span class="op">.</span><span class="fu">test</span>(expression)) {</span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a>      <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="st">&#39;表达式包含非法字符&#39;</span>)<span class="op">;</span></span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb42-17"><a href="#cb42-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> result <span class="op">=</span> <span class="pp">eval</span>(expression)<span class="op">;</span></span>
+<span id="cb42-18"><a href="#cb42-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb42-19"><a href="#cb42-19" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb42-20"><a href="#cb42-20" aria-hidden="true" tabindex="-1"></a>      <span class="dt">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb42-21"><a href="#cb42-21" aria-hidden="true" tabindex="-1"></a>      <span class="dt">data</span><span class="op">:</span> { expression<span class="op">,</span> result }<span class="op">,</span></span>
+<span id="cb42-22"><a href="#cb42-22" aria-hidden="true" tabindex="-1"></a>      <span class="dt">message</span><span class="op">:</span> <span class="vs">`</span><span class="sc">${</span>expression<span class="sc">}</span><span class="vs"> = </span><span class="sc">${</span>result<span class="sc">}</span><span class="vs">`</span></span>
+<span id="cb42-23"><a href="#cb42-23" aria-hidden="true" tabindex="-1"></a>    }))<span class="op">;</span></span>
+<span id="cb42-24"><a href="#cb42-24" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb42-25"><a href="#cb42-25" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb42-26"><a href="#cb42-26" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({</span>
+<span id="cb42-27"><a href="#cb42-27" aria-hidden="true" tabindex="-1"></a>      <span class="dt">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb42-28"><a href="#cb42-28" aria-hidden="true" tabindex="-1"></a>      <span class="dt">error</span><span class="op">:</span> <span class="vs">`计算错误: </span><span class="sc">${</span>error<span class="op">.</span><span class="at">message</span><span class="sc">}</span><span class="vs">`</span></span>
+<span id="cb42-29"><a href="#cb42-29" aria-hidden="true" tabindex="-1"></a>    }))<span class="op">;</span></span>
+<span id="cb42-30"><a href="#cb42-30" aria-hidden="true" tabindex="-1"></a>    <span class="bu">process</span><span class="op">.</span><span class="fu">exit</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb42-31"><a href="#cb42-31" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb42-32"><a href="#cb42-32" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb42-33"><a href="#cb42-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-34"><a href="#cb42-34" aria-hidden="true" tabindex="-1"></a><span class="fu">main</span>()<span class="op">;</span></span></code></pre></div>
+<h3 id="翻译技能">8.3 翻译技能</h3>
+<p><strong>SKILL.md</strong>:</p>
+<div class="sourceCode" id="cb43"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="an">name:</span><span class="co"> translate</span></span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a><span class="an">version:</span><span class="co"> 1.0.0</span></span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> 多语言翻译技能</span></span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a><span class="an">capabilities:</span></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a><span class="co">  - translate</span></span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a><span class="co">  - language</span></span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a><span class="an">risk_level:</span><span class="co"> low</span></span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true" tabindex="-1"></a><span class="fu"># 翻译技能</span></span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-13"><a href="#cb43-13" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参数说明</span></span>
+<span id="cb43-14"><a href="#cb43-14" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 参数 <span class="pp">|</span> 类型 <span class="pp">|</span> 必填 <span class="pp">|</span> 说明 <span class="pp">|</span></span>
+<span id="cb43-15"><a href="#cb43-15" aria-hidden="true" tabindex="-1"></a><span class="pp">|-----|------|------|------|</span></span>
+<span id="cb43-16"><a href="#cb43-16" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> text <span class="pp">|</span> string <span class="pp">|</span> 是 <span class="pp">|</span> 要翻译的文本 <span class="pp">|</span></span>
+<span id="cb43-17"><a href="#cb43-17" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> from <span class="pp">|</span> string <span class="pp">|</span> 否 <span class="pp">|</span> 源语言，默认自动检测 <span class="pp">|</span></span>
+<span id="cb43-18"><a href="#cb43-18" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> to <span class="pp">|</span> string <span class="pp">|</span> 否 <span class="pp">|</span> 目标语言，默认中文 <span class="pp">|</span></span></code></pre></div>
+<p><strong>main.py</strong>:</p>
+<div class="sourceCode" id="cb44"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env python3</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="co">&quot;&quot;&quot;翻译技能&quot;&quot;&quot;</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> main():</span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span>:</span>
+<span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a>        input_data <span class="op">=</span> json.loads(os.environ.get(<span class="st">&#39;BAIZE_PARAMS&#39;</span>, <span class="st">&#39;</span><span class="sc">{}</span><span class="st">&#39;</span>))</span>
+<span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a>        params <span class="op">=</span> input_data.get(<span class="st">&#39;params&#39;</span>, {})</span>
+<span id="cb44-12"><a href="#cb44-12" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb44-13"><a href="#cb44-13" aria-hidden="true" tabindex="-1"></a>        text <span class="op">=</span> params.get(<span class="st">&#39;text&#39;</span>)</span>
+<span id="cb44-14"><a href="#cb44-14" aria-hidden="true" tabindex="-1"></a>        from_lang <span class="op">=</span> params.get(<span class="st">&#39;from&#39;</span>, <span class="st">&#39;auto&#39;</span>)</span>
+<span id="cb44-15"><a href="#cb44-15" aria-hidden="true" tabindex="-1"></a>        to_lang <span class="op">=</span> params.get(<span class="st">&#39;to&#39;</span>, <span class="st">&#39;zh&#39;</span>)</span>
+<span id="cb44-16"><a href="#cb44-16" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb44-17"><a href="#cb44-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">not</span> text:</span>
+<span id="cb44-18"><a href="#cb44-18" aria-hidden="true" tabindex="-1"></a>            <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">&#39;请提供要翻译的文本&#39;</span>)</span>
+<span id="cb44-19"><a href="#cb44-19" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb44-20"><a href="#cb44-20" aria-hidden="true" tabindex="-1"></a>        <span class="co"># 模拟翻译（实际应调用翻译API）</span></span>
+<span id="cb44-21"><a href="#cb44-21" aria-hidden="true" tabindex="-1"></a>        translated <span class="op">=</span> <span class="ss">f&quot;[翻译结果] </span><span class="sc">{</span>text<span class="sc">}</span><span class="ss">&quot;</span></span>
+<span id="cb44-22"><a href="#cb44-22" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb44-23"><a href="#cb44-23" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(json.dumps({</span>
+<span id="cb44-24"><a href="#cb44-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;success&#39;</span>: <span class="va">True</span>,</span>
+<span id="cb44-25"><a href="#cb44-25" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;data&#39;</span>: {</span>
+<span id="cb44-26"><a href="#cb44-26" aria-hidden="true" tabindex="-1"></a>                <span class="st">&#39;original&#39;</span>: text,</span>
+<span id="cb44-27"><a href="#cb44-27" aria-hidden="true" tabindex="-1"></a>                <span class="st">&#39;translated&#39;</span>: translated,</span>
+<span id="cb44-28"><a href="#cb44-28" aria-hidden="true" tabindex="-1"></a>                <span class="st">&#39;from&#39;</span>: from_lang,</span>
+<span id="cb44-29"><a href="#cb44-29" aria-hidden="true" tabindex="-1"></a>                <span class="st">&#39;to&#39;</span>: to_lang</span>
+<span id="cb44-30"><a href="#cb44-30" aria-hidden="true" tabindex="-1"></a>            },</span>
+<span id="cb44-31"><a href="#cb44-31" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;message&#39;</span>: translated</span>
+<span id="cb44-32"><a href="#cb44-32" aria-hidden="true" tabindex="-1"></a>        }, ensure_ascii<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb44-33"><a href="#cb44-33" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb44-34"><a href="#cb44-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb44-35"><a href="#cb44-35" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(json.dumps({</span>
+<span id="cb44-36"><a href="#cb44-36" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;success&#39;</span>: <span class="va">False</span>,</span>
+<span id="cb44-37"><a href="#cb44-37" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;error&#39;</span>: <span class="bu">str</span>(e)</span>
+<span id="cb44-38"><a href="#cb44-38" aria-hidden="true" tabindex="-1"></a>        }, ensure_ascii<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb44-39"><a href="#cb44-39" aria-hidden="true" tabindex="-1"></a>        sys.exit(<span class="dv">1</span>)</span>
+<span id="cb44-40"><a href="#cb44-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-41"><a href="#cb44-41" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">__name__</span> <span class="op">==</span> <span class="st">&#39;__main__&#39;</span>:</span>
+<span id="cb44-42"><a href="#cb44-42" aria-hidden="true" tabindex="-1"></a>    main()</span></code></pre></div>
+<hr />
+<h2 id="附录">附录</h2>
+<h3 id="a.-技能开发检查清单">A. 技能开发检查清单</h3>
+<pre><code>□ SKILL.md
+  □ name 正确
+  □ version 正确
+  □ description 清晰
+  □ capabilities 完整
+  □ risk_level 正确
+  □ 参数说明完整
+
+□ 实现文件
+  □ 参数获取正确
+  □ 参数验证完整
+  □ 错误处理完善
+  □ 结果格式正确
+
+□ 测试
+  □ 正常情况测试
+  □ 异常情况测试
+  □ 边界情况测试
+
+□ 文档
+  □ 使用说明
+  □ 参数说明
+  □ 示例</code></pre>
+<h3 id="b.-常见错误">B. 常见错误</h3>
+<table>
+<thead>
+<tr class="header">
+<th>错误</th>
+<th>原因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>技能未加载</td>
+<td>SKILL.md格式错误</td>
+<td>检查YAML格式</td>
+</tr>
+<tr class="even">
+<td>参数为空</td>
+<td>未正确获取参数</td>
+<td>检查BAIZE_PARAMS</td>
+</tr>
+<tr class="odd">
+<td>输出无响应</td>
+<td>未输出到stdout</td>
+<td>使用console.log</td>
+</tr>
+<tr class="even">
+<td>编码错误</td>
+<td>文件编码问题</td>
+<td>使用UTF-8编码</td>
+</tr>
+</tbody>
+</table>
+<h3 id="c.-相关链接">C. 相关链接</h3>
+<ul>
+<li><a href="./DEVELOPMENT.md">开发文档</a></li>
+<li><a href="./API.md">API文档</a></li>
+<li><a href="./architecture.md">架构设计</a></li>
+</ul>
+</body>
+</html>

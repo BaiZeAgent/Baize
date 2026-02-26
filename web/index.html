@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白泽3.0 - 智能助手管理平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="shortcut icon" href="./logo.png" />
+</head>
+<body>
+    <div id="app">
+        <!-- 侧边栏 -->
+        <nav class="sidebar">
+            <div class="logo">
+                <img style="width: 22px; height: 22px; border-radius: 2px;" class="logo-icon" src="./logo.png" alt="">
+                <span class="logo-text">白泽3.0</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="chat">
+                    <span class="icon">💬</span>
+                    <span class="text">对话</span>
+                </li>
+                <li class="nav-item" data-page="skills">
+                    <span class="icon">🔧</span>
+                    <span class="text">技能</span>
+                </li>
+                <li class="nav-item" data-page="memory">
+                    <span class="icon">📝</span>
+                    <span class="text">记忆</span>
+                </li>
+                <li class="nav-item" data-page="cost">
+                    <span class="icon">💰</span>
+                    <span class="text">成本</span>
+                </li>
+                <li class="nav-item" data-page="config">
+                    <span class="icon">⚙️</span>
+                    <span class="text">配置</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="status" id="connection-status">
+                    <span class="status-dot offline"></span>
+                    <span class="status-text">未连接</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 对话页面 -->
+            <div id="page-chat" class="page active">
+                <div class="page-header">
+                    <h1>对话</h1>
+                    <button class="btn btn-secondary" id="clear-history-btn">清空历史</button>
+                </div>
+                <div class="chat-container">
+                    <div class="messages" id="messages">
+                        <div class="message assistant">
+                            <div class="message-content">
+                                你好！我是白泽，有什么可以帮助你的吗？
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-area">
+                        <textarea id="message-input" placeholder="输入消息... (Enter发送, Shift+Enter换行)" rows="1"></textarea>
+                        <button class="btn btn-primary" id="send-btn">发送</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技能页面 -->
+            <div id="page-skills" class="page">
+                <div class="page-header">
+                    <h1>技能管理</h1>
+                    <div class="header-actions">
+                        <input type="text" id="skill-search" placeholder="搜索技能..." class="input">
+                        <button class="btn btn-primary" id="refresh-skills-btn">刷新</button>
+                    </div>
+                </div>
+                <div class="skills-grid" id="skills-grid">
+                    <!-- 技能卡片将通过JS动态生成 -->
+                </div>
+            </div>
+
+            <!-- 记忆页面 -->
+            <div id="page-memory" class="page">
+                <div class="page-header">
+                    <h1>记忆管理</h1>
+                    <button class="btn btn-secondary" id="clear-memory-btn">清空记忆</button>
+                </div>
+                <div class="memory-stats" id="memory-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="memory-count">0</div>
+                        <div class="stat-label">记忆条数</div>
+                    </div>
+                </div>
+                <div class="memory-list" id="memory-list">
+                    <div class="empty-state">暂无记忆数据</div>
+                </div>
+            </div>
+
+            <!-- 成本页面 -->
+            <div id="page-cost" class="page">
+                <div class="page-header">
+                    <h1>成本管理</h1>
+                    <button class="btn btn-secondary" id="refresh-cost-btn">刷新</button>
+                </div>
+                <div class="cost-overview" id="cost-overview">
+                    <div class="stat-card">
+                        <div class="stat-value" id="today-cost">$0.00</div>
+                        <div class="stat-label">今日成本</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="today-requests">0</div>
+                        <div class="stat-label">今日请求</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="month-cost">$0.00</div>
+                        <div class="stat-label">本月成本</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="budget-remaining">$10.00</div>
+                        <div class="stat-label">剩余预算</div>
+                    </div>
+                </div>
+                <div class="cost-config">
+                    <h2>预算配置</h2>
+                    <div class="form-group">
+                        <label>每日预算 ($)</label>
+                        <input type="number" id="daily-budget" class="input" value="10" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>单任务预算 ($)</label>
+                        <input type="number" id="per-task-budget" class="input" value="0.5" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>告警阈值 (%)</label>
+                        <input type="number" id="alert-threshold" class="input" value="80">
+                    </div>
+                    <button class="btn btn-primary" id="save-cost-config-btn">保存配置</button>
+                </div>
+            </div>
+
+            <!-- 配置页面 -->
+            <div id="page-config" class="page">
+                <div class="page-header">
+                    <h1>系统配置</h1>
+                </div>
+                <div class="config-sections">
+                    <div class="config-section">
+                        <h2>API 配置</h2>
+                        <div class="form-group">
+                            <label>API 地址</label>
+                            <input type="text" id="api-url" class="input" value="http://localhost:3000">
+                        </div>
+                        <button class="btn btn-primary" id="save-api-config-btn">保存</button>
+                        <button class="btn btn-secondary" id="test-connection-btn">测试连接</button>
+                    </div>
+                    <div class="config-section">
+                        <h2>LLM 提供商</h2>
+                        <div id="llm-providers">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+                    <div class="config-section">
+                        <h2>关于</h2>
+                        <div class="about-info">
+                            <p><strong>白泽3.0</strong></p>
+                            <p>版本: <span id="version">3.0.2</span></p>
+                            <p>运行时间: <span id="uptime">-</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 模态框 -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">标题</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 脚本 -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/components/chat.js"></script>
+    <script src="js/components/skills.js"></script>
+    <script src="js/components/memory.js"></script>
+    <script src="js/components/cost.js"></script>
+    <script src="js/components/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

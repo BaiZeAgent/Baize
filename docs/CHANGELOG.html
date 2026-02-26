@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>白泽3.0 - CHANGELOG</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">白泽3.0 - CHANGELOG</h1>
+</header>
+<h1 id="白泽3.0-更新日志">白泽3.0 更新日志</h1>
+<p>本文档记录白泽3.0的所有重要变更。</p>
+<p>格式基于 <a href="https://keepachangelog.com/zh-CN/1.0.0/">Keep a
+Changelog</a>， 版本号遵循 <a
+href="https://semver.org/lang/zh-CN/">语义化版本</a>。</p>
+<hr />
+<h2 id="section">[3.0.2] - 2025-02-23</h2>
+<h3 id="新增">新增</h3>
+<h4 id="核心功能">核心功能</h4>
+<ul>
+<li><strong>上下文管理</strong> -
+Token预算管理、滑动窗口、上下文压缩</li>
+<li><strong>成本控制</strong> - 预算配置、成本追踪、告警机制</li>
+<li><strong>状态管理</strong> - Agent状态持久化、恢复机制</li>
+<li><strong>语义缓存</strong> - 基于语义相似度的缓存系统</li>
+</ul>
+<h4 id="自进化系统">自进化系统</h4>
+<ul>
+<li><strong>能力缺口检测</strong> - 自动检测系统缺失的能力</li>
+<li><strong>技能市场集成</strong> - 搜索、下载、安装技能</li>
+<li><strong>资源锁机制</strong> - 并发资源访问控制</li>
+<li><strong>记忆回滚</strong> - 记忆快照和恢复</li>
+</ul>
+<h4 id="思考引擎">思考引擎</h4>
+<ul>
+<li><strong>重规划机制</strong> - 动态调整执行计划</li>
+<li><strong>错误恢复</strong> - 指数退避重试策略</li>
+<li><strong>简单对话判断</strong> - 区分对话和任务</li>
+</ul>
+<h3 id="修复">修复</h3>
+<ul>
+<li>修复简单对话被错误拆解为任务的问题</li>
+<li>修复Windows下技能执行路径问题</li>
+<li>修复编码问题导致的乱码</li>
+</ul>
+<h3 id="变更">变更</h3>
+<ul>
+<li>优化Token预算分配策略</li>
+<li>改进思考过程日志输出</li>
+<li>完善类型定义</li>
+</ul>
+<h3 id="文档">文档</h3>
+<ul>
+<li>新增完整的架构设计文档</li>
+<li>新增开发文档</li>
+<li>新增API文档</li>
+<li>新增部署文档</li>
+</ul>
+<hr />
+<h2 id="section-1">[3.0.1] - 2025-02-23</h2>
+<h3 id="新增-1">新增</h3>
+<ul>
+<li>能力缺口检测设计</li>
+<li>技能市场集成设计</li>
+<li>用户确认策略</li>
+</ul>
+<h3 id="文档-1">文档</h3>
+<ul>
+<li>更新架构文档，新增第九章自进化系统内容</li>
+</ul>
+<hr />
+<h2 id="section-2">[3.0.0] - 2025-02-22</h2>
+<h3 id="新增-2">新增</h3>
+<h4 id="核心架构">核心架构</h4>
+<ul>
+<li><strong>九层架构设计</strong> - 完整的分层架构</li>
+<li><strong>六阶段思考协议</strong> - 理解→拆解→规划→调度→验收→反思</li>
+<li><strong>动态技能加载</strong> - 运行时加载Python/JS/Shell技能</li>
+</ul>
+<h4 id="技能系统">技能系统</h4>
+<ul>
+<li><strong>技能加载器</strong> - 动态扫描和加载技能</li>
+<li><strong>技能注册表</strong> - 技能查找和能力索引</li>
+<li><strong>内置技能</strong> - chat、file、fs、time</li>
+</ul>
+<h4 id="记忆系统">记忆系统</h4>
+<ul>
+<li><strong>三层记忆</strong> - 情景记忆、声明式记忆、程序性记忆</li>
+<li><strong>五维度学习</strong> - 用户偏好、任务模式、错误恢复等</li>
+</ul>
+<h4 id="安全系统">安全系统</h4>
+<ul>
+<li><strong>安全边界</strong> - 禁止区域、限制区域、自由区域</li>
+<li><strong>权限控制</strong> - RBAC权限模型</li>
+<li><strong>审计日志</strong> - 操作审计追踪</li>
+</ul>
+<h4 id="自进化系统-1">自进化系统</h4>
+<ul>
+<li><strong>角色化思考</strong> - 产品经理、开发者、测试者等角色</li>
+<li><strong>进化流程</strong> - 完整的自进化工作流</li>
+<li><strong>安全审计</strong> - 静态代码扫描、红队测试</li>
+</ul>
+<h4 id="可观测性">可观测性</h4>
+<ul>
+<li><strong>日志系统</strong> - 结构化日志输出</li>
+<li><strong>分布式追踪</strong> - TraceContext + Span</li>
+</ul>
+<h4 id="交互层">交互层</h4>
+<ul>
+<li><strong>CLI交互</strong> - 命令行交互界面</li>
+<li><strong>HTTP API</strong> - RESTful API接口</li>
+</ul>
+<hr />
+<h2 id="版本规划">版本规划</h2>
+<h3 id="计划中">[3.1.0] - 计划中</h3>
+<h4 id="计划新增">计划新增</h4>
+<ul>
+<li>沙箱隔离（Docker容器）</li>
+<li>DAG调度</li>
+<li>思考过程可视化</li>
+<li>性能指标收集</li>
+</ul>
+<h4 id="计划优化">计划优化</h4>
+<ul>
+<li>提升意图识别准确率</li>
+<li>优化Token使用效率</li>
+<li>改进错误提示信息</li>
+</ul>
+<h3 id="计划中-1">[3.2.0] - 计划中</h3>
+<h4 id="计划新增-1">计划新增</h4>
+<ul>
+<li>多模态支持</li>
+<li>多Agent协作</li>
+<li>技能市场公测</li>
+</ul>
+<h3 id="未来">[4.0.0] - 未来</h3>
+<h4 id="计划变更">计划变更</h4>
+<ul>
+<li>可能的API不兼容变更</li>
+<li>架构重大升级</li>
+</ul>
+<hr />
+<h2 id="贡献者">贡献者</h2>
+<p>感谢所有为白泽3.0做出贡献的开发者！</p>
+<hr />
+<h2 id="链接">链接</h2>
+<ul>
+<li><a href="./docs/architecture.md">架构设计文档</a></li>
+<li><a href="./docs/DEVELOPMENT.md">开发文档</a></li>
+<li><a href="./docs/API.md">API文档</a></li>
+</ul>
+</body>
+</html>
