@@ -2,7 +2,7 @@
 name: time
 slug: time
 description: 获取当前时间和日期信息。用于回答"现在几点"、"今天星期几"、"今天日期"等问题。
-when_to_use: 当用户询问当前时间、日期、星期几时使用此技能。
+when_to_use: 时间 日期 星期 几点 几号
 metadata: {"openclaw":{"requires":{"bins":["date"]}}}
 ---
 

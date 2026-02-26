@@ -1,6 +1,7 @@
 ---
 name: weather
 description: Get current weather and forecasts (no API key required).
+when_to_use: 天气 气温 温度 预报 下雨 下雪
 homepage: https://wttr.in/:help
 metadata: {"clawdbot":{"emoji":"🌤️","requires":{"bins":["curl"]}}}
 ---

@@ -84,9 +84,16 @@ export class SkillRegistry {
   }
 
   /**
+   * 获取所有技能
+   */
+  getAll(): Skill[] {
+    return Array.from(this.skills.values());
+  }
+
+  /**
    * 获取所有技能信息
    */
-  getAll(): SkillInfo[] {
+  getAllInfo(): SkillInfo[] {
     return Array.from(this.skills.values()).map(s => s.toInfo());
   }
 
