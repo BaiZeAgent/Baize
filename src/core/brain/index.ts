@@ -1,17 +1,15 @@
 /**
  * 大脑模块 - 核心决策中心
  * 
- * 分层决策架构：
- * 第1层：规则快速匹配（0ms）
- * 第2层：技能匹配
- * 第3层：上下文检查
- * 第4层：LLM意图分类
+ * v3.1.3 更新：
+ * - 修复上下文传递问题
+ * - 优化追问处理，正确提取参数
  */
 
 import fs from 'fs';
 import path from 'path';
 import { ThoughtProcess, Task, RiskLevel, LLMMessage } from '../../types';
-import { ThinkingEngine } from '../thinking/engine';
+import { ThinkingEngine, ExtendedContext } from '../thinking/engine';
 import { getConfirmationManager } from '../confirmation';
 import { getMemory } from '../../memory';
 import { getLLMManager } from '../../llm';
@@ -61,6 +59,8 @@ interface ConversationContext {
   history: ConversationMessage[];
   lastIntent?: IntentType;
   lastTopic?: string;
+  lastSkillName?: string;
+  lastSkillParams?: Record<string, unknown>;
 }
 
 /**
@@ -168,15 +168,26 @@ ${this.soulContent}`;
       return ruleResult;
     }
 
-    // 第2层：技能匹配（新增）
+    // 第2层：技能匹配
     const skillResult = await this.matchSkill(userInput);
     if (skillResult) {
       logger.debug(`技能匹配: ${skillResult.matchedSkill}`, { duration: `${Date.now() - startTime}ms` });
-      // 直接执行技能
-      const thoughtProcess = await this.thinkingEngine.process(userInput, {
-        history: sessionHistory || this.getChatHistory(),
+      
+      // 构建扩展上下文，包含对话历史
+      const extendedContext: ExtendedContext = {
+        history: this.getChatHistory(),
         matchedSkill: skillResult.matchedSkill,
-      });
+        lastSkillResult: this.getLastSkillResult(),
+      };
+      
+      const thoughtProcess = await this.thinkingEngine.process(userInput, extendedContext);
+      
+      // 记录技能信息
+      if (thoughtProcess.decomposition.tasks.length > 0) {
+        const task = thoughtProcess.decomposition.tasks[0];
+        this.context.lastSkillName = task.skillName;
+        this.context.lastSkillParams = task.params;
+      }
       
       this.context.lastIntent = 'task';
       this.context.lastTopic = thoughtProcess.understanding.coreNeed;
@@ -213,7 +224,6 @@ ${this.soulContent}`;
 
     // 根据意图处理
     if (llmResult.intent === 'chat') {
-      // 简单对话，直接回复
       const response = await this.generateChatResponse(userInput);
       this.addToHistory('assistant', response, 'chat');
       this.context.lastIntent = 'chat';
@@ -227,9 +237,12 @@ ${this.soulContent}`;
     }
 
     // 任务类型，调用思考引擎
-    const thoughtProcess = await this.thinkingEngine.process(userInput, {
-      history: sessionHistory || this.getChatHistory(),
-    });
+    const extendedContext: ExtendedContext = {
+      history: this.getChatHistory(),
+      lastSkillResult: this.getLastSkillResult(),
+    };
+    
+    const thoughtProcess = await this.thinkingEngine.process(userInput, extendedContext);
 
     // 检查是否需要确认
     const riskLevel = this.assessRisk(thoughtProcess);
@@ -262,6 +275,14 @@ ${this.soulContent}`;
    */
   recordTaskResult(result: string): void {
     this.addToHistory('assistant', result, 'task_result');
+  }
+
+  /**
+   * 获取上一次技能执行结果
+   */
+  private getLastSkillResult(): string | undefined {
+    const lastTaskResult = [...this.context.history].reverse().find(h => h.type === 'task_result');
+    return lastTaskResult?.content;
   }
 
   // ==================== 第1层：规则快速匹配 ====================
@@ -340,7 +361,7 @@ ${this.soulContent}`;
     return '晚上好！有什么我可以帮助你的吗？';
   }
 
-  // ==================== 第2层：技能匹配（新增） ====================
+  // ==================== 第2层：技能匹配 ====================
 
   private async matchSkill(input: string): Promise<{ matchedSkill: string } | null> {
     const registry = getSkillRegistry();
@@ -389,7 +410,6 @@ ${skillDescriptions}
       const result = this.parseJSON(response.content);
       
       if (result.matched && result.skill) {
-        // 验证技能是否存在
         const skill = skills.find(s => s.name === result.skill);
         if (skill) {
           return { matchedSkill: result.skill as string };
@@ -543,11 +563,10 @@ intent = "task"（任务）：
   // ==================== 辅助方法 ====================
 
   /**
-   * 获取聊天历史（包括任务执行结果，用于上下文理解）
+   * 获取聊天历史
    */
-  private getChatHistory(): ConversationMessage[] {
-    // 包含所有类型的消息，让 LLM 能看到完整的对话上下文
-    return this.context.history;
+  private getChatHistory(): Array<{ role: string; content: string }> {
+    return this.context.history.map(h => ({ role: h.role, content: h.content }));
   }
 
   private assessRisk(thoughtProcess: ThoughtProcess): RiskLevel {

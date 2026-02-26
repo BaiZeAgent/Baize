@@ -780,7 +780,7 @@ describe('核心功能集成测试', () => {
       const subAgentManager = new SubAgentManager();
       
       const info = await subAgentManager.create({
-        type: 'sync',
+        type: 'async' as any,
         name: 'test-agent',
         tasks: [],
         parallelGroups: [],

@@ -1,17 +1,9 @@
 /**
  * 思考引擎 - 双层决策机制
  * 
- * v3.1.0 更新：
- * - 集成智能路由器，实现双层决策
- * - 简单任务走快速路径（单次LLM调用）
- * - 复杂任务走六阶段思考
- * 
- * 阶段1: 理解 - 分析用户意图
- * 阶段2: 拆解 - 分解为原子任务
- * 阶段3: 规划 - 选择技能和执行顺序
- * 阶段4: 调度 - 并行/串行执行
- * 阶段5: 验收 - 检查执行结果
- * 阶段6: 反思 - 分析失败原因
+ * v3.1.3 更新：
+ * - 修复上下文传递问题，追问时能正确提取参数
+ * - 优化快速路径判断，减少不必要的LLM调用
  */
 
 import { LLMMessage, Task, RiskLevel, ThoughtProcess, Understanding, Decomposition, Planning, Scheduling, Validation, Reflection, TaskResult, SkillSelection } from '../../types';
@@ -43,6 +35,18 @@ export interface ThinkingResult {
   duration: number;
 }
 
+/**
+ * 扩展的上下文，包含对话历史
+ */
+export interface ExtendedContext extends Record<string, unknown> {
+  /** 对话历史 */
+  history?: Array<{ role: string; content: string }>;
+  /** 上一次的技能执行结果 */
+  lastSkillResult?: string;
+  /** 匹配的技能 */
+  matchedSkill?: string;
+}
+
 export class ThinkingEngine {
   private llm = getLLMManager();
   private skillRegistry = getSkillRegistry();
@@ -52,14 +56,10 @@ export class ThinkingEngine {
 
   /**
    * 主入口：双层决策
-   * 
-   * 1. 智能路由判断任务复杂度
-   * 2. 简单任务走快速路径
-   * 3. 复杂任务走六阶段思考
    */
   async think(
     userInput: string,
-    context: Record<string, unknown> = {}
+    context: ExtendedContext = {}
   ): Promise<ThinkingResult> {
     const startTime = Date.now();
     logger.info(`[think-start] input=${userInput.substring(0, 50)}...`);
@@ -78,11 +78,9 @@ export class ThinkingEngine {
       // 根据路由结果选择路径
       switch (decision.action) {
         case 'reply':
-          // 快速路径：直接回复
           return this.fastReply(decision.content || '', startTime);
 
         case 'tool':
-          // 快速路径：单工具调用
           return this.fastToolCall(
             decision.toolName || '',
             decision.toolParams || {},
@@ -90,16 +88,13 @@ export class ThinkingEngine {
           );
 
         case 'plan':
-          // 规划路径：六阶段思考
           return this.fullThinking(userInput, context, startTime, decision.reason);
 
         default:
-          // 未知情况，走规划路径确保安全
           return this.fullThinking(userInput, context, startTime, '未知路由结果');
       }
     } catch (error) {
       logger.error(`[think-error] ${error}`);
-      // 出错时返回友好提示
       return {
         fastPath: true,
         directResponse: '抱歉，处理您的请求时出现问题，请稍后再试。',
@@ -108,9 +103,6 @@ export class ThinkingEngine {
     }
   }
 
-  /**
-   * 快速路径：直接回复
-   */
   private fastReply(content: string, startTime: number): ThinkingResult {
     logger.debug('[fast-path] reply');
     return {
@@ -120,9 +112,6 @@ export class ThinkingEngine {
     };
   }
 
-  /**
-   * 快速路径：单工具调用
-   */
   private fastToolCall(
     toolName: string,
     params: Record<string, unknown>,
@@ -136,12 +125,9 @@ export class ThinkingEngine {
     };
   }
 
-  /**
-   * 规划路径：完整六阶段思考
-   */
   private async fullThinking(
     userInput: string,
-    context: Record<string, unknown>,
+    context: ExtendedContext,
     startTime: number,
     reason?: string
   ): Promise<ThinkingResult> {
@@ -161,7 +147,7 @@ export class ThinkingEngine {
    */
   async process(
     userInput: string,
-    context: Record<string, unknown> = {}
+    context: ExtendedContext = {}
   ): Promise<ThoughtProcess> {
     const startTime = Date.now();
     logger.info(`开始处理用户输入: ${userInput.substring(0, 50)}...`);
@@ -194,7 +180,7 @@ export class ThinkingEngine {
         };
       }
 
-      // 阶段2: 拆解 - 传递原始用户输入
+      // 阶段2: 拆解 - 传递上下文
       const decomposition = await this.decompose(understanding, userInput, context);
       logger.debug('阶段2-拆解完成', { taskCount: decomposition.tasks.length });
 
@@ -227,7 +213,7 @@ export class ThinkingEngine {
   }
 
   /**
-   * 阶段5: 验收 - 检查执行结果
+   * 阶段5: 验收
    */
   async validate(
     thoughtProcess: ThoughtProcess,
@@ -262,7 +248,7 @@ export class ThinkingEngine {
   }
 
   /**
-   * 阶段6: 反思 - 分析失败原因，提出改进方案
+   * 阶段6: 反思
    */
   async reflect(
     thoughtProcess: ThoughtProcess,
@@ -310,12 +296,17 @@ export class ThinkingEngine {
 
   private async understand(
     userInput: string,
-    context: Record<string, unknown>
+    context: ExtendedContext
   ): Promise<Understanding> {
+    // 构建上下文摘要
+    const contextSummary = this.buildContextSummary(context);
+    
     const messages: LLMMessage[] = [
       {
         role: 'system',
         content: `你是一个意图理解专家。分析用户输入，判断意图类型。
+
+${contextSummary ? `## 对话上下文\n${contextSummary}\n` : ''}
 
 输出JSON格式：
 {
@@ -367,12 +358,36 @@ isSimpleChat 为 false 的情况（需要拆解任务）：
     };
   }
 
+  /**
+   * 构建上下文摘要，用于传递给LLM
+   */
+  private buildContextSummary(context: ExtendedContext): string {
+    const parts: string[] = [];
+    
+    // 添加对话历史
+    if (context.history && context.history.length > 0) {
+      const recentHistory = context.history.slice(-6); // 最近3轮对话
+      const historyText = recentHistory.map(h => {
+        const role = h.role === 'user' ? '用户' : '助手';
+        return `${role}: ${h.content}`;
+      }).join('\n');
+      parts.push(`最近的对话:\n${historyText}`);
+    }
+    
+    // 添加上一次技能执行结果
+    if (context.lastSkillResult) {
+      parts.push(`上一次查询结果: ${context.lastSkillResult.substring(0, 200)}...`);
+    }
+    
+    return parts.join('\n\n');
+  }
+
   // ==================== 阶段2: 拆解 ====================
 
   private async decompose(
     understanding: Understanding,
     originalInput: string,
-    context: Record<string, unknown>
+    context: ExtendedContext
   ): Promise<Decomposition> {
     // 获取技能列表
     const skills = this.skillRegistry.getAll().filter(s => s.name !== 'chat');
@@ -388,6 +403,9 @@ isSimpleChat 为 false 的情况（需要拆解任务）：
 
     // 构建详细的技能描述
     const skillsDescription = this.buildSkillsDescription(skills);
+    
+    // 构建上下文摘要
+    const contextSummary = this.buildContextSummary(context);
 
     const messages: LLMMessage[] = [
       {
@@ -401,6 +419,8 @@ isSimpleChat 为 false 的情况（需要拆解任务）：
 2. 只能使用工具定义中列出的参数，不能"发明"新参数
 3. 如果工具只需要"城市名"，就不要添加"格式"、"样式"等参数
 4. 根据用户需求选择最合适的工具
+
+${contextSummary ? `## 对话上下文\n\n${contextSummary}\n\n**重要**: 如果用户在追问（如"会下雨吗"），必须从上下文中提取之前提到的参数（如城市名）。\n` : ''}
 
 ## 可用技能
 
@@ -430,6 +450,9 @@ ${skillsDescription}
 2. 如果技能的参数定义中没有某个参数名，绝对不要添加它
 3. 必需参数必须提供，可选参数可以不提供
 4. 不要根据技能描述"猜测"或"推断"额外参数
+5. **追问时必须从上下文中提取参数**，例如：
+   - 用户之前问"杭州天气"，现在问"会下雨吗"
+   - params 应该包含 {"location": "杭州"}
 
 ## 示例
 
@@ -440,8 +463,6 @@ ${skillsDescription}
 
 正确: { "skillName": "weather", "params": { "location": "北京" } }
 错误: { "skillName": "weather", "params": { "location": "北京", "format": "xxx" } }
-错误: { "skillName": "weather", "params": { "location": "北京", "unit": "celsius" } }
-// format 和 unit 不在参数定义中，不能添加！
 
 ## 其他规则
 
@@ -521,7 +542,7 @@ ${paramsSection}`;
   private async plan(
     understanding: Understanding,
     decomposition: Decomposition,
-    context: Record<string, unknown>
+    context: ExtendedContext
   ): Promise<Planning> {
     const skillSelections: SkillSelection[] = [];
     
@@ -591,10 +612,8 @@ ${paramsSection}`;
 
   private parseJSON(text: string): Record<string, unknown> {
     try {
-      // 尝试直接解析
       return JSON.parse(text);
     } catch {
-      // 尝试提取JSON块
       const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
                         text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -623,7 +642,6 @@ ${paramsSection}`;
   }
 
   private canRetry(thoughtProcess: ThoughtProcess): boolean {
-    // 检查是否有可重试的任务
     return thoughtProcess.decomposition.tasks.length > 0;
   }
 }
