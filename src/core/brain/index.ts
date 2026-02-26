@@ -1,9 +1,9 @@
 /**
  * 大脑模块 - 核心决策中心
  * 
- * v3.1.3 更新：
- * - 修复上下文传递问题
- * - 优化追问处理，正确提取参数
+ * v3.1.4 更新：
+ * - 修复追问处理：基于已有结果回答，不重复调用API
+ * - 优化决策流程：追问检测前置
  */
 
 import fs from 'fs';
@@ -168,12 +168,20 @@ ${this.soulContent}`;
       return ruleResult;
     }
 
-    // 第2层：技能匹配
+    // 第2层：追问检测（新增 - 在技能匹配之前）
+    const followupResult = await this.checkFollowup(userInput);
+    if (followupResult) {
+      logger.debug(`追问检测: ${followupResult.intent}`, { duration: `${Date.now() - startTime}ms` });
+      this.addToHistory('assistant', followupResult.response || '', 'chat');
+      this.context.lastIntent = 'followup';
+      return followupResult;
+    }
+
+    // 第3层：技能匹配
     const skillResult = await this.matchSkill(userInput);
     if (skillResult) {
       logger.debug(`技能匹配: ${skillResult.matchedSkill}`, { duration: `${Date.now() - startTime}ms` });
       
-      // 构建扩展上下文，包含对话历史
       const extendedContext: ExtendedContext = {
         history: this.getChatHistory(),
         matchedSkill: skillResult.matchedSkill,
@@ -182,7 +190,6 @@ ${this.soulContent}`;
       
       const thoughtProcess = await this.thinkingEngine.process(userInput, extendedContext);
       
-      // 记录技能信息
       if (thoughtProcess.decomposition.tasks.length > 0) {
         const task = thoughtProcess.decomposition.tasks[0];
         this.context.lastSkillName = task.skillName;
@@ -202,7 +209,7 @@ ${this.soulContent}`;
       };
     }
 
-    // 第3层：上下文检查
+    // 第4层：上下文检查
     const contextResult = this.checkContext(userInput);
     if (contextResult) {
       logger.debug(`上下文匹配: ${contextResult.intent}`, { duration: `${Date.now() - startTime}ms` });
@@ -218,11 +225,10 @@ ${this.soulContent}`;
       };
     }
 
-    // 第4层：LLM意图分类
+    // 第5层：LLM意图分类
     const llmResult = await this.classifyIntent(userInput);
     logger.debug(`LLM分类: ${llmResult.intent}`, { duration: `${Date.now() - startTime}ms` });
 
-    // 根据意图处理
     if (llmResult.intent === 'chat') {
       const response = await this.generateChatResponse(userInput);
       this.addToHistory('assistant', response, 'chat');
@@ -236,7 +242,7 @@ ${this.soulContent}`;
       };
     }
 
-    // 任务类型，调用思考引擎
+    // 任务类型
     const extendedContext: ExtendedContext = {
       history: this.getChatHistory(),
       lastSkillResult: this.getLastSkillResult(),
@@ -244,7 +250,6 @@ ${this.soulContent}`;
     
     const thoughtProcess = await this.thinkingEngine.process(userInput, extendedContext);
 
-    // 检查是否需要确认
     const riskLevel = this.assessRisk(thoughtProcess);
     if (riskLevel === RiskLevel.HIGH || riskLevel === RiskLevel.CRITICAL) {
       return {
@@ -283,6 +288,99 @@ ${this.soulContent}`;
   private getLastSkillResult(): string | undefined {
     const lastTaskResult = [...this.context.history].reverse().find(h => h.type === 'task_result');
     return lastTaskResult?.content;
+  }
+
+  // ==================== 第2层：追问检测（新增） ====================
+
+  /**
+   * 检查是否是追问，如果是则基于已有结果回答
+   */
+  private async checkFollowup(input: string): Promise<Decision | null> {
+    // 检查是否有上一次的任务结果
+    const lastSkillResult = this.getLastSkillResult();
+    if (!lastSkillResult) {
+      return null;
+    }
+
+    // 检查上一次是否是任务类型
+    if (this.context.lastIntent !== 'task') {
+      return null;
+    }
+
+    // 使用LLM判断是否是追问
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个追问检测器。判断用户输入是否是对上一次查询结果的追问。
+
+## 上一次查询结果
+${lastSkillResult.substring(0, 500)}
+
+## 输出格式
+如果是追问（基于上一次结果提问），输出JSON：
+{"isFollowup": true, "reason": "原因"}
+
+如果不是追问（需要新的查询），输出JSON：
+{"isFollowup": false, "reason": "原因"}
+
+## 追问的例子
+- 上一次查询天气，用户问"会下雨吗"、"温度多少"、"需要带伞吗"
+- 上一次查询时间，用户问"那明天呢"、"后天几点"
+- 上一次搜索，用户问"第一个是什么"、"有更详细的吗"
+
+## 不是追问的例子
+- 完全不相关的新问题
+- 需要新的数据查询
+
+只输出JSON，不要其他内容。`,
+      },
+      { role: 'user', content: input },
+    ];
+
+    try {
+      const response = await this.llm.chat(messages, { temperature: 0.1 });
+      const result = this.parseJSON(response.content);
+      
+      if (result.isFollowup === true) {
+        // 是追问，基于已有结果回答
+        const answer = await this.answerBasedOnResult(input, lastSkillResult);
+        return {
+          intent: 'followup',
+          action: 'reply',
+          response: answer,
+          confidence: 0.9,
+          reason: `追问: ${result.reason}`,
+        };
+      }
+    } catch (error) {
+      logger.warn('追问检测失败', { error });
+    }
+
+    return null;
+  }
+
+  /**
+   * 基于已有结果回答追问
+   */
+  private async answerBasedOnResult(question: string, lastResult: string): Promise<string> {
+    const systemPrompt = this.buildSystemPrompt();
+    
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `${systemPrompt}
+
+## 重要
+用户正在追问上一次查询的结果。你需要基于已有的数据回答，不要建议用户重新查询。
+
+## 上一次查询结果
+${lastResult}`,
+      },
+      { role: 'user', content: question },
+    ];
+
+    const response = await this.llm.chat(messages, { temperature: 0.7 });
+    return response.content;
   }
 
   // ==================== 第1层：规则快速匹配 ====================
@@ -361,7 +459,7 @@ ${this.soulContent}`;
     return '晚上好！有什么我可以帮助你的吗？';
   }
 
-  // ==================== 第2层：技能匹配 ====================
+  // ==================== 第3层：技能匹配 ====================
 
   private async matchSkill(input: string): Promise<{ matchedSkill: string } | null> {
     const registry = getSkillRegistry();
@@ -371,13 +469,11 @@ ${this.soulContent}`;
       return null;
     }
 
-    // 构建技能能力描述
     const skillDescriptions = skills.map(s => {
       const caps = s.capabilities.join(', ');
       return `- ${s.name}: ${s.description} (能力: ${caps})`;
     }).join('\n');
 
-    // 使用 LLM 判断是否匹配某个技能
     const messages: LLMMessage[] = [
       {
         role: 'system',
@@ -422,12 +518,11 @@ ${skillDescriptions}
     return null;
   }
 
-  // ==================== 第3层：上下文检查 ====================
+  // ==================== 第4层：上下文检查 ====================
 
   private checkContext(input: string): { intent: IntentType; type: string } | null {
     const trimmed = input.trim().toLowerCase();
 
-    // 检查是否是追问
     if (this.matchPatterns(trimmed, [
       /刚才.*什么/, /之前.*说/, /你刚才/, /我刚才/,
       /重复.*遍/, /再说.*次/, /什么意思/
@@ -435,14 +530,12 @@ ${skillDescriptions}
       return { intent: 'followup', type: 'reference' };
     }
 
-    // 检查是否是继续话题
     if (this.context.lastIntent === 'task' && this.matchPatterns(trimmed, [
       /^然后/, /^接着/, /^继续/, /^还有/
     ])) {
       return { intent: 'followup', type: 'continue' };
     }
 
-    // 检查是否是确认/否定
     if (this.matchPatterns(trimmed, [
       /^好[的啊呀]*$/, /^行[的啊呀]*$/, /^可以/, /^没问题/,
       /^不[要行好]/, /^算了/, /^取消/
@@ -480,10 +573,7 @@ ${skillDescriptions}
 
     const systemPrompt = this.buildSystemPrompt();
     const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
+      { role: 'system', content: systemPrompt },
       ...chatHistory.slice(-4).map(h => ({
         role: h.role as 'user' | 'assistant',
         content: h.content,
@@ -495,7 +585,7 @@ ${skillDescriptions}
     return response.content;
   }
 
-  // ==================== 第4层：LLM意图分类 ====================
+  // ==================== 第5层：LLM意图分类 ====================
 
   private async classifyIntent(input: string): Promise<{ intent: IntentType; confidence: number }> {
     const messages: LLMMessage[] = [
@@ -514,15 +604,12 @@ ${skillDescriptions}
 intent = "chat"（对话）：
 - 闲聊、问答、咨询
 - 不需要执行具体操作
-- 例如：今天心情不好、讲个笑话、什么是AI、你知道xxx吗
 
 intent = "task"（任务）：
 - 需要执行具体操作
 - 文件操作、数据查询、系统操作
-- 例如：创建文件、现在几点、帮我xxx
 
-## 重要
-- 只输出JSON，不要其他内容`,
+只输出JSON，不要其他内容。`,
       },
       { role: 'user', content: input },
     ];
@@ -545,10 +632,7 @@ intent = "task"（任务）：
     const systemPrompt = this.buildSystemPrompt();
 
     const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
+      { role: 'system', content: systemPrompt },
       ...chatHistory.slice(-10).map(h => ({
         role: h.role as 'user' | 'assistant',
         content: h.content,
@@ -562,9 +646,6 @@ intent = "task"（任务）：
 
   // ==================== 辅助方法 ====================
 
-  /**
-   * 获取聊天历史
-   */
   private getChatHistory(): Array<{ role: string; content: string }> {
     return this.context.history.map(h => ({ role: h.role, content: h.content }));
   }
@@ -613,9 +694,6 @@ intent = "task"（任务）：
     }
   }
 
-  /**
-   * 学习用户反馈
-   */
   learn(decision: Decision, userFeedback: 'positive' | 'negative'): void {
     if (decision.thoughtProcess) {
       const operation = decision.thoughtProcess.understanding.coreNeed;
@@ -627,22 +705,15 @@ intent = "task"（任务）：
     }
   }
 
-  /**
-   * 获取对话历史
-   */
   getHistory(): Array<{ role: 'user' | 'assistant'; content: string }> {
     return this.context.history.map(h => ({ role: h.role, content: h.content }));
   }
 
-  /**
-   * 清空对话历史
-   */
   clearHistory(): void {
     this.context = { history: [] };
   }
 }
 
-// 全局实例
 let brainInstance: Brain | null = null;
 
 export function getBrain(): Brain {
