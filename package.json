@@ -1,6 +1,6 @@
 {
   "name": "baize",
-  "version": "3.0.0",
+  "version": "3.1.1",
   "description": "白泽3.0 - JARVIS级AI助手",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,9 @@
     "build": "tsc",
     "start": "node dist/cli/index.js",
     "dev": "ts-node src/cli/index.ts",
-    "test": "node dist/cli/index.js test-all",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -42,8 +44,10 @@
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.11.16",
     "@types/uuid": "^9.0.8",
+    "@vitest/coverage-v8": "^4.0.18",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18.0.0"

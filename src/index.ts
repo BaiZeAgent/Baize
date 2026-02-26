@@ -12,6 +12,12 @@
  * - 新增进程管理器（后台执行）
  * - 新增向量搜索（语义检索）
  * - 新增子Agent支持（并行处理）
+ * 
+ * v3.1.2 更新：
+ * - 新增插件系统
+ * - 新增Hook系统
+ * - 增强安全系统
+ * - 添加测试覆盖
  */
 
 // 类型定义
@@ -66,6 +72,9 @@ export * from './core/recovery';
 
 // 安全层 (L8)
 export * from './security';
+
+// 插件系统
+export * from './plugins';
 
 // 交互层 (L9)
 export * from './interaction';

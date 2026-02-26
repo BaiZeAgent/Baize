@@ -171,6 +171,15 @@ export class TaskScheduler {
   }
 
   /**
+   * 清除所有任务
+   */
+  clear(): void {
+    this.taskQueue.clear();
+    this.runningCount = 0;
+    logger.debug('已清除所有任务');
+  }
+
+  /**
    * 获取统计信息
    */
   getStats(): {
@@ -179,8 +188,9 @@ export class TaskScheduler {
     running: number;
     completed: number;
     failed: number;
+    cancelled: number;
   } {
-    let pending = 0, running = 0, completed = 0, failed = 0;
+    let pending = 0, running = 0, completed = 0, failed = 0, cancelled = 0;
     
     for (const task of this.taskQueue.values()) {
       switch (task.status) {
@@ -188,10 +198,11 @@ export class TaskScheduler {
         case TaskStatus.RUNNING: running++; break;
         case TaskStatus.COMPLETED: completed++; break;
         case TaskStatus.FAILED: failed++; break;
+        case TaskStatus.CANCELLED: cancelled++; break;
       }
     }
     
-    return { total: this.taskQueue.size, pending, running, completed, failed };
+    return { total: this.taskQueue.size, pending, running, completed, failed, cancelled };
   }
 }
 
@@ -203,4 +214,14 @@ export function getScheduler(): TaskScheduler {
     schedulerInstance = new TaskScheduler();
   }
   return schedulerInstance;
+}
+
+/**
+ * 重置调度器实例（测试用）
+ */
+export function resetScheduler(): void {
+  if (schedulerInstance) {
+    schedulerInstance.clear();
+  }
+  schedulerInstance = null;
 }
