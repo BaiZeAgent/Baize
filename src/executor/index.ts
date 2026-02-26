@@ -5,6 +5,11 @@
  * 1. 获取技能文档
  * 2. 让 LLM 根据文档选择命令
  * 3. 执行命令并返回结果
+ * 
+ * V2 新增：
+ * - ReAct 循环执行器
+ * - 工具执行钩子
+ * - 上下文管理
  */
 
 import { exec } from 'child_process';
@@ -167,3 +172,14 @@ export function getExecutor(): Executor {
 export function resetExecutor(): void {
   executorInstance = null;
 }
+
+// 导出 ReAct 执行器 V2
+export {
+  ReActExecutorV2,
+  getReActExecutorV2,
+  resetReActExecutorV2,
+  type ExecutionHooks,
+  type ToolCallEvent,
+  type ToolResultEvent,
+  type ReActResultV2,
+} from './react-executor-v2';

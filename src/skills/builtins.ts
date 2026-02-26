@@ -5,9 +5,9 @@
  * - ProcessTool: 进程管理
  */
 
-import { getSkillRegistry } from './registry.js';
-import { ProcessTool } from '../executor/process-tool.js';
-import { getLogger } from '../observability/logger.js';
+import { getSkillRegistry } from './registry';
+import { ProcessTool } from '../executor/process-tool';
+import { getLogger } from '../observability/logger';
 
 const logger = getLogger('skill:builtins');
 
@@ -33,6 +33,6 @@ export function registerBuiltinSkills(): void {
  * 重置内置技能（测试用）
  */
 export function resetBuiltinSkills(): void {
-  const { resetProcessTool } = require('../executor/process-tool.js');
+  const { resetProcessTool } = require('../executor/process-tool');
   resetProcessTool();
 }
