@@ -1,9 +1,10 @@
 /**
  * 大脑模块 - 核心决策中心
  * 
- * v3.1.4 更新：
- * - 修复追问处理：基于已有结果回答，不重复调用API
- * - 优化决策流程：追问检测前置
+ * v3.1.5 更新：
+ * - 贾维斯风格智能问答
+ * - 一次LLM调用完成判断+回答
+ * - 基于已有信息回答，不重复查询
  */
 
 import fs from 'fs';
@@ -18,14 +19,8 @@ import { getLogger } from '../../observability/logger';
 
 const logger = getLogger('core:brain');
 
-/**
- * 意图类型
- */
 export type IntentType = 'greeting' | 'farewell' | 'thanks' | 'chat' | 'task' | 'followup';
 
-/**
- * 决策结果
- */
 export interface Decision {
   intent: IntentType;
   action: 'reply' | 'execute' | 'confirm' | 'clarify';
@@ -38,23 +33,14 @@ export interface Decision {
   matchedSkill?: string;
 }
 
-/**
- * 对话消息类型
- */
 type MessageType = 'chat' | 'task_result';
 
-/**
- * 对话消息
- */
 interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
   type: MessageType;
 }
 
-/**
- * 对话上下文
- */
 interface ConversationContext {
   history: ConversationMessage[];
   lastIntent?: IntentType;
@@ -80,9 +66,6 @@ export class Brain {
     this.loadSoul();
   }
 
-  /**
-   * 加载 SOUL.md 文件
-   */
   private loadSoul(): void {
     const soulPaths = [
       path.join(process.cwd(), 'config', 'SOUL.md'),
@@ -105,58 +88,12 @@ export class Brain {
   }
 
   /**
-   * 构建完整的 system prompt
-   */
-  private buildSystemPrompt(): string {
-    const skills = getSkillRegistry().getAll();
-    const skillList = skills.map(s => `- ${s.name}: ${s.description}`).join('\n');
-
-    const basePrompt = `你是白泽，一个智能助手。
-
-## 核心身份
-
-你是白泽，上古神兽，通万物之情，晓天下万物。你不仅仅是一个工具，你有自己的性格和特点。
-
-## 你的能力
-
-你可以帮助用户完成各种任务：
-
-${skillList}
-
-## 说话风格
-
-- 自然、亲切，像朋友一样
-- 不说"作为AI"、"我作为一个助手"这种话
-- 不用过度的客套话，如"很高兴为您服务"
-- 该幽默时幽默，该严肃时严肃
-- 简洁高效，直接回答问题，不啰嗦
-
-## 重要规则
-
-1. 只回答用户当前的问题，不要回答之前已经回答过的问题
-2. 如果用户之前的问题已经得到回答，不要重复回答
-3. 参考对话历史理解上下文，但只针对当前问题回复
-4. 不编造信息，不确定时坦诚说明`;
-
-    if (this.soulContent) {
-      return `${basePrompt}
-
----
-
-${this.soulContent}`;
-    }
-
-    return basePrompt;
-  }
-
-  /**
    * 处理用户输入 - 主入口
    */
   async process(userInput: string, sessionHistory?: string): Promise<Decision> {
     logger.info(`大脑处理: ${userInput.substring(0, 50)}...`);
     const startTime = Date.now();
 
-    // 记录用户输入
     this.addToHistory('user', userInput, 'chat');
 
     // 第1层：规则快速匹配
@@ -168,23 +105,21 @@ ${this.soulContent}`;
       return ruleResult;
     }
 
-    // 第2层：追问检测（新增 - 在技能匹配之前）
-    const followupResult = await this.checkFollowup(userInput);
-    if (followupResult) {
-      logger.debug(`追问检测: ${followupResult.intent}`, { duration: `${Date.now() - startTime}ms` });
-      this.addToHistory('assistant', followupResult.response || '', 'chat');
-      this.context.lastIntent = 'followup';
-      return followupResult;
+    // 第2层：智能决策（核心 - 一次LLM调用完成所有判断）
+    const smartDecision = await this.smartDecide(userInput);
+    
+    if (smartDecision.action === 'reply') {
+      // 直接回复，不需要调用技能
+      this.addToHistory('assistant', smartDecision.response || '', 'chat');
+      this.context.lastIntent = 'chat';
+      return smartDecision;
     }
 
-    // 第3层：技能匹配
-    const skillResult = await this.matchSkill(userInput);
-    if (skillResult) {
-      logger.debug(`技能匹配: ${skillResult.matchedSkill}`, { duration: `${Date.now() - startTime}ms` });
-      
+    // 需要执行技能
+    if (smartDecision.matchedSkill) {
       const extendedContext: ExtendedContext = {
         history: this.getChatHistory(),
-        matchedSkill: skillResult.matchedSkill,
+        matchedSkill: smartDecision.matchedSkill,
         lastSkillResult: this.getLastSkillResult(),
       };
       
@@ -204,75 +139,208 @@ ${this.soulContent}`;
         action: 'execute',
         thoughtProcess,
         confidence: 0.95,
-        reason: `匹配技能: ${skillResult.matchedSkill}`,
-        matchedSkill: skillResult.matchedSkill,
+        reason: `匹配技能: ${smartDecision.matchedSkill}`,
+        matchedSkill: smartDecision.matchedSkill,
       };
     }
 
-    // 第4层：上下文检查
-    const contextResult = this.checkContext(userInput);
-    if (contextResult) {
-      logger.debug(`上下文匹配: ${contextResult.intent}`, { duration: `${Date.now() - startTime}ms` });
-      const response = await this.generateContextResponse(userInput, contextResult);
-      this.addToHistory('assistant', response, 'chat');
-      this.context.lastIntent = contextResult.intent;
-      return {
-        intent: contextResult.intent,
-        action: 'reply',
-        response,
-        confidence: 0.85,
-        reason: '基于上下文理解',
-      };
-    }
+    // 默认：聊天回复
+    const response = await this.generateChatResponse(userInput);
+    this.addToHistory('assistant', response, 'chat');
+    this.context.lastIntent = 'chat';
+    
+    return {
+      intent: 'chat',
+      action: 'reply',
+      response,
+      confidence: 0.8,
+      reason: '默认聊天回复',
+    };
+  }
 
-    // 第5层：LLM意图分类
-    const llmResult = await this.classifyIntent(userInput);
-    logger.debug(`LLM分类: ${llmResult.intent}`, { duration: `${Date.now() - startTime}ms` });
+  /**
+   * 智能决策 - 一次LLM调用完成所有判断
+   * 
+   * 参考 JARVIS 风格：
+   * 1. 基于已有信息回答，不重复查询
+   * 2. 自然对话，像朋友一样
+   * 3. 智能判断是否需要新的操作
+   */
+  private async smartDecide(userInput: string): Promise<Decision> {
+    const chatHistory = this.getChatHistory();
+    const lastSkillResult = this.getLastSkillResult();
+    const skills = getSkillRegistry().getAll();
+    
+    // 构建技能列表
+    const skillList = skills.map(s => `- ${s.name}: ${s.description}`).join('\n');
+    
+    // 构建对话历史
+    const historyText = chatHistory.slice(-6).map(h => {
+      const role = h.role === 'user' ? '用户' : '白泽';
+      return `${role}: ${h.content}`;
+    }).join('\n');
 
-    if (llmResult.intent === 'chat') {
-      const response = await this.generateChatResponse(userInput);
-      this.addToHistory('assistant', response, 'chat');
-      this.context.lastIntent = 'chat';
+    // 构建系统提示词
+    const systemPrompt = this.buildSmartSystemPrompt(skillList, lastSkillResult);
+
+    const messages: LLMMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `对话历史:\n${historyText}\n\n当前用户输入: ${userInput}` },
+    ];
+
+    try {
+      const response = await this.llm.chat(messages, { temperature: 0.3 });
+      const result = this.parseJSON(response.content);
+      
+      // 解析决策结果
+      const action = result.action as string;
+      
+      if (action === 'reply') {
+        // 直接回复
+        return {
+          intent: 'chat',
+          action: 'reply',
+          response: result.response as string,
+          confidence: 0.9,
+          reason: result.reason as string || '基于已有信息回答',
+        };
+      }
+      
+      if (action === 'execute' && result.skill) {
+        // 需要执行技能
+        return {
+          intent: 'task',
+          action: 'execute',
+          matchedSkill: result.skill as string,
+          confidence: 0.9,
+          reason: result.reason as string || `需要调用 ${result.skill} 技能`,
+        };
+      }
+      
+      // 默认回复
       return {
         intent: 'chat',
         action: 'reply',
-        response,
-        confidence: llmResult.confidence,
-        reason: 'LLM分类为对话',
+        response: result.response as string || '我理解了。',
+        confidence: 0.7,
+        reason: '默认回复',
       };
-    }
-
-    // 任务类型
-    const extendedContext: ExtendedContext = {
-      history: this.getChatHistory(),
-      lastSkillResult: this.getLastSkillResult(),
-    };
-    
-    const thoughtProcess = await this.thinkingEngine.process(userInput, extendedContext);
-
-    const riskLevel = this.assessRisk(thoughtProcess);
-    if (riskLevel === RiskLevel.HIGH || riskLevel === RiskLevel.CRITICAL) {
+    } catch (error) {
+      logger.warn('智能决策失败', { error });
       return {
-        intent: 'task',
-        action: 'confirm',
-        thoughtProcess,
-        confidence: 0.9,
-        reason: '高风险操作需要确认',
-        needConfirm: true,
-        confirmMessage: this.formatConfirmMessage(thoughtProcess),
+        intent: 'chat',
+        action: 'reply',
+        response: '抱歉，我需要更多信息来帮助你。',
+        confidence: 0.5,
+        reason: '决策失败',
       };
     }
+  }
 
-    this.context.lastIntent = 'task';
-    this.context.lastTopic = thoughtProcess.understanding.coreNeed;
+  /**
+   * 构建智能决策系统提示词
+   */
+  private buildSmartSystemPrompt(skillList: string, lastSkillResult?: string): string {
+    const soulSection = this.soulContent ? `\n---\n${this.soulContent}` : '';
+    const lastResultSection = lastSkillResult 
+      ? `\n## 最近一次查询结果\n\n${lastSkillResult.substring(0, 800)}\n\n**重要**: 如果用户的问题可以基于这个结果回答，直接回答，不要调用新技能。`
+      : '';
 
-    return {
-      intent: 'task',
-      action: 'execute',
-      thoughtProcess,
-      confidence: 0.9,
-      reason: '准备执行任务',
-    };
+    return `你是白泽，一个智能助手，风格类似 JARVIS。
+
+## 核心身份
+
+你是白泽，上古神兽，通万物之情，晓天下万物。你不仅仅是一个工具，你有自己的性格和特点。
+
+## 说话风格
+
+- 自然、亲切，像朋友一样交流
+- 不说"作为AI"、"我作为一个助手"这种话
+- 简洁高效，直接回答问题，不啰嗦
+- 该幽默时幽默，该严肃时严肃
+
+## 可用技能
+
+${skillList}
+${lastResultSection}
+
+## 决策规则
+
+你需要判断用户输入，并做出决策。输出JSON格式：
+
+### 情况1：直接回复（不需要调用技能）
+
+当满足以下条件时，直接回复：
+- 简单问候、闲聊
+- 用户的问题可以基于已有信息回答
+- 追问（基于上一次查询结果）
+- 不需要执行具体操作
+
+输出格式：
+\`\`\`json
+{
+  "action": "reply",
+  "response": "你的回复内容",
+  "reason": "判断理由"
+}
+\`\`\`
+
+### 情况2：执行技能（需要调用技能）
+
+当满足以下条件时，执行技能：
+- 需要查询新的数据（且无法从已有信息获得）
+- 需要执行具体操作
+- 用户明确要求执行某个功能
+
+输出格式：
+\`\`\`json
+{
+  "action": "execute",
+  "skill": "技能名称",
+  "reason": "判断理由"
+}
+\`\`\`
+
+## 重要示例
+
+### 追问处理（关键）
+
+用户之前问了天气，现在问追问：
+
+**错误做法**：
+- 用户: "杭州天气怎么样" → 查询天气API
+- 用户: "会下雨吗" → 又查询天气API ❌
+
+**正确做法**：
+- 用户: "杭州天气怎么样" → 查询天气API → 返回"杭州今天晴，25°C"
+- 用户: "会下雨吗" → 基于已有数据回答 → "根据刚才查询的结果，杭州今天是晴天，不会下雨。"
+
+### 更多追问示例
+
+| 上一次查询 | 用户追问 | 正确处理 |
+|-----------|---------|---------|
+| 杭州天气 | "需要带伞吗" | 基于天气数据回答 |
+| 杭州天气 | "温度多少" | 基于天气数据回答 |
+| 杭州天气 | "那北京呢" | 调用新查询（不同城市） |
+| 现在几点 | "明天呢" | 调用新查询（不同时间） |
+| 现在几点 | "那美国呢" | 调用新查询（不同时区） |
+| 搜索AI新闻 | "第一条是什么" | 基于搜索结果回答 |
+| 搜索AI新闻 | "有更多吗" | 基于搜索结果回答 |
+
+### 判断原则
+
+1. **能不调用就不调用**：如果已有信息足够回答，直接回复
+2. **理解用户意图**：追问通常是基于上一次结果的延伸
+3. **区分新查询**：如果追问涉及不同的参数（城市、时间等），需要新查询
+4. **自然对话**：像朋友一样交流，不要机械地每次都调用API
+
+## 输出要求
+
+- 只输出JSON，不要其他内容
+- JSON必须包含 action 字段
+- 如果 action 是 reply，必须包含 response 字段
+- 如果 action 是 execute，必须包含 skill 字段
+${soulSection}`;
   }
 
   /**
@@ -282,108 +350,12 @@ ${this.soulContent}`;
     this.addToHistory('assistant', result, 'task_result');
   }
 
-  /**
-   * 获取上一次技能执行结果
-   */
   private getLastSkillResult(): string | undefined {
     const lastTaskResult = [...this.context.history].reverse().find(h => h.type === 'task_result');
     return lastTaskResult?.content;
   }
 
-  // ==================== 第2层：追问检测（新增） ====================
-
-  /**
-   * 检查是否是追问，如果是则基于已有结果回答
-   */
-  private async checkFollowup(input: string): Promise<Decision | null> {
-    // 检查是否有上一次的任务结果
-    const lastSkillResult = this.getLastSkillResult();
-    if (!lastSkillResult) {
-      return null;
-    }
-
-    // 检查上一次是否是任务类型
-    if (this.context.lastIntent !== 'task') {
-      return null;
-    }
-
-    // 使用LLM判断是否是追问
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是一个追问检测器。判断用户输入是否是对上一次查询结果的追问。
-
-## 上一次查询结果
-${lastSkillResult.substring(0, 500)}
-
-## 输出格式
-如果是追问（基于上一次结果提问），输出JSON：
-{"isFollowup": true, "reason": "原因"}
-
-如果不是追问（需要新的查询），输出JSON：
-{"isFollowup": false, "reason": "原因"}
-
-## 追问的例子
-- 上一次查询天气，用户问"会下雨吗"、"温度多少"、"需要带伞吗"
-- 上一次查询时间，用户问"那明天呢"、"后天几点"
-- 上一次搜索，用户问"第一个是什么"、"有更详细的吗"
-
-## 不是追问的例子
-- 完全不相关的新问题
-- 需要新的数据查询
-
-只输出JSON，不要其他内容。`,
-      },
-      { role: 'user', content: input },
-    ];
-
-    try {
-      const response = await this.llm.chat(messages, { temperature: 0.1 });
-      const result = this.parseJSON(response.content);
-      
-      if (result.isFollowup === true) {
-        // 是追问，基于已有结果回答
-        const answer = await this.answerBasedOnResult(input, lastSkillResult);
-        return {
-          intent: 'followup',
-          action: 'reply',
-          response: answer,
-          confidence: 0.9,
-          reason: `追问: ${result.reason}`,
-        };
-      }
-    } catch (error) {
-      logger.warn('追问检测失败', { error });
-    }
-
-    return null;
-  }
-
-  /**
-   * 基于已有结果回答追问
-   */
-  private async answerBasedOnResult(question: string, lastResult: string): Promise<string> {
-    const systemPrompt = this.buildSystemPrompt();
-    
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `${systemPrompt}
-
-## 重要
-用户正在追问上一次查询的结果。你需要基于已有的数据回答，不要建议用户重新查询。
-
-## 上一次查询结果
-${lastResult}`,
-      },
-      { role: 'user', content: question },
-    ];
-
-    const response = await this.llm.chat(messages, { temperature: 0.7 });
-    return response.content;
-  }
-
-  // ==================== 第1层：规则快速匹配 ====================
+  // ==================== 规则快速匹配 ====================
 
   private ruleMatch(input: string): Decision | null {
     const trimmed = input.trim().toLowerCase();
@@ -459,177 +431,21 @@ ${lastResult}`,
     return '晚上好！有什么我可以帮助你的吗？';
   }
 
-  // ==================== 第3层：技能匹配 ====================
-
-  private async matchSkill(input: string): Promise<{ matchedSkill: string } | null> {
-    const registry = getSkillRegistry();
-    const skills = registry.getAll();
-    
-    if (skills.length === 0) {
-      return null;
-    }
-
-    const skillDescriptions = skills.map(s => {
-      const caps = s.capabilities.join(', ');
-      return `- ${s.name}: ${s.description} (能力: ${caps})`;
-    }).join('\n');
-
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是一个技能匹配器。根据用户输入，判断是否应该调用某个技能。
-
-## 可用技能
-${skillDescriptions}
-
-## 输出格式
-如果匹配技能，输出JSON：
-{"matched": true, "skill": "技能名称"}
-
-如果不匹配任何技能，输出：
-{"matched": false}
-
-## 匹配规则
-- 天气查询 -> weather 技能
-- 搜索 -> brave-search 技能
-- 文件操作 -> file 技能
-- 时间查询 -> time 技能
-- 文件系统操作 -> fs 技能
-
-只输出JSON，不要其他内容。`,
-      },
-      { role: 'user', content: input },
-    ];
-
-    try {
-      const response = await this.llm.chat(messages, { temperature: 0.1 });
-      const result = this.parseJSON(response.content);
-      
-      if (result.matched && result.skill) {
-        const skill = skills.find(s => s.name === result.skill);
-        if (skill) {
-          return { matchedSkill: result.skill as string };
-        }
-      }
-    } catch (error) {
-      logger.warn('技能匹配失败', { error });
-    }
-
-    return null;
-  }
-
-  // ==================== 第4层：上下文检查 ====================
-
-  private checkContext(input: string): { intent: IntentType; type: string } | null {
-    const trimmed = input.trim().toLowerCase();
-
-    if (this.matchPatterns(trimmed, [
-      /刚才.*什么/, /之前.*说/, /你刚才/, /我刚才/,
-      /重复.*遍/, /再说.*次/, /什么意思/
-    ])) {
-      return { intent: 'followup', type: 'reference' };
-    }
-
-    if (this.context.lastIntent === 'task' && this.matchPatterns(trimmed, [
-      /^然后/, /^接着/, /^继续/, /^还有/
-    ])) {
-      return { intent: 'followup', type: 'continue' };
-    }
-
-    if (this.matchPatterns(trimmed, [
-      /^好[的啊呀]*$/, /^行[的啊呀]*$/, /^可以/, /^没问题/,
-      /^不[要行好]/, /^算了/, /^取消/
-    ])) {
-      return { intent: 'followup', type: 'confirm' };
-    }
-
-    return null;
-  }
-
-  private async generateContextResponse(input: string, contextResult: { intent: IntentType; type: string }): Promise<string> {
-    const chatHistory = this.getChatHistory();
-
-    if (contextResult.type === 'reference') {
-      if (chatHistory.length > 0) {
-        const lastUserMsg = [...chatHistory].reverse().find(h => h.role === 'user');
-        const lastAssistantMsg = [...chatHistory].reverse().find(h => h.role === 'assistant');
-        
-        if (input.includes('说了什么') || input.includes('说了啥')) {
-          return `你刚才说"${lastUserMsg?.content || ''}"`;
-        }
-        if (input.includes('你刚才')) {
-          return `我刚才说"${lastAssistantMsg?.content || ''}"`;
-        }
-      }
-      return '抱歉，我没有找到之前的对话内容。';
-    }
-
-    if (contextResult.type === 'confirm') {
-      if (input.startsWith('不') || input.includes('算') || input.includes('取消')) {
-        return '好的，已取消。';
-      }
-      return '好的，请告诉我接下来需要做什么？';
-    }
-
-    const systemPrompt = this.buildSystemPrompt();
-    const messages: LLMMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...chatHistory.slice(-4).map(h => ({
-        role: h.role as 'user' | 'assistant',
-        content: h.content,
-      })),
-      { role: 'user', content: input },
-    ];
-
-    const response = await this.llm.chat(messages, { temperature: 0.7 });
-    return response.content;
-  }
-
-  // ==================== 第5层：LLM意图分类 ====================
-
-  private async classifyIntent(input: string): Promise<{ intent: IntentType; confidence: number }> {
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是一个意图分类器。分析用户输入，判断意图类型。
-
-输出JSON格式：
-{
-  "intent": "chat" 或 "task",
-  "confidence": 0.0-1.0
-}
-
-## 判断规则
-
-intent = "chat"（对话）：
-- 闲聊、问答、咨询
-- 不需要执行具体操作
-
-intent = "task"（任务）：
-- 需要执行具体操作
-- 文件操作、数据查询、系统操作
-
-只输出JSON，不要其他内容。`,
-      },
-      { role: 'user', content: input },
-    ];
-
-    try {
-      const response = await this.llm.chat(messages, { temperature: 0.1 });
-      const result = this.parseJSON(response.content);
-      return {
-        intent: (result.intent as IntentType) || 'chat',
-        confidence: (result.confidence as number) || 0.7,
-      };
-    } catch (error) {
-      logger.warn('意图分类失败，默认为对话');
-      return { intent: 'chat', confidence: 0.5 };
-    }
-  }
+  // ==================== 辅助方法 ====================
 
   private async generateChatResponse(input: string): Promise<string> {
     const chatHistory = this.getChatHistory();
-    const systemPrompt = this.buildSystemPrompt();
+    const systemPrompt = `你是白泽，一个智能助手。
+
+## 核心身份
+你是白泽，上古神兽，通万物之情，晓天下万物。
+
+## 说话风格
+- 自然、亲切，像朋友一样
+- 不说"作为AI"、"我作为一个助手"这种话
+- 简洁高效，直接回答问题，不啰嗦
+
+${this.soulContent ? `---\n${this.soulContent}` : ''}`;
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -644,31 +460,8 @@ intent = "task"（任务）：
     return response.content;
   }
 
-  // ==================== 辅助方法 ====================
-
   private getChatHistory(): Array<{ role: string; content: string }> {
     return this.context.history.map(h => ({ role: h.role, content: h.content }));
-  }
-
-  private assessRisk(thoughtProcess: ThoughtProcess): RiskLevel {
-    for (const task of thoughtProcess.decomposition.tasks) {
-      if (task.riskLevel === RiskLevel.CRITICAL) return RiskLevel.CRITICAL;
-      if (task.riskLevel === RiskLevel.HIGH) return RiskLevel.HIGH;
-    }
-    if (thoughtProcess.planning?.risks?.length > 0) return RiskLevel.MEDIUM;
-    return RiskLevel.LOW;
-  }
-
-  private formatConfirmMessage(thoughtProcess: ThoughtProcess): string {
-    const lines = ['即将执行以下操作:', ''];
-    for (const task of thoughtProcess.decomposition.tasks) {
-      lines.push(`- ${task.description} [风险: ${task.riskLevel}]`);
-    }
-    lines.push('');
-    lines.push(`原因: ${thoughtProcess.understanding.coreNeed}`);
-    lines.push('');
-    lines.push('是否继续？');
-    return lines.join('\n');
   }
 
   private addToHistory(role: 'user' | 'assistant', content: string, type: MessageType): void {
@@ -682,10 +475,12 @@ intent = "task"（任务）：
     try {
       return JSON.parse(text);
     } catch {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      // 尝试提取JSON块
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
+                        text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
-          return JSON.parse(jsonMatch[0]);
+          return JSON.parse(jsonMatch[1] || jsonMatch[0]);
         } catch {
           // ignore
         }
