@@ -47,8 +47,31 @@ export * from './skills/base';
 export * from './skills/registry';
 
 // 执行层 (L5)
-export { ParallelExecutor, getExecutor, ExecutionResult as ExecutorResult, resetExecutor } from './executor';
-export * from './executor/process';
+export { 
+  ParallelExecutor, 
+  getExecutor, 
+  resetExecutor,
+} from './executor';
+export type { 
+  ExecutionResult as ExecutorResult,
+  StepCallback,
+} from './executor';
+export { 
+  ReActExecutor, 
+  getReActExecutor, 
+  resetReActExecutor,
+} from './executor';
+export type {
+  ReActResult,
+  ReActContext,
+} from './executor';
+export { ProcessTool, getProcessTool, resetProcessTool } from './executor';
+export type {
+  ProcessState,
+  ProcessRecord,
+  ProcessToolParams,
+  ProcessToolResult,
+} from './executor';
 export * from './executor/subagent';
 
 // 调度层 (L6)

@@ -18,6 +18,7 @@ import { getLogger } from '../observability/logger';
 import { initDatabase, getDatabase } from '../memory/database';
 import { SkillLoader } from '../skills/loader';
 import { getSkillRegistry } from '../skills/registry';
+import { registerBuiltinSkills } from '../skills/builtins';
 import { getClawHubClient } from '../skills/market';
 import { startWebServer } from '../interaction/webServer';
 import { createAPIServer } from '../interaction/api';
@@ -37,7 +38,10 @@ async function initialize(): Promise<void> {
     // 初始化LLM
     getLLMManager();
 
-    // 加载技能
+    // 注册内置技能（ProcessTool 等）
+    registerBuiltinSkills();
+
+    // 加载外部技能
     const loader = new SkillLoader();
     const skills = await loader.loadAll();
     const registry = getSkillRegistry();

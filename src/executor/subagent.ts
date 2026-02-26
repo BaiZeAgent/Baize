@@ -16,7 +16,8 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { getLogger } from '../observability/logger';
-import { getExecutor, ExecutionResult } from '../executor';
+import { getExecutor } from './parallel-executor';
+import type { ExecutionResult } from './parallel-executor';
 import { getSandboxManager, SandboxContext } from '../sandbox';
 import { Task, TaskResult, SkillContext } from '../types';
 
