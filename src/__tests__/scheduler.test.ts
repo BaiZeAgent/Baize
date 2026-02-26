@@ -30,11 +30,11 @@ vi.mock('../observability/logger', () => ({
   }),
 }));
 
-import { Scheduler, getScheduler, resetScheduler } from '../scheduler';
+import { TaskScheduler, getScheduler, resetScheduler } from '../scheduler';
 import { TaskStatus, RiskLevel } from '../types';
 
-describe('Scheduler', () => {
-  let scheduler: Scheduler;
+describe('TaskScheduler', () => {
+  let scheduler: TaskScheduler;
 
   beforeEach(() => {
     resetScheduler();
