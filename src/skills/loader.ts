@@ -25,6 +25,7 @@ const logger = getLogger('skill:loader');
 interface SkillFrontMatter {
   name: string;
   description: string;
+  when_to_use?: string;  // 何时使用此技能
   version?: string;
   author?: string;
   capabilities?: string[];
@@ -47,6 +48,7 @@ interface SkillFrontMatter {
 interface LoadedSkillDefinition {
   name: string;
   description: string;
+  whenToUse?: string;  // 何时使用此技能
   version: string;
   author: string;
   capabilities: string[];
@@ -85,6 +87,10 @@ class DynamicSkill extends Skill {
 
   get description(): string {
     return this.definition.description;
+  }
+
+  get whenToUse(): string | undefined {
+    return this.definition.whenToUse;
   }
 
   get capabilities(): string[] {
@@ -859,6 +865,7 @@ export class SkillLoader {
     return {
       name: config.name,
       description: config.description,
+      whenToUse: config.when_to_use,
       version: config.version || '1.0.0',
       author: config.author || 'unknown',
       capabilities: config.capabilities || [],

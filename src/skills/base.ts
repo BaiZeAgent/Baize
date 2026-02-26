@@ -13,6 +13,10 @@ export abstract class Skill {
   abstract get name(): string;
   abstract get description(): string;
 
+  get whenToUse(): string | undefined {
+    return undefined;
+  }
+
   get capabilities(): string[] {
     return [];
   }
@@ -74,6 +78,7 @@ export abstract class Skill {
     return {
       name: this.name,
       description: this.description,
+      whenToUse: this.whenToUse,
       capabilities: this.capabilities,
       riskLevel: this.riskLevel,
       inputSchema: this.inputSchema,

@@ -200,6 +200,7 @@ export interface SkillResult {
 export interface SkillInfo {
   name: string;
   description: string;
+  whenToUse?: string;  // 何时使用此技能
   capabilities: string[];
   riskLevel: RiskLevel;
   inputSchema: Record<string, unknown>;

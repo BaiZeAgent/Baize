@@ -56,27 +56,25 @@ export class SmartRouter {
 
   /**
    * 路由决策
-   * 单次LLM调用，让LLM自己判断任务复杂度
+   * 根据技能文档判断，不硬编码规则
    */
   async route(context: RouteContext): Promise<RouteDecision> {
     const { userInput, historySummary } = context;
 
     logger.debug(`[router-start] input=${userInput.slice(0, 50)}...`);
 
-    // 构建技能列表描述
+    // 构建技能描述（从文档中提取 when_to_use）
     const skillsDescription = this.buildSkillsDescription();
 
     // 构建系统提示
     const systemPrompt = this.buildSystemPrompt(skillsDescription, historySummary);
 
-    // 构建消息
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userInput },
     ];
 
     try {
-      // 单次LLM调用
       const response = await this.llm.chat(messages, { temperature: 0.1 });
       const decision = this.parseDecision(response.content);
 
@@ -88,7 +86,6 @@ export class SmartRouter {
       return decision;
     } catch (error) {
       logger.error(`[router-error] ${error}`);
-      // 出错时默认走规划路径，确保安全
       return {
         action: 'plan',
         reason: '路由决策失败，降级到规划路径',
@@ -98,6 +95,7 @@ export class SmartRouter {
 
   /**
    * 构建技能列表描述
+   * 包含 when_to_use 信息，让 LLM 根据文档判断
    */
   private buildSkillsDescription(): string {
     const skills = this.skillRegistry.getAll();
@@ -107,7 +105,13 @@ export class SmartRouter {
     }
 
     return skills
-      .map((s) => `- ${s.name}: ${s.description}`)
+      .map((s) => {
+        let desc = `- ${s.name}: ${s.description}`;
+        if (s.whenToUse) {
+          desc += `\n  使用场景: ${s.whenToUse}`;
+        }
+        return desc;
+      })
       .join('\n');
   }
 
