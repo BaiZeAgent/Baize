@@ -1,16 +1,16 @@
 /**
  * 对话组件
+ * 
+ * v3.1.6 更新：
+ * - 修复换行符显示问题
+ * - 添加简单的Markdown渲染
  */
 
 const ChatComponent = {
-    // 状态
     messages: [],
     isLoading: false,
-    conversationId: null,  // 当前会话 ID
+    conversationId: null,
 
-    /**
-     * 初始化
-     */
     init() {
         this.messagesContainer = document.getElementById('messages');
         this.messageInput = document.getElementById('message-input');
@@ -21,14 +21,9 @@ const ChatComponent = {
         this.loadHistory();
     },
 
-    /**
-     * 绑定事件
-     */
     bindEvents() {
-        // 发送按钮
         this.sendBtn.addEventListener('click', () => this.sendMessage());
 
-        // 回车发送
         this.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -36,18 +31,13 @@ const ChatComponent = {
             }
         });
 
-        // 自动调整高度
         this.messageInput.addEventListener('input', () => {
             Utils.autoResize(this.messageInput);
         });
 
-        // 清空历史
         this.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
     },
 
-    /**
-     * 加载历史
-     */
     async loadHistory() {
         try {
             const result = await BaizeAPI.getChatHistory(this.conversationId);
@@ -63,19 +53,14 @@ const ChatComponent = {
         }
     },
 
-    /**
-     * 发送消息
-     */
     async sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message || this.isLoading) return;
 
-        // 添加用户消息
         this.addMessage('user', message);
         this.messageInput.value = '';
         Utils.autoResize(this.messageInput);
 
-        // 显示加载状态
         this.isLoading = true;
         this.sendBtn.disabled = true;
         this.showTyping();
@@ -86,7 +71,6 @@ const ChatComponent = {
             this.hideTyping();
 
             if (result.success) {
-                // 保存会话 ID
                 if (result.data.conversationId) {
                     this.conversationId = result.data.conversationId;
                 }
@@ -105,9 +89,6 @@ const ChatComponent = {
         }
     },
 
-    /**
-     * 添加消息
-     */
     addMessage(role, content) {
         this.messages.push({ role, content });
         this.renderMessage(role, content);
@@ -120,15 +101,63 @@ const ChatComponent = {
     renderMessage(role, content) {
         const div = document.createElement('div');
         div.className = `message ${role}`;
+        
+        // 处理内容：保留换行符，渲染简单Markdown
+        const formattedContent = this.formatContent(content);
+        
         div.innerHTML = `
-            <div class="message-content">${Utils.escapeHtml(content)}</div>
+            <div class="message-content">${formattedContent}</div>
         `;
         this.messagesContainer.appendChild(div);
     },
 
     /**
-     * 渲染所有消息
+     * 格式化消息内容
+     * - 保留换行符
+     * - 渲染简单Markdown
      */
+    formatContent(content) {
+        // 先转义HTML
+        let text = this.escapeHtml(content);
+        
+        // 渲染Markdown
+        // 代码块
+        text = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+        
+        // 行内代码
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // 粗体
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // 斜体
+        text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        // 链接
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        // 列表项
+        text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
+        text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+        
+        // 有序列表
+        text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+        
+        // 换行符转<br>（保留空行）
+        text = text.replace(/\n/g, '<br>');
+        
+        return text;
+    },
+
+    /**
+     * 转义HTML特殊字符
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
     renderMessages() {
         this.messagesContainer.innerHTML = '';
         this.messages.forEach(msg => {
@@ -137,9 +166,6 @@ const ChatComponent = {
         Utils.scrollToBottom(this.messagesContainer);
     },
 
-    /**
-     * 显示正在输入
-     */
     showTyping() {
         const div = document.createElement('div');
         div.className = 'message assistant typing';
@@ -153,9 +179,6 @@ const ChatComponent = {
         Utils.scrollToBottom(this.messagesContainer);
     },
 
-    /**
-     * 隐藏正在输入
-     */
     hideTyping() {
         const typing = document.getElementById('typing-indicator');
         if (typing) {
@@ -163,16 +186,12 @@ const ChatComponent = {
         }
     },
 
-    /**
-     * 清空历史
-     */
     async clearHistory() {
         if (!confirm('确定要清空对话历史吗？')) return;
-
         try {
             await BaizeAPI.clearChatHistory(this.conversationId);
             this.messages = [];
-            this.conversationId = null;  // 重置会话 ID
+            this.conversationId = null;
             this.messagesContainer.innerHTML = `
                 <div class="message assistant">
                     <div class="message-content">

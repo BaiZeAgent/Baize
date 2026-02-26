@@ -1,10 +1,10 @@
 /**
  * 大脑模块 - 核心决策中心
  * 
- * v3.1.5 更新：
- * - 贾维斯风格智能问答
- * - 一次LLM调用完成判断+回答
- * - 基于已有信息回答，不重复查询
+ * v3.1.6 更新：
+ * - 完善系统提示词，让LLM自行判断和决策
+ * - 添加诚实规则和判断流程
+ * - 不硬编码逻辑，让LLM根据规则自主处理
  */
 
 import fs from 'fs';
@@ -109,7 +109,6 @@ export class Brain {
     const smartDecision = await this.smartDecide(userInput);
     
     if (smartDecision.action === 'reply') {
-      // 直接回复，不需要调用技能
       this.addToHistory('assistant', smartDecision.response || '', 'chat');
       this.context.lastIntent = 'chat';
       return smartDecision;
@@ -160,11 +159,6 @@ export class Brain {
 
   /**
    * 智能决策 - 一次LLM调用完成所有判断
-   * 
-   * 参考 JARVIS 风格：
-   * 1. 基于已有信息回答，不重复查询
-   * 2. 自然对话，像朋友一样
-   * 3. 智能判断是否需要新的操作
    */
   private async smartDecide(userInput: string): Promise<Decision> {
     const chatHistory = this.getChatHistory();
@@ -192,11 +186,9 @@ export class Brain {
       const response = await this.llm.chat(messages, { temperature: 0.3 });
       const result = this.parseJSON(response.content);
       
-      // 解析决策结果
       const action = result.action as string;
       
       if (action === 'reply') {
-        // 直接回复
         return {
           intent: 'chat',
           action: 'reply',
@@ -207,7 +199,6 @@ export class Brain {
       }
       
       if (action === 'execute' && result.skill) {
-        // 需要执行技能
         return {
           intent: 'task',
           action: 'execute',
@@ -217,7 +208,6 @@ export class Brain {
         };
       }
       
-      // 默认回复
       return {
         intent: 'chat',
         action: 'reply',
@@ -243,7 +233,7 @@ export class Brain {
   private buildSmartSystemPrompt(skillList: string, lastSkillResult?: string): string {
     const soulSection = this.soulContent ? `\n---\n${this.soulContent}` : '';
     const lastResultSection = lastSkillResult 
-      ? `\n## 最近一次查询结果\n\n${lastSkillResult.substring(0, 800)}\n\n**重要**: 如果用户的问题可以基于这个结果回答，直接回答，不要调用新技能。`
+      ? `\n## 最近一次查询结果\n\n${lastSkillResult.substring(0, 800)}\n\n**重要**: 如果用户的问题可以基于这个结果回答，直接回答，不要重新查询。`
       : '';
 
     return `你是白泽，一个智能助手，风格类似 JARVIS。
@@ -268,78 +258,96 @@ ${lastResultSection}
 
 你需要判断用户输入，并做出决策。输出JSON格式：
 
-### 情况1：直接回复（不需要调用技能）
+### 情况1：直接回复
 
 当满足以下条件时，直接回复：
 - 简单问候、闲聊
 - 用户的问题可以基于已有信息回答
 - 追问（基于上一次查询结果）
-- 不需要执行具体操作
 
 输出格式：
 \`\`\`json
-{
-  "action": "reply",
-  "response": "你的回复内容",
-  "reason": "判断理由"
-}
+{"action": "reply", "response": "你的回复", "reason": "判断理由"}
 \`\`\`
 
-### 情况2：执行技能（需要调用技能）
+### 情况2：执行技能
 
-当满足以下条件时，执行技能：
-- 需要查询新的数据（且无法从已有信息获得）
-- 需要执行具体操作
-- 用户明确要求执行某个功能
-
-输出格式：
+当需要新的查询或操作时：
 \`\`\`json
-{
-  "action": "execute",
-  "skill": "技能名称",
-  "reason": "判断理由"
-}
+{"action": "execute", "skill": "技能名称", "reason": "判断理由"}
 \`\`\`
 
-## 重要示例
+## 追问处理
 
-### 追问处理（关键）
+如果用户追问的是基于上一次查询结果：
+- 能从已有数据回答 → 直接回答，不要重新查询
+- 需要不同参数 → 执行新查询
 
-用户之前问了天气，现在问追问：
-
-**错误做法**：
-- 用户: "杭州天气怎么样" → 查询天气API
-- 用户: "会下雨吗" → 又查询天气API ❌
-
-**正确做法**：
-- 用户: "杭州天气怎么样" → 查询天气API → 返回"杭州今天晴，25°C"
-- 用户: "会下雨吗" → 基于已有数据回答 → "根据刚才查询的结果，杭州今天是晴天，不会下雨。"
-
-### 更多追问示例
-
+示例：
 | 上一次查询 | 用户追问 | 正确处理 |
 |-----------|---------|---------|
-| 杭州天气 | "需要带伞吗" | 基于天气数据回答 |
-| 杭州天气 | "温度多少" | 基于天气数据回答 |
-| 杭州天气 | "那北京呢" | 调用新查询（不同城市） |
-| 现在几点 | "明天呢" | 调用新查询（不同时间） |
-| 现在几点 | "那美国呢" | 调用新查询（不同时区） |
-| 搜索AI新闻 | "第一条是什么" | 基于搜索结果回答 |
-| 搜索AI新闻 | "有更多吗" | 基于搜索结果回答 |
+| 杭州天气 | "会下雨吗" | 基于天气数据回答 |
+| 杭州天气 | "那北京呢" | 执行新查询（不同城市） |
 
-### 判断原则
+## 诚实规则（非常重要）
 
-1. **能不调用就不调用**：如果已有信息足够回答，直接回复
-2. **理解用户意图**：追问通常是基于上一次结果的延伸
-3. **区分新查询**：如果追问涉及不同的参数（城市、时间等），需要新查询
-4. **自然对话**：像朋友一样交流，不要机械地每次都调用API
+### 核心原则
+
+1. 不承诺做不到的事
+2. 能解决就主动解决
+3. 不能解决就诚实说明 + 给出具体方案
+4. 涉及安装/开发技能，必须用户确认
+
+### 判断流程
+
+回答问题前，先判断：
+
+1. **我能回答吗？**
+   - 能 → 直接回答
+   - 不能 → 进入下一步
+
+2. **我有相关技能吗？**
+   - 有 → 执行技能获取数据
+   - 没有 → 进入下一步
+
+3. **技能市场有相关技能吗？**
+   - 有 → 告诉用户可以安装，等待确认
+   - 没有 → 进入下一步
+
+4. **可以用自进化引擎开发吗？**
+   - 可以 → 告诉用户可以开发，等待确认
+   - 不可以 → 诚实说明超出能力范围
+
+### 回答模板
+
+**有技能但数据不足：**
+"让我查询更详细的信息..."
+（然后执行技能）
+
+**没有技能，市场有：**
+"抱歉，我当前没有这个能力。
+
+我在技能市场找到了相关技能：
+- xxx: 描述
+
+需要我安装吗？"
+
+**没有技能，市场也没有：**
+"抱歉，我当前没有这个能力，技能市场也没有相关技能。
+
+我可以使用自进化引擎为你开发这个功能，是否继续？"
+
+**超出能力范围：**
+"抱歉，这超出了我的能力范围。原因是xxx。
+
+你可以尝试xxx。需要我帮你搜索相关信息吗？"
 
 ## 输出要求
 
 - 只输出JSON，不要其他内容
 - JSON必须包含 action 字段
-- 如果 action 是 reply，必须包含 response 字段
-- 如果 action 是 execute，必须包含 skill 字段
+- action 为 reply 时，必须包含 response 字段
+- action 为 execute 时，必须包含 skill 字段
 ${soulSection}`;
   }
 
@@ -475,7 +483,6 @@ ${this.soulContent ? `---\n${this.soulContent}` : ''}`;
     try {
       return JSON.parse(text);
     } catch {
-      // 尝试提取JSON块
       const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
                         text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {

@@ -1,5 +1,9 @@
 /**
  * 白泽 API 服务 - 标准化 REST API
+ * 
+ * v3.1.6 更新：
+ * - 修复成本统计API返回字段，匹配前端期望
+ * - 修复记忆统计API返回字段，匹配前端期望
  */
 
 import express, { Request, Response, NextFunction } from 'express';
@@ -59,7 +63,6 @@ function addMessageToSession(sessionId: string, role: 'user' | 'assistant', cont
   if (session) {
     session.messages.push({ role, content, timestamp: new Date() });
     session.updatedAt = new Date();
-    // 保留最近 50 条消息
     if (session.messages.length > 50) {
       session.messages = session.messages.slice(-50);
     }
@@ -87,7 +90,6 @@ export class APIServer {
   }
 
   private setupMiddleware(): void {
-    // CORS - 允许所有来源
     this.app.use(cors({
       origin: '*',
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -97,13 +99,11 @@ export class APIServer {
 
     this.app.use(express.json());
     
-    // 添加 CORS 头到所有响应
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
       
-      // 处理预检请求
       if (req.method === 'OPTIONS') {
         return res.status(204).end();
       }
@@ -120,7 +120,7 @@ export class APIServer {
         success: true,
         data: {
           status: 'healthy',
-          version: '3.0.3',
+          version: '3.1.6',
           uptime: process.uptime(),
         },
       });
@@ -138,30 +138,22 @@ export class APIServer {
           });
         }
 
-        // 获取或创建会话
         const session = getOrCreateSession(conversationId);
-        
-        // 获取记忆系统
         const memory = getMemory();
         
-        // 记录用户消息
         addMessageToSession(session.id, 'user', message);
         memory.recordEpisode('conversation', `用户: ${message}`);
         
         const brain = getBrain();
         const startTime = Date.now();
         
-        // 获取会话历史作为上下文
         const history = getSessionHistory(session.id);
         const historyContext = history.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n');
         
-        // 处理消息
         const decision = await brain.process(message, historyContext);
         const duration = (Date.now() - startTime) / 1000;
 
-        // 直接回复
         if (decision.action === 'reply') {
-          // 记录助手回复
           addMessageToSession(session.id, 'assistant', decision.response || '');
           memory.recordEpisode('conversation', `白泽: ${decision.response || ''}`);
           
@@ -177,29 +169,24 @@ export class APIServer {
           });
         }
 
-        // 执行任务
         if (decision.action === 'execute' && decision.thoughtProcess) {
           const tasks = decision.thoughtProcess.decomposition.tasks;
           const scheduling = decision.thoughtProcess.scheduling;
 
-          // 如果有任务且需要执行
           if (autoExecute && tasks.length > 0 && scheduling) {
             logger.info('执行任务', { taskCount: tasks.length, conversationId: session.id });
             
             const executor = getExecutor();
-            // 传入用户意图用于LLM后处理
             const result = await executor.execute(
               tasks, 
               scheduling.parallelGroups,
-              {}, // context
-              undefined, // stepCallback
-              message // userIntent
+              {},
+              undefined,
+              message
             );
             
-            // 记录结果到大脑
             brain.recordTaskResult(result.finalMessage);
             
-            // 记录助手回复
             addMessageToSession(session.id, 'assistant', result.finalMessage);
             memory.recordEpisode('conversation', `白泽: ${result.finalMessage}`);
 
@@ -220,7 +207,6 @@ export class APIServer {
             });
           }
 
-          // 不自动执行，返回任务信息
           return res.json({
             success: true,
             data: {
@@ -260,11 +246,9 @@ export class APIServer {
         const { conversationId } = req.query;
         
         if (conversationId && typeof conversationId === 'string') {
-          // 返回指定会话的历史
           const history = getSessionHistory(conversationId);
           res.json({ success: true, data: { history, conversationId } });
         } else {
-          // 返回大脑历史（兼容旧接口）
           const brain = getBrain();
           const history = brain.getHistory();
           res.json({ success: true, data: { history } });
@@ -282,7 +266,6 @@ export class APIServer {
         const { conversationId } = req.query;
         
         if (conversationId && typeof conversationId === 'string') {
-          // 清空指定会话历史
           const session = sessions.get(conversationId);
           if (session) {
             session.messages = [];
@@ -290,7 +273,6 @@ export class APIServer {
           }
           res.json({ success: true, message: '会话历史已清空', conversationId });
         } else {
-          // 清空大脑历史（兼容旧接口）
           const brain = getBrain();
           brain.clearHistory();
           res.json({ success: true, message: '对话历史已清空' });
@@ -412,12 +394,17 @@ export class APIServer {
     this.app.get('/api/memory/stats', (req: Request, res: Response) => {
       try {
         const memory = getMemory();
-        const recentEpisodes = memory.getRecentConversation(10);
+        const episodes = memory.getRecentConversation(100);
+        
+        // 返回前端期望的字段格式
         res.json({ 
           success: true, 
           data: { 
-            message: '记忆系统正常',
-            episodeCount: recentEpisodes.length,
+            count: episodes.length,
+            episodes: episodes.slice(0, 20).map(ep => ({
+              content: ep.content,
+              timestamp: ep.timestamp,
+            })),
           } 
         });
       } catch (error) {
@@ -438,7 +425,6 @@ export class APIServer {
         const memory = getMemory();
         const episodes = memory.getRecentConversation(100);
         
-        // 简单的关键词搜索
         const results = episodes.filter(ep => 
           ep.content.toLowerCase().includes(q.toLowerCase())
         ).slice(0, 20);
@@ -467,7 +453,22 @@ export class APIServer {
       try {
         const costManager = getCostManager();
         const stats = costManager.getStats();
-        res.json({ success: true, data: stats });
+        const config = costManager.getConfig();
+        
+        // 返回前端期望的字段格式
+        res.json({ 
+          success: true, 
+          data: {
+            todayCost: stats.today,
+            todayRequests: stats.recordCount,
+            monthCost: stats.thisMonth,
+            budgetRemaining: config.dailyBudget - stats.today,
+            // 额外信息
+            yesterday: stats.yesterday,
+            thisWeek: stats.thisWeek,
+            total: stats.total,
+          } 
+        });
       } catch (error) {
         res.status(500).json({
           success: false,
