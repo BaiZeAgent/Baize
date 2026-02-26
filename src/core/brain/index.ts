@@ -192,6 +192,17 @@ export class Brain {
           break;
 
         case 'tool_call':
+          // 检查工具是否存在
+          const toolExists = getSkillRegistry().get(decision.tool || '') !== undefined;
+          
+          // 如果工具不存在或缺少参数，改为询问
+          if (!toolExists || (decision.missing && decision.missing.length > 0)) {
+            yield this.createThinkingEvent('ask_missing', `缺少信息: ${decision.missing?.join(', ') || '工具不可用'}`);
+            yield* this.streamContent(decision.question || '请提供更多信息');
+            this.sessionManager.addMessage(sessionId, 'assistant', decision.question || '');
+            break;
+          }
+          
           yield this.createThinkingEvent('tool_call', `使用 ${decision.tool} 工具`, decision.tool);
           
           // 执行工具
@@ -212,9 +223,11 @@ export class Brain {
           break;
 
         case 'ask_missing':
-          yield this.createThinkingEvent('ask_missing', `缺少信息: ${decision.missing?.join(', ')}`);
-          yield* this.streamContent(decision.question || '请提供更多信息');
-          this.sessionManager.addMessage(sessionId, 'assistant', decision.question || '');
+          yield this.createThinkingEvent('ask_missing', `缺少信息: ${decision.missing?.join(', ') || decision.detail || '未知'}`);
+          // 优先使用question，其次使用detail作为问题
+          const askQuestion = decision.question || decision.detail || `请提供更多信息：${decision.missing?.join('、') || '缺少必要参数'}`;
+          yield* this.streamContent(askQuestion);
+          this.sessionManager.addMessage(sessionId, 'assistant', askQuestion);
           break;
 
         case 'clarify_intent':
@@ -413,12 +426,13 @@ export class Brain {
         response: json.response as string,
         tool: json.tool as string,
         params: json.params as Record<string, unknown>,
-        missing: json.missing as string[],
+        missing: (json.missing || (json.detail ? [json.detail] : [])) as string[],
         question: json.question as string,
         options: json.options as string[],
         message: json.message as string,
         alternatives: json.alternatives as string[],
         reason: json.reason as string,
+        detail: json.detail as string,
         confidence: 0.9
       };
     } catch {

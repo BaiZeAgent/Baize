@@ -121,6 +121,7 @@ export interface ParsedDecision {
   message?: string;
   alternatives?: string[];
   reason?: string;
+  detail?: string;
   confidence: number;
 }
 
