@@ -11,6 +11,14 @@ export * from './observability/logger';
 // 数据层
 export * from './memory/database';
 export * from './memory/index';
+export { 
+  VectorSearchManager, 
+  getVectorSearch, 
+  resetVectorSearch,
+  VectorRecord,
+  SearchResult as VectorSearchResult,
+  VectorSearchConfig,
+} from './memory/vector';
 
 // 知识层
 export * from './knowledge';
@@ -25,6 +33,8 @@ export type { ExecutionResult } from './executor';
 
 // 调度层
 export * from './scheduler';
+export * from './scheduler/proactive';
+export { ResourceLockManager as LockManager, getLockManager, resetLockManager } from './scheduler/lock';
 
 // 沙箱层
 export * from './sandbox';
