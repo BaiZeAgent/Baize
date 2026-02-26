@@ -165,3 +165,13 @@ export function getLockManager(): ResourceLockManager {
   }
   return lockManager;
 }
+
+/**
+ * 重置锁管理器实例（测试用）
+ */
+export function resetLockManager(): void {
+  if (lockManager) {
+    lockManager.clear();
+  }
+  lockManager = null;
+}
