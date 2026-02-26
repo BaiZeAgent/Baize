@@ -1,5 +1,8 @@
 /**
  * LLM管理器 - 管理多个LLM提供商
+ * 
+ * v3.1.0 更新：
+ * - 新增 embed 方法支持文本嵌入
  */
 import YAML from 'yaml';
 import fs from 'fs';
@@ -136,6 +139,35 @@ export class LLMManager {
     }
 
     return response;
+  }
+
+  /**
+   * 文本嵌入
+   * 
+   * 将文本转换为向量表示
+   * 用于语义搜索、相似度计算等
+   */
+  async embed(text: string, providerName?: string): Promise<number[]> {
+    const name = providerName || this.defaultProvider;
+    const provider = this.providers.get(name);
+    
+    if (!provider) {
+      throw new Error(`提供商 ${name} 不可用`);
+    }
+
+    // 检查提供商是否支持嵌入
+    if (provider.embed) {
+      try {
+        const result = await provider.embed(text);
+        logger.debug(`[llm-embed] text="${text.slice(0, 30)}..." dims=${result.length}`);
+        return result;
+      } catch (error) {
+        logger.warn(`[llm-embed-error] ${error}`);
+        throw error;
+      }
+    }
+
+    throw new Error(`提供商 ${name} 不支持文本嵌入`);
   }
 
   /**

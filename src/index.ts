@@ -6,6 +6,12 @@
  * - 新增上下文管理器（自动压缩）
  * - 新增错误恢复管理器
  * - 执行器集成锁机制
+ * 
+ * v3.1.1 更新：
+ * - 新增沙箱管理器（Docker容器隔离）
+ * - 新增进程管理器（后台执行）
+ * - 新增向量搜索（语义检索）
+ * - 新增子Agent支持（并行处理）
  */
 
 // 类型定义
@@ -17,6 +23,15 @@ export * from './observability/logger';
 // 数据层 (L2)
 export * from './memory/database';
 export * from './memory/index';
+// 向量搜索（避免命名冲突）
+export { 
+  VectorSearchManager, 
+  getVectorSearch, 
+  resetVectorSearch,
+  VectorRecord,
+  SearchResult as VectorSearchResult,
+  VectorSearchConfig,
+} from './memory/vector';
 
 // 知识层 (L3)
 export * from './knowledge';
@@ -27,11 +42,16 @@ export * from './skills/registry';
 
 // 执行层 (L5)
 export { ParallelExecutor, getExecutor, ExecutionResult as ExecutorResult, resetExecutor } from './executor';
+export * from './executor/process';
+export * from './executor/subagent';
 
 // 调度层 (L6)
 export * from './scheduler';
 export * from './scheduler/proactive';
 export * from './scheduler/lock';
+
+// 沙箱层 (L6.5)
+export * from './sandbox';
 
 // 决策层 (L7)
 export * from './core/thinking/engine';
@@ -39,7 +59,7 @@ export * from './core/confirmation';
 export * from './core/error';
 export * from './core/brain';
 
-// 核心模块 (新增)
+// 核心模块
 export * from './core/router';
 export * from './core/context';
 export * from './core/recovery';

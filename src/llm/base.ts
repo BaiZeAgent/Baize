@@ -1,5 +1,8 @@
 /**
  * LLM提供商基类
+ * 
+ * v3.1.0 更新：
+ * - 新增 embed 方法（可选实现）
  */
 import { LLMMessage, LLMOptions, LLMResponse, LLMProviderConfig } from '../types';
 
@@ -24,6 +27,14 @@ export abstract class BaseLLMProvider {
    * 检查提供商是否可用
    */
   abstract isAvailable(): Promise<boolean>;
+
+  /**
+   * 文本嵌入（可选实现）
+   * 
+   * 将文本转换为向量表示
+   * 子类可以覆盖此方法以支持嵌入功能
+   */
+  async embed?(text: string): Promise<number[]>;
 
   /**
    * 获取提供商名称
