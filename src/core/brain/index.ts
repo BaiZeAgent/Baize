@@ -198,12 +198,12 @@ export class Brain {
           // 如果工具不存在，说明没有这个能力
           if (!toolExists) {
             yield this.createThinkingEvent('unable', `没有${decision.tool}工具`);
-            const unableMsg = `抱歉，我暂时没有"${decision.tool}"这个能力。\n\n` +
-              `我可以帮你：\n` +
-              `1. 查询天气（如"北京天气"）\n` +
-              `2. 查看时间（如"现在几点"）\n` +
-              `3. 搜索文件（如"搜索xxx文件"）\n` +
-              `4. 读写文件（如"读取xxx文件"）`;
+            // 动态获取可用技能列表
+            const availableSkills = getSkillRegistry().getAll()
+              .filter(s => s.riskLevel !== 'high') // 过滤高风险技能
+              .map(s => `- ${s.name}：${s.description.substring(0, 30)}`)
+              .slice(0, 5); // 最多显示5个
+            const unableMsg = `抱歉，我暂时没有"${decision.tool}"这个能力。\n\n我目前可以帮你：\n${availableSkills.join('\n')}`;
             yield* this.streamContent(unableMsg);
             this.sessionManager.addMessage(sessionId, 'assistant', unableMsg);
             break;
@@ -254,9 +254,14 @@ export class Brain {
         case 'unable':
           yield this.createThinkingEvent('unable', decision.reason || '没有对应能力');
           const unableReason = decision.message || decision.reason || '抱歉，我暂时做不到这个。';
+          // 动态获取可用技能列表
+          const skills = getSkillRegistry().getAll()
+            .filter(s => s.riskLevel !== 'high')
+            .map(s => `- ${s.name}：${s.description.substring(0, 30)}`)
+            .slice(0, 5);
           const alternatives = decision.alternatives?.length 
             ? '\n\n你可以尝试：\n' + decision.alternatives.map((a, i) => `${i + 1}. ${a}`).join('\n')
-            : '\n\n我可以帮你：\n1. 查询天气\n2. 查看时间\n3. 搜索文件\n4. 读写文件';
+            : '\n\n我目前可以帮你：\n' + skills.join('\n');
           const unableMsg = unableReason + alternatives;
           yield* this.streamContent(unableMsg);
           this.sessionManager.addMessage(sessionId, 'assistant', unableMsg);
