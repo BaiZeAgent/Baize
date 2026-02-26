@@ -195,11 +195,26 @@ export class Brain {
           // 检查工具是否存在
           const toolExists = getSkillRegistry().get(decision.tool || '') !== undefined;
           
-          // 如果工具不存在或缺少参数，改为询问
-          if (!toolExists || (decision.missing && decision.missing.length > 0)) {
-            yield this.createThinkingEvent('ask_missing', `缺少信息: ${decision.missing?.join(', ') || '工具不可用'}`);
-            yield* this.streamContent(decision.question || '请提供更多信息');
-            this.sessionManager.addMessage(sessionId, 'assistant', decision.question || '');
+          // 如果工具不存在，说明没有这个能力
+          if (!toolExists) {
+            yield this.createThinkingEvent('unable', `没有${decision.tool}工具`);
+            const unableMsg = `抱歉，我暂时没有"${decision.tool}"这个能力。\n\n` +
+              `我可以帮你：\n` +
+              `1. 查询天气（如"北京天气"）\n` +
+              `2. 查看时间（如"现在几点"）\n` +
+              `3. 搜索文件（如"搜索xxx文件"）\n` +
+              `4. 读写文件（如"读取xxx文件"）`;
+            yield* this.streamContent(unableMsg);
+            this.sessionManager.addMessage(sessionId, 'assistant', unableMsg);
+            break;
+          }
+          
+          // 如果缺少参数，询问用户
+          if (decision.missing && decision.missing.length > 0) {
+            yield this.createThinkingEvent('ask_missing', `缺少信息: ${decision.missing?.join(', ')}`);
+            const askQuestion = decision.question || `请提供更多信息：${decision.missing?.join('、')}`;
+            yield* this.streamContent(askQuestion);
+            this.sessionManager.addMessage(sessionId, 'assistant', askQuestion);
             break;
           }
           
@@ -238,8 +253,11 @@ export class Brain {
 
         case 'unable':
           yield this.createThinkingEvent('unable', decision.reason || '没有对应能力');
-          const unableMsg = (decision.message || '抱歉，我做不到。') + 
-            (decision.alternatives?.length ? '\n\n替代方案：\n' + decision.alternatives.map((a, i) => `${i + 1}. ${a}`).join('\n') : '');
+          const unableReason = decision.message || decision.reason || '抱歉，我暂时做不到这个。';
+          const alternatives = decision.alternatives?.length 
+            ? '\n\n你可以尝试：\n' + decision.alternatives.map((a, i) => `${i + 1}. ${a}`).join('\n')
+            : '\n\n我可以帮你：\n1. 查询天气\n2. 查看时间\n3. 搜索文件\n4. 读写文件';
+          const unableMsg = unableReason + alternatives;
           yield* this.streamContent(unableMsg);
           this.sessionManager.addMessage(sessionId, 'assistant', unableMsg);
           break;
@@ -377,14 +395,15 @@ export class Brain {
    * 流式输出内容
    */
   private async *streamContent(content: string): AsyncGenerator<StreamEvent> {
-    // 按句子分割
-    const sentences = content.match(/[^。！？.!?]+[。！？.!?]+/g) || [content];
+    // 按句子或换行分割
+    const parts = content.split(/(?<=[。！？.!?\n])/);
     
-    for (const sentence of sentences) {
+    for (const part of parts) {
+      if (!part.trim()) continue;
       yield {
         type: 'content',
         timestamp: Date.now(),
-        data: { text: sentence, isDelta: true } as StreamEventData
+        data: { text: part, isDelta: true } as StreamEventData
       };
       // 小延迟，模拟自然输出
       await new Promise(resolve => setTimeout(resolve, 20));
