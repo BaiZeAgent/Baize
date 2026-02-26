@@ -19,9 +19,8 @@
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "paths": {
       "@/*": ["src/*"]
-    },
-    "noEmitOnError": false
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "examples", "skills", "web"]
+  "exclude": ["node_modules", "dist", "tests"]
 }
