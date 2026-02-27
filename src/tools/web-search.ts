@@ -71,43 +71,93 @@ async function braveSearch(query: string, count: number): Promise<SearchResult[]
 }
 
 /**
- * DuckDuckGo 搜索 (无需 API Key)
+ * DuckDuckGo 搜索 (无需 API Key) - 使用 HTML Lite 版本
  */
 async function duckduckgoSearch(query: string, count: number): Promise<SearchResult[]> {
-  // DuckDuckGo Instant Answer API
-  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`DuckDuckGo API 错误 (${response.status})`);
-  }
-
-  const data = await response.json() as any;
   const results: SearchResult[] = [];
-
-  // 相关主题
-  if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-    for (const topic of data.RelatedTopics.slice(0, count)) {
-      if (topic.Text && topic.FirstURL) {
-        results.push({
-          title: topic.Text.split(' - ')[0] || topic.Text.slice(0, 50),
-          url: topic.FirstURL,
-          description: topic.Text,
-        });
+  
+  try {
+    // 使用 DuckDuckGo Lite HTML 版本抓取结果
+    const url = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`DuckDuckGo Lite 错误 (${response.status})`);
+    }
+    
+    const html = await response.text();
+    
+    // 解析 HTML 提取搜索结果
+    // DuckDuckGo Lite 的结果格式：<a class="result-link" href="...">标题</a>
+    const linkRegex = /<a[^>]*class="result-link"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/gi;
+    const snippetRegex = /<td[^>]*class="result-snippet"[^>]*>([^<]+)<\/td>/gi;
+    
+    let match;
+    const urls: { url: string; title: string }[] = [];
+    
+    while ((match = linkRegex.exec(html)) !== null && urls.length < count) {
+      const url = match[1];
+      const title = match[2].trim();
+      // 过滤掉 DuckDuckGo 自己的链接
+      if (url && !url.includes('duckduckgo.com') && !url.startsWith('/')) {
+        urls.push({ url, title });
       }
     }
+    
+    for (const item of urls) {
+      results.push({
+        title: item.title,
+        url: item.url,
+        description: '',
+      });
+    }
+    
+    logger.debug(`DuckDuckGo Lite 解析到 ${results.length} 个结果`);
+  } catch (error) {
+    logger.warn(`DuckDuckGo Lite 失败，尝试 Instant Answer API: ${error}`);
+    
+    // 备选：使用 Instant Answer API
+    const apiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
+    
+    try {
+      const response = await fetch(apiUrl);
+      if (response.ok) {
+        const data = await response.json() as any;
+        
+        // 相关主题
+        if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
+          for (const topic of data.RelatedTopics.slice(0, count)) {
+            if (topic.Text && topic.FirstURL) {
+              results.push({
+                title: topic.Text.split(' - ')[0] || topic.Text.slice(0, 50),
+                url: topic.FirstURL,
+                description: topic.Text,
+              });
+            }
+          }
+        }
+        
+        // 抽象结果
+        if (data.Abstract && data.AbstractURL) {
+          results.unshift({
+            title: data.Heading || '摘要',
+            url: data.AbstractURL,
+            description: data.Abstract,
+            siteName: data.AbstractSource,
+          });
+        }
+      }
+    } catch (fallbackError) {
+      logger.error(`Instant Answer API 也失败: ${fallbackError}`);
+    }
   }
-
-  // 抽象结果
-  if (data.Abstract && data.AbstractURL) {
-    results.unshift({
-      title: data.Heading || '摘要',
-      url: data.AbstractURL,
-      description: data.Abstract,
-      siteName: data.AbstractSource,
-    });
-  }
-
+  
   return results.slice(0, count);
 }
 

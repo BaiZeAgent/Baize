@@ -211,11 +211,19 @@ class DynamicSkill extends Skill {
     const selectedCommand = this.selectCommand(commands, skillName, params);
     
     if (!selectedCommand) {
+      // 命令不可用，返回文档和提示
       return {
         success: false,
-        data: { commands, params },
-        message: `无法确定要执行的命令`,
-        error: '未找到匹配的命令模板',
+        data: { 
+          docContent: mdContent, 
+          params, 
+          skillName, 
+          availableCommands: commands,
+          isDocSkill: true,
+          reason: 'skill_not_installed'
+        },
+        message: `[技能 ${skillName} 需要安装或配置]\n\n请查看以下文档了解如何使用：\n\n${mdContent.substring(0, 1000)}...\n\n提示：可能需要先运行安装命令：npm install && npm link`,
+        error: `技能 ${skillName} 未安装或不可用`,
       };
     }
     
@@ -254,7 +262,8 @@ class DynamicSkill extends Skill {
   private selectCommand(commands: string[], skillName: string, params: Record<string, unknown>): string | null {
     // 获取参数值
     const location = params.location || params.city || params.query || params.place || '';
-    const url = params.url || params.link || '';
+    const url = params.url || params.link || params.targetUrl || '';
+    const action = params.action || params.command || '';
     
     // 天气技能：优先选择 Open-Meteo API（更稳定）
     if (skillName === 'weather') {
@@ -277,14 +286,17 @@ class DynamicSkill extends Skill {
       }
     }
     
+    // browser-automation 技能：需要特殊处理
+    // 检查是否有 browser 命令可用
+    if (skillName === 'browser-automation') {
+      // 检查 browser 命令是否可用
+      // 如果没有安装，返回 null 让 runFromDocs 返回文档
+      return null;  // 返回文档让 LLM 理解
+    }
+    
     for (const cmd of commands) {
       // 打开浏览器 (简单技能)
       if (skillName === 'browser' && cmd.includes('open ') && cmd.includes('http')) {
-        return cmd;
-      }
-      
-      // browser-automation 技能：选择 navigate 命令
-      if (skillName === 'browser-automation' && cmd.includes('browser navigate')) {
         return cmd;
       }
       
