@@ -8,10 +8,12 @@
  */
 
 const BaizeAPI = (function() {
-    // 默认配置
+    // 默认配置 - 支持多个可能的端口
+    const POSSIBLE_PORTS = [3000, 3001, 3002, 8080];
     let config = {
         baseURL: 'http://localhost:3000',
         timeout: 30000,
+        autoDetect: true,  // 自动检测可用端口
     };
 
     /**
@@ -277,6 +279,55 @@ const BaizeAPI = (function() {
         }
     }
 
+    /**
+     * 自动检测可用端口
+     */
+    async function autoDetectPort() {
+        if (!config.autoDetect) {
+            return config.baseURL;
+        }
+
+        // 先检查保存的配置
+        const saved = localStorage.getItem('baize_api_config');
+        if (saved) {
+            const savedConfig = JSON.parse(saved);
+            if (savedConfig.baseURL) {
+                config.baseURL = savedConfig.baseURL;
+                // 测试保存的地址是否可用
+                try {
+                    const result = await fetch(`${savedConfig.baseURL}/health`);
+                    if (result.ok) {
+                        return config.baseURL;
+                    }
+                } catch (e) {
+                    // 继续尝试其他端口
+                }
+            }
+        }
+
+        // 尝试所有可能的端口
+        for (const port of POSSIBLE_PORTS) {
+            const url = `http://localhost:${port}`;
+            try {
+                const result = await fetch(`${url}/health`, { 
+                    method: 'GET',
+                    signal: AbortSignal.timeout(2000)  // 2秒超时
+                });
+                if (result.ok) {
+                    config.baseURL = url;
+                    localStorage.setItem('baize_api_config', JSON.stringify({ ...config, baseURL: url }));
+                    console.log(`自动检测到可用端口: ${port}`);
+                    return url;
+                }
+            } catch (e) {
+                // 继续尝试下一个端口
+            }
+        }
+
+        // 没找到可用端口，返回默认值
+        return config.baseURL;
+    }
+
     // 初始化时加载配置
     getConfig();
 
@@ -285,6 +336,7 @@ const BaizeAPI = (function() {
         // 配置
         setConfig,
         getConfig,
+        autoDetectPort,
         
         // 对话
         chat,

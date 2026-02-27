@@ -82,6 +82,9 @@ const App = {
      * 测试连接
      */
     async testConnection() {
+        // 先自动检测可用端口
+        await BaizeAPI.autoDetectPort();
+        
         const result = await BaizeAPI.testConnection();
         
         const statusDot = document.querySelector('#connection-status .status-dot');
@@ -94,6 +97,13 @@ const App = {
             
             // 更新版本信息
             document.getElementById('version').textContent = result.version || '-';
+            
+            // 更新 API 地址显示
+            const apiConfig = BaizeAPI.getConfig();
+            const apiUrlInput = document.getElementById('api-url');
+            if (apiUrlInput && apiConfig.baseURL) {
+                apiUrlInput.value = apiConfig.baseURL;
+            }
         } else {
             statusDot.classList.remove('online');
             statusDot.classList.add('offline');

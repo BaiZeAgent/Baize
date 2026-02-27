@@ -2,22 +2,25 @@
 
 /* ==================== 变量定义 ==================== */
 :root {
-    --primary-color: #4f46e5;
-    --primary-hover: #4338ca;
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-light: #e0e7ff;
     --secondary-color: #6b7280;
     --success-color: #10b981;
     --warning-color: #f59e0b;
     --danger-color: #ef4444;
-    --bg-color: #f3f4f6;
-    --sidebar-bg: #1f2937;
+    --bg-color: #f8fafc;
+    --sidebar-bg: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
     --card-bg: #ffffff;
-    --text-color: #1f2937;
-    --text-secondary: #6b7280;
-    --border-color: #e5e7eb;
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --radius: 8px;
-    --transition: all 0.2s ease;
+    --text-color: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==================== 基础样式 ==================== */
@@ -28,10 +31,12 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
@@ -41,64 +46,76 @@ body {
 
 /* ==================== 侧边栏 ==================== */
 .sidebar {
-    width: 240px;
-    background-color: var(--sidebar-bg);
+    width: 260px;
+    background: var(--sidebar-bg);
     color: #fff;
     display: flex;
     flex-direction: column;
     position: fixed;
     height: 100vh;
     z-index: 100;
+    box-shadow: var(--shadow-lg);
 }
 
 .logo {
-    padding: 20px;
+    padding: 24px 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logo-icon {
-    font-size: 28px;
+    font-size: 32px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 .logo-text {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #fff 0%, #c7d2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .nav-menu {
     list-style: none;
-    padding: 10px 0;
+    padding: 16px 12px;
     flex: 1;
 }
 
 .nav-item {
-    padding: 12px 20px;
+    padding: 14px 18px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     cursor: pointer;
     transition: var(--transition);
-    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    font-weight: 500;
 }
 
 .nav-item:hover {
     background-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
 }
 
 .nav-item.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-left-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(129, 140, 248, 0.2) 100%);
+    box-shadow: inset 3px 0 0 var(--primary-color);
 }
 
 .nav-item .icon {
-    font-size: 18px;
+    font-size: 20px;
+    width: 24px;
+    text-align: center;
 }
 
 .nav-item .text {
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .sidebar-footer {
@@ -130,9 +147,10 @@ body {
 /* ==================== 主内容区 ==================== */
 .main-content {
     flex: 1;
-    margin-left: 240px;
-    padding: 20px;
+    margin-left: 260px;
+    padding: 24px;
     min-height: 100vh;
+    background: linear-gradient(180deg, var(--bg-color) 0%, #f1f5f9 100%);
 }
 
 .page {
@@ -141,18 +159,26 @@ body {
 
 .page.active {
     display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .page-header h1 {
-    font-size: 24px;
-    font-weight: 600;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: -0.5px;
 }
 
 .header-actions {
@@ -162,115 +188,147 @@ body {
 
 /* ==================== 按钮样式 ==================== */
 .btn {
-    padding: 8px 16px;
+    padding: 10px 20px;
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
     color: #fff;
+    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background: linear-gradient(135deg, var(--primary-hover) 0%, #4338ca 100%);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
 }
 
 .btn-secondary {
     background-color: #fff;
     color: var(--text-color);
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
 }
 
 .btn-secondary:hover {
     background-color: var(--bg-color);
+    border-color: var(--primary-color);
 }
 
 .btn-danger {
-    background-color: var(--danger-color);
+    background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
     color: #fff;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
 }
 
 .btn-danger:hover {
-    background-color: #dc2626;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-1px);
 }
 
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none !important;
 }
 
 /* ==================== 输入框样式 ==================== */
 .input {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     font-size: 14px;
     transition: var(--transition);
     width: 100%;
+    background: #fff;
 }
 
 .input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 textarea.input {
     resize: vertical;
-    min-height: 40px;
+    min-height: 44px;
 }
 
 /* ==================== 卡片样式 ==================== */
 .card {
     background-color: var(--card-bg);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 20px;
+    box-shadow: var(--shadow-md);
+    padding: 24px;
+    transition: var(--transition);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
 }
 
 .stat-card {
-    background-color: var(--card-bg);
+    background: linear-gradient(135deg, var(--card-bg) 0%, #f8fafc 100%);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    padding: 20px;
+    padding: 24px;
     text-align: center;
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .stat-value {
-    font-size: 28px;
-    font-weight: 600;
-    color: var(--primary-color);
+    font-size: 32px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-label {
     font-size: 14px;
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: 6px;
+    font-weight: 500;
 }
 
 /* ==================== 对话页面 ==================== */
 .chat-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 140px);
+    height: calc(100vh - 160px);
     background-color: var(--card-bg);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
 }
 
 .messages {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 24px;
+    scroll-behavior: smooth;
 }
 
 .message {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     display: flex;
 }
 
@@ -286,75 +344,85 @@ textarea.input {
     max-width: 70%;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .message-content {
-    padding: 12px 16px;
-    border-radius: 16px;
-    line-height: 1.5;
+    padding: 14px 18px;
+    border-radius: 18px;
+    line-height: 1.6;
+    font-size: 15px;
 }
 
 .message.user .message-content {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
     color: #fff;
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 6px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .message.assistant .message-content {
-    background-color: var(--bg-color);
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     color: var(--text-color);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 6px;
+    border: 1px solid var(--border-color);
 }
 
 .message-duration {
     font-size: 11px;
     color: var(--text-secondary);
     text-align: right;
+    padding: 0 4px;
 }
 
 .message-error {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--danger-color);
-    padding: 8px 12px;
-    background-color: rgba(239, 68, 68, 0.1);
-    border-radius: 4px;
+    padding: 10px 14px;
+    background-color: rgba(239, 68, 68, 0.08);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--danger-color);
 }
 
 .input-area {
     display: flex;
-    gap: 10px;
-    padding: 16px;
+    gap: 12px;
+    padding: 20px;
     border-top: 1px solid var(--border-color);
+    background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
 }
 
 .input-area textarea {
     flex: 1;
-    padding: 12px 16px;
+    padding: 14px 18px;
     border: 1px solid var(--border-color);
     border-radius: 24px;
-    font-size: 14px;
+    font-size: 15px;
     resize: none;
     font-family: inherit;
+    transition: var(--transition);
+    line-height: 1.5;
 }
 
 .input-area textarea:focus {
     outline: none;
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .input-area .btn {
     border-radius: 24px;
-    padding: 12px 24px;
+    padding: 14px 28px;
+    font-weight: 600;
 }
 
 /* ==================== 思考过程样式（新增） ==================== */
 .thinking-process {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 8px;
-    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
     overflow: hidden;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .thinking-process.collapsed .thinking-steps {
@@ -368,32 +436,33 @@ textarea.input {
 .thinking-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
+    gap: 10px;
+    padding: 12px 16px;
     cursor: pointer;
     user-select: none;
-    background: rgba(79, 70, 229, 0.05);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(129, 140, 248, 0.05) 100%);
     transition: var(--transition);
 }
 
 .thinking-header:hover {
-    background: rgba(79, 70, 229, 0.1);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(129, 140, 248, 0.08) 100%);
 }
 
 .thinking-header .icon {
-    font-size: 16px;
+    font-size: 18px;
 }
 
 .thinking-header .title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color);
 }
 
 .thinking-header .toggle {
     margin-left: auto;
     font-size: 10px;
     color: var(--text-secondary);
+    transition: var(--transition);
 }
 
 .thinking-header .toggle::before {
@@ -401,17 +470,17 @@ textarea.input {
 }
 
 .thinking-steps {
-    padding: 10px 14px;
-    border-top: 1px solid var(--border-color);
-    max-height: 200px;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(99, 102, 241, 0.1);
+    max-height: 250px;
     overflow-y: auto;
 }
 
 .thinking-step {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 6px 0;
+    gap: 10px;
+    padding: 8px 0;
     font-size: 13px;
     color: var(--text-secondary);
     border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
@@ -422,18 +491,20 @@ textarea.input {
 }
 
 .thinking-step .step-icon {
-    width: 20px;
+    width: 22px;
     text-align: center;
     flex-shrink: 0;
+    font-size: 14px;
 }
 
 .thinking-step .step-message {
     flex: 1;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .thinking-step.tool-call {
     color: var(--primary-color);
+    font-weight: 500;
 }
 
 .thinking-step.tool-result {
@@ -447,80 +518,87 @@ textarea.input {
 /* ==================== 技能页面 ==================== */
 .skills-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 20px;
 }
 
 .skill-card {
-    background-color: var(--card-bg);
+    background: linear-gradient(135deg, var(--card-bg) 0%, #f8fafc 100%);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    padding: 20px;
+    padding: 24px;
     transition: var(--transition);
+    border: 1px solid var(--border-color);
 }
 
 .skill-card:hover {
     box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
 }
 
 .skill-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .skill-name {
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--text-color);
 }
 
 .skill-risk {
-    font-size: 12px;
-    padding: 2px 8px;
+    font-size: 11px;
+    padding: 4px 10px;
     border-radius: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .skill-risk.low {
-    background-color: rgba(16, 185, 129, 0.1);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(52, 211, 153, 0.1) 100%);
     color: var(--success-color);
 }
 
 .skill-risk.medium {
-    background-color: rgba(245, 158, 11, 0.1);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.1) 100%);
     color: var(--warning-color);
 }
 
 .skill-risk.high {
-    background-color: rgba(239, 68, 68, 0.1);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(248, 113, 113, 0.1) 100%);
     color: var(--danger-color);
 }
 
 .skill-description {
     color: var(--text-secondary);
     font-size: 14px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
+    line-height: 1.6;
 }
 
 .skill-capabilities {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 14px;
 }
 
 .skill-capability {
     font-size: 12px;
-    padding: 2px 8px;
-    background-color: var(--bg-color);
-    border-radius: 4px;
-    color: var(--text-secondary);
+    padding: 4px 10px;
+    background: linear-gradient(135deg, var(--primary-light) 0%, #c7d2fe 100%);
+    border-radius: 6px;
+    color: var(--primary-hover);
+    font-weight: 500;
 }
 
 .skill-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
 }
 
 /* ==================== 记忆页面 ==================== */
@@ -754,7 +832,7 @@ textarea.input {
 /* ==================== 响应式设计 ==================== */
 @media (max-width: 768px) {
     .sidebar {
-        width: 60px;
+        width: 70px;
     }
     
     .logo-text,
@@ -763,8 +841,19 @@ textarea.input {
         display: none;
     }
     
+    .logo {
+        justify-content: center;
+        padding: 16px;
+    }
+    
+    .nav-item {
+        justify-content: center;
+        padding: 14px;
+    }
+    
     .main-content {
-        margin-left: 60px;
+        margin-left: 70px;
+        padding: 16px;
     }
     
     .skills-grid {
@@ -773,10 +862,28 @@ textarea.input {
     
     .message-body,
     .message-content {
-        max-width: 85%;
+        max-width: 90%;
     }
     
     .thinking-process {
         font-size: 12px;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .page-header h1 {
+        font-size: 22px;
+    }
+    
+    .header-actions {
+        width: 100%;
+    }
+    
+    .header-actions .input {
+        flex: 1;
     }
 }
