@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # 白泽沙箱服务
+  sandbox:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sandbox
+    container_name: baize-sandbox
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - baize-network
+    volumes:
+      - workspace-data:/workspace
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # 白泽主服务
+  baize:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: baize
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - BAIZE_SANDBOX_ENABLED=true
+    networks:
+      - baize-network
+    volumes:
+      - ./config:/app/config
+      - ./skills:/app/skills
+      - ./data:/app/data
+    depends_on:
+      - sandbox
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+networks:
+  baize-network:
+    driver: bridge
+
+volumes:
+  workspace-data:

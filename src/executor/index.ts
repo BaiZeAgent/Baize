@@ -1,19 +1,14 @@
 /**
- * 执行器 - OpenClaw 风格
+ * 执行器 - 企业级版本
  * 
  * 核心逻辑：
- * 1. 优先检查内置工具
- * 2. 如果没有，检查技能
- * 3. 根据技能类型选择执行方式
- * 
- * V2 新增：
- * - ReAct 循环执行器
- * - 工具执行钩子
- * - 上下文管理
+ * 1. 钩子预处理
+ * 2. 策略验证
+ * 3. 审批流程
+ * 4. 沙箱执行
+ * 5. 错误恢复
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getSkillRegistry } from '../skills/registry';
@@ -21,9 +16,18 @@ import { getToolRegistry } from '../tools';
 import { getLLMManager } from '../llm';
 import { getLogger } from '../observability/logger';
 import { LLMMessage, SkillContext } from '../types';
+import { runHook, HookContext } from '../hooks';
+import { checkToolPolicy, PolicyResult, DEFAULT_POLICY_CONFIG } from '../policy';
+import { getApprovalManager, detectSensitiveOperation, ApprovalResult } from '../approval';
+import { getSandboxManager, execInSandbox, ExecResult, SandboxConfig } from '../sandbox';
+import { getProcessManager, exec, ProcessResult } from '../process';
+import { classifyError, withRetry } from '../recovery';
 
-const execAsync = promisify(exec);
 const logger = getLogger('executor');
+
+// ═══════════════════════════════════════════════════════════════
+// 类型定义
+// ═══════════════════════════════════════════════════════════════
 
 /**
  * 执行结果
@@ -33,27 +37,272 @@ export interface ExecutionResult {
   output?: string;
   error?: string;
   duration: number;
+  sandboxed?: boolean;
+  approved?: boolean;
+  retries?: number;
 }
 
 /**
- * 执行器
+ * 执行选项
+ */
+export interface ExecutionOptions {
+  // 是否使用沙箱
+  sandbox?: boolean;
+  // 沙箱配置
+  sandboxConfig?: Partial<SandboxConfig>;
+  // 超时
+  timeout?: number;
+  // 是否需要审批
+  requireApproval?: boolean;
+  // 重试次数
+  maxRetries?: number;
+  // 会话信息
+  sessionId?: string;
+  userId?: string;
+  workspaceDir?: string;
+}
+
+/**
+ * 执行上下文
+ */
+export interface ExecutionContext {
+  sessionId: string;
+  userId?: string;
+  workspaceDir: string;
+  sandboxed: boolean;
+  approvalRequired: boolean;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 执行器
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 企业级执行器
  */
 export class Executor {
   private llm = getLLMManager();
   private skillRegistry = getSkillRegistry();
   private toolRegistry = getToolRegistry();
-
+  
   /**
    * 执行技能或工具
    */
   async executeSkill(
     name: string,
     params: Record<string, unknown>,
-    context?: SkillContext
+    context?: SkillContext,
+    options?: ExecutionOptions
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
-
-    // 1. 先检查内置工具
+    const sessionId = options?.sessionId || 'default' || 'default';
+    const workspaceDir = options?.workspaceDir || process.cwd();
+    
+    // 1. 运行前置钩子
+    const hookResult = await runHook('before_tool_call', {
+      sessionId,
+      userId: options?.userId,
+      workspaceDir,
+      toolName: name,
+      toolParams: params,
+      metadata: {},
+    });
+    
+    if (!hookResult.proceed) {
+      return {
+        success: false,
+        error: hookResult.error || '请求被钩子拦截',
+        duration: Date.now() - startTime,
+      };
+    }
+    
+    // 应用钩子修改
+    if (hookResult.modifications?.toolOverride) {
+      name = hookResult.modifications.toolOverride;
+    }
+    if (hookResult.modifications?.paramsOverride) {
+      params = { ...params, ...hookResult.modifications.paramsOverride };
+    }
+    
+    // 2. 策略检查
+    const policyResult = await checkToolPolicy(name, params, DEFAULT_POLICY_CONFIG);
+    
+    if (!policyResult.allowed) {
+      return {
+        success: false,
+        error: `策略阻止: ${policyResult.reason}`,
+        duration: Date.now() - startTime,
+      };
+    }
+    
+    // 3. 审批流程
+    if (policyResult.requiresApproval || options?.requireApproval) {
+      const approvalResult = await this.handleApproval(name, params, policyResult);
+      
+      if (approvalResult.status !== 'approved') {
+        return {
+          success: false,
+          error: approvalResult.status === 'denied' 
+            ? '用户拒绝操作' 
+            : '审批超时',
+          duration: Date.now() - startTime,
+          approved: false,
+        };
+      }
+    }
+    
+    // 4. 执行
+    let result: ExecutionResult;
+    
+    try {
+      // 检查是否使用沙箱
+      const useSandbox = options?.sandbox !== false && this.shouldUseSandbox(name, params);
+      
+      if (useSandbox) {
+        result = await this.executeInSandbox(name, params, context, options);
+        result.sandboxed = true;
+      } else {
+        result = await this.executeDirect(name, params, context, options);
+      }
+      
+      // 5. 运行后置钩子
+      await runHook('after_tool_call', {
+        sessionId,
+        workspaceDir,
+        toolName: name,
+        toolParams: params,
+        toolResult: {
+          success: result.success,
+          output: result.output,
+          error: result.error,
+          duration: result.duration,
+        },
+        metadata: {},
+      });
+      
+    } catch (error) {
+      const classified = classifyError(error as Error);
+      
+      // 6. 错误恢复
+      if (classified.retryable && options?.maxRetries) {
+        result = await this.executeWithRetry(name, params, context, options);
+      } else {
+        result = {
+          success: false,
+          error: (error as Error).message,
+          duration: Date.now() - startTime,
+        };
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * 处理审批
+   */
+  private async handleApproval(
+    name: string,
+    params: Record<string, unknown>,
+    policyResult: PolicyResult
+  ): Promise<ApprovalResult> {
+    const approvalManager = getApprovalManager();
+    
+    const approvalRequest = policyResult.approvalRequest || {
+      type: 'tool' as const,
+      operation: `${name}: ${JSON.stringify(params).slice(0, 100)}`,
+      risk: 'medium' as const,
+      message: `需要审批: ${name}`,
+    };
+    
+    return approvalManager.requestApproval(approvalRequest);
+  }
+  
+  /**
+   * 判断是否应该使用沙箱
+   */
+  private shouldUseSandbox(name: string, params: Record<string, unknown>): boolean {
+    // exec 工具总是使用沙箱
+    if (name === 'exec') return true;
+    
+    // 检查是否有敏感操作
+    if (name === 'exec' && params.command) {
+      const detected = detectSensitiveOperation(params.command as string);
+      if (detected && detected.risk !== 'low') {
+        return true;
+      }
+    }
+    
+    // 检查是否有文件写入
+    if (['file_write', 'file_delete'].includes(name)) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * 在沙箱中执行
+   */
+  private async executeInSandbox(
+    name: string,
+    params: Record<string, unknown>,
+    context?: SkillContext,
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult> {
+    const startTime = Date.now();
+    const workspaceDir = options?.workspaceDir || process.cwd();
+    
+    // 如果是 exec 工具
+    if (name === 'exec' && params.command) {
+      const command = params.command as string;
+      const timeout = (params.timeout as number) || options?.timeout || 30000;
+      
+      try {
+        const result = await execInSandbox(command, {
+          timeout,
+          cwd: params.cwd as string || workspaceDir,
+          env: params.env as Record<string, string>,
+          mounts: [{
+            host: workspaceDir,
+            container: '/workspace',
+            mode: 'rw',
+          }],
+        });
+        
+        return {
+          success: result.exitCode === 0,
+          output: result.stdout || result.stderr,
+          error: result.exitCode !== 0 ? result.stderr : undefined,
+          duration: result.duration,
+          sandboxed: true,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message,
+          duration: Date.now() - startTime,
+          sandboxed: true,
+        };
+      }
+    }
+    
+    // 其他工具，降级到直接执行
+    return this.executeDirect(name, params, context, options);
+  }
+  
+  /**
+   * 直接执行（无沙箱）
+   */
+  private async executeDirect(
+    name: string,
+    params: Record<string, unknown>,
+    context?: SkillContext,
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult> {
+    const startTime = Date.now();
+    
+    // 1. 检查内置工具
     if (this.toolRegistry.has(name)) {
       logger.info(`[execute-tool] name=${name}`);
       const result = await this.toolRegistry.execute(name, params, context);
@@ -64,7 +313,7 @@ export class Executor {
         duration: result.duration,
       };
     }
-
+    
     // 2. 检查技能
     const skill = this.skillRegistry.get(name);
     if (!skill) {
@@ -74,42 +323,29 @@ export class Executor {
         duration: 0,
       };
     }
-
+    
     logger.info(`[execute] skill=${name}`);
-
+    
     try {
-      // 获取技能路径
       const skillPath = (skill as any).definition?.skillPath || 
                         (skill as any).path || 
                         path.join(process.cwd(), 'skills', name);
       
-      logger.debug(`技能路径: ${skillPath}`);
-      
-      // 检查是否有 main.js 或 main.py
       const mainJsPath = path.join(skillPath, 'main.js');
       const mainPyPath = path.join(skillPath, 'main.py');
       
       if (fs.existsSync(mainJsPath)) {
-        // 使用 Node.js 执行
-        return await this.executeNodeSkill(mainJsPath, params, startTime);
+        return await this.executeNodeSkill(mainJsPath, params, startTime, options);
       } else if (fs.existsSync(mainPyPath)) {
-        // 使用 Python 执行
-        return await this.executePythonSkill(mainPyPath, params, startTime);
+        return await this.executePythonSkill(mainPyPath, params, startTime, options);
       } else {
-        // 文档型技能，让 LLM 生成命令
-        const documentation = (skill as any).getDocumentation ? (skill as any).getDocumentation() : '';
-        if (!documentation) {
-          // 直接运行技能
-          const result = await skill.run(params, context || {});
-          return {
-            success: result.success,
-            output: result.message || result.error,
-            error: result.error,
-            duration: Date.now() - startTime,
-          };
-        }
-        
-        return await this.executeDocSkill(documentation, params, startTime);
+        const result = await skill.run(params, context || {});
+        return {
+          success: result.success,
+          output: result.message || result.error,
+          error: result.error,
+          duration: Date.now() - startTime,
+        };
       }
     } catch (error: any) {
       return {
@@ -119,97 +355,89 @@ export class Executor {
       };
     }
   }
-
+  
   /**
    * 执行 Node.js 技能
    */
   private async executeNodeSkill(
     scriptPath: string,
     params: Record<string, unknown>,
-    startTime: number
+    startTime: number,
+    options?: ExecutionOptions
   ): Promise<ExecutionResult> {
+    const paramsJson = JSON.stringify({ params });
+    const timeout = options?.timeout || 30000;
+    
     try {
-      const paramsJson = JSON.stringify({ params });
-      
-      logger.debug(`执行 Node.js 技能: ${scriptPath}`);
-      logger.debug(`参数: ${paramsJson}`);
-      
-      // 通过环境变量传递参数
-      const { stdout, stderr } = await execAsync(`node "${scriptPath}"`, {
-        timeout: 30000,
-        maxBuffer: 10 * 1024 * 1024,
-        cwd: process.cwd(), // 在项目根目录执行
+      const result = await exec(`node "${scriptPath}"`, {
+        timeout,
         env: {
           ...process.env,
           BAIZE_PARAMS: paramsJson,
         },
       });
-
-      logger.debug(`输出: ${stdout}`);
-      if (stderr) logger.debug(`错误输出: ${stderr}`);
-
+      
       // 解析输出
       try {
-        const result = JSON.parse(stdout);
+        const parsed = JSON.parse(result.stdout);
         return {
-          success: result.success !== false,
-          output: result.message || (result.data ? JSON.stringify(result.data, null, 2) : stdout),
-          error: result.error,
+          success: parsed.success !== false,
+          output: parsed.message || JSON.stringify(parsed.data || parsed, null, 2),
+          error: parsed.error,
           duration: Date.now() - startTime,
         };
       } catch {
-        // 不是 JSON，直接返回
         return {
-          success: true,
-          output: stdout || stderr,
-          duration: Date.now() - startTime,
+          success: result.exitCode === 0,
+          output: result.stdout || result.stderr,
+          error: result.exitCode !== 0 ? result.stderr : undefined,
+          duration: result.duration,
         };
       }
     } catch (error: any) {
-      logger.error(`Node.js 技能执行失败: ${error.message}`);
-      if (error.stdout) logger.debug(`stdout: ${error.stdout}`);
-      if (error.stderr) logger.debug(`stderr: ${error.stderr}`);
       return {
         success: false,
-        error: error.message + (error.stderr ? `: ${error.stderr}` : ''),
+        error: error.message,
         duration: Date.now() - startTime,
       };
     }
   }
-
+  
   /**
    * 执行 Python 技能
    */
   private async executePythonSkill(
     scriptPath: string,
     params: Record<string, unknown>,
-    startTime: number
+    startTime: number,
+    options?: ExecutionOptions
   ): Promise<ExecutionResult> {
+    const paramsJson = JSON.stringify({ params });
+    const timeout = options?.timeout || 30000;
+    
     try {
-      const paramsJson = JSON.stringify({ params });
-      
-      const { stdout, stderr } = await execAsync(`python3 "${scriptPath}"`, {
-        timeout: 30000,
-        maxBuffer: 10 * 1024 * 1024,
+      const result = await exec(`python3 "${scriptPath}"`, {
+        timeout,
         env: {
           ...process.env,
           BAIZE_PARAMS: paramsJson,
         },
       });
-
+      
       try {
-        const result = JSON.parse(stdout);
+        const parsed = JSON.parse(result.stdout);
         return {
-          success: result.success !== false,
-          output: result.message || JSON.stringify(result.data || result, null, 2),
-          error: result.error,
+          success: parsed.success !== false,
+          output: parsed.message || JSON.stringify(parsed.data || parsed, null, 2),
+          error: parsed.error,
           duration: Date.now() - startTime,
         };
       } catch {
         return {
-          success: true,
-          output: stdout || stderr,
-          duration: Date.now() - startTime,
+          success: result.exitCode === 0,
+          output: result.stdout || result.stderr,
+          error: result.exitCode !== 0 ? result.stderr : undefined,
+          duration: result.duration,
         };
       }
     } catch (error: any) {
@@ -220,102 +448,37 @@ export class Executor {
       };
     }
   }
-
+  
   /**
-   * 执行文档型技能
+   * 带重试执行
    */
-  private async executeDocSkill(
-    documentation: string,
+  private async executeWithRetry(
+    name: string,
     params: Record<string, unknown>,
-    startTime: number
+    context?: SkillContext,
+    options?: ExecutionOptions
   ): Promise<ExecutionResult> {
-    // 让 LLM 根据文档生成命令
-    const command = await this.selectCommand(documentation, params);
+    const maxRetries = options?.maxRetries || 3;
+    let lastResult: ExecutionResult | null = null;
     
-    if (!command) {
-      return {
-        success: false,
-        error: '无法选择命令',
-        duration: Date.now() - startTime,
-      };
-    }
-
-    logger.info(`[command] ${command}`);
-
-    try {
-      const { stdout, stderr } = await execAsync(command, {
-        timeout: 30000,
-        maxBuffer: 10 * 1024 * 1024,
-      });
-
-      return {
-        success: true,
-        output: stdout || stderr,
-        duration: Date.now() - startTime,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
-        duration: Date.now() - startTime,
-      };
-    }
-  }
-
-  /**
-   * 让 LLM 根据文档选择命令
-   */
-  private async selectCommand(
-    documentation: string,
-    params: Record<string, unknown>
-  ): Promise<string | null> {
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是命令生成器。根据技能文档和用户参数，生成要执行的 shell 命令。
-
-## 规则
-1. 只返回要执行的命令，不要解释
-2. 如果技能需要通过 stdin 传递 JSON 参数，使用 echo 和管道
-3. 如果技能通过环境变量 BAIZE_PARAMS 接收参数，设置环境变量
-4. 命令必须是有效的 shell 命令
-
-## 示例
-如果技能是 Node.js 脚本，参数是 {"action": "read", "path": "test.txt"}：
-echo '{"params": {"action": "read", "path": "test.txt"}}' | BAIZE_PARAMS='{"params":{"action":"read","path":"test.txt"}}' node skills/file/main.js
-
-## 技能文档
-${documentation}`
-      },
-      {
-        role: 'user',
-        content: `参数: ${JSON.stringify(params)}
-
-请生成要执行的命令：`
-      }
-    ];
-
-    try {
-      const response = await this.llm.chat(messages, { temperature: 0.1 });
+    for (let i = 0; i < maxRetries; i++) {
+      lastResult = await this.executeDirect(name, params, context, options);
       
-      let content = response.content.trim();
-      
-      // 移除 markdown 代码块标记
-      content = content.replace(/^```bash\n?/gm, '').replace(/^```\n?/gm, '').replace(/\n?```$/gm, '');
-      
-      // 提取第一行命令
-      const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#'));
-      if (lines.length > 0) {
-        return lines[0].trim();
+      if (lastResult.success) {
+        lastResult.retries = i;
+        return lastResult;
       }
       
-      return content.trim() || null;
-    } catch (error) {
-      logger.error(`[select-command-error] ${error}`);
-      return null;
+      // 等待后重试
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
+    
+    return {
+      ...lastResult!,
+      retries: maxRetries,
+    };
   }
-
+  
   /**
    * 获取所有可用的工具和技能
    */
@@ -324,36 +487,35 @@ ${documentation}`
     const skills = this.skillRegistry.getAll().map(s => s.name);
     return [...tools, ...skills];
   }
-
+  
   /**
-   * 获取工具列表（用于 LLM）
+   * 获取工具定义
    */
-  getToolDefinitions(): Array<{
-    name: string;
-    description: string;
-    parameters: any;
-  }> {
+  getToolDefinitions(): Array<{ name: string; description: string; parameters: any }> {
     const tools = this.toolRegistry.getAll().map(t => ({
       name: t.name,
       description: t.description,
       parameters: t.parameters,
     }));
-
+    
     const skills = this.skillRegistry.getAll().map(s => ({
       name: s.name,
       description: s.description,
       parameters: {
         type: 'object',
         properties: {},
-        description: '动态参数，根据技能文档确定',
+        description: '动态参数',
       },
     }));
-
+    
     return [...tools, ...skills];
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
 // 全局实例
+// ═══════════════════════════════════════════════════════════════
+
 let executorInstance: Executor | null = null;
 
 export function getExecutor(): Executor {
@@ -367,13 +529,9 @@ export function resetExecutor(): void {
   executorInstance = null;
 }
 
-// 导出 ReAct 执行器 V2
+// 导出 ReAct 执行器
 export {
   ReActExecutorV2,
   getReActExecutorV2,
   resetReActExecutorV2,
-  type ExecutionHooks,
-  type ToolCallEvent,
-  type ToolResultEvent,
-  type ReActResultV2,
 } from './react-executor-v2';

@@ -1,0 +1,153 @@
+# ═══════════════════════════════════════════════════════════════
+# 白泽配置文件
+# ═══════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────
+# LLM 配置
+# ───────────────────────────────────────────────────────────────
+llm:
+  # 默认提供商
+  default_provider: openai
+  
+  # 提供商配置
+  providers:
+    openai:
+      model: gpt-4o
+      temperature: 0.7
+      max_tokens: 4096
+    anthropic:
+      model: claude-3-5-sonnet-20241022
+      temperature: 0.7
+    deepseek:
+      model: deepseek-chat
+      temperature: 0.7
+
+# ───────────────────────────────────────────────────────────────
+# 记忆系统配置
+# ───────────────────────────────────────────────────────────────
+memory:
+  # 数据库路径
+  database: ./data/baize.db
+  
+  # 向量存储
+  vector:
+    enabled: true
+    dimensions: 384
+    db_path: ./data/vectors.db
+  
+  # 嵌入配置
+  embedding:
+    provider: local
+    dimensions: 384
+
+# ───────────────────────────────────────────────────────────────
+# 沙箱配置
+# ───────────────────────────────────────────────────────────────
+sandbox:
+  enabled: false
+  image: baize-sandbox:latest
+  memory: 512m
+  cpu: 1.0
+  timeout: 60000
+
+# ───────────────────────────────────────────────────────────────
+# 审批系统配置
+# ───────────────────────────────────────────────────────────────
+approval:
+  enabled: true
+  auto_approve_threshold: low
+  timeout: 300000
+  
+  # 风险级别配置
+  risk_levels:
+    low:
+      auto_approve: true
+    medium:
+      auto_approve: false
+    high:
+      auto_approve: false
+    critical:
+      auto_approve: false
+
+# ───────────────────────────────────────────────────────────────
+# 钩子配置
+# ───────────────────────────────────────────────────────────────
+hooks:
+  # 敏感操作检测
+  sensitive_operation:
+    enabled: true
+    patterns:
+      - "rm -rf"
+      - "sudo"
+      - "chmod 777"
+  
+  # SSRF 防护
+  ssrf_protection:
+    enabled: true
+    blocked_hosts:
+      - localhost
+      - 127.0.0.1
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+
+# ───────────────────────────────────────────────────────────────
+# 策略配置
+# ───────────────────────────────────────────────────────────────
+policy:
+  # 工具白名单
+  tool_whitelist:
+    - web_search
+    - web_fetch
+    - memory_search
+    - memory_set
+  
+  # 参数验证
+  param_validation:
+    enabled: true
+    strict: false
+
+# ───────────────────────────────────────────────────────────────
+# 错误恢复配置
+# ───────────────────────────────────────────────────────────────
+recovery:
+  # 重试配置
+  retry:
+    max_attempts: 3
+    backoff: exponential
+    initial_delay: 1000
+  
+  # Failover 配置
+  failover:
+    enabled: true
+    providers:
+      - openai
+      - anthropic
+      - deepseek
+
+# ───────────────────────────────────────────────────────────────
+# 上下文管理配置
+# ───────────────────────────────────────────────────────────────
+context:
+  max_tokens: 128000
+  reserved_tokens: 4096
+  compression_threshold: 0.8
+
+# ───────────────────────────────────────────────────────────────
+# 日志配置
+# ───────────────────────────────────────────────────────────────
+logging:
+  level: info
+  file: ./logs/baize.log
+  max_size: 10m
+  max_files: 5
+
+# ───────────────────────────────────────────────────────────────
+# API 配置
+# ───────────────────────────────────────────────────────────────
+api:
+  port: 3000
+  host: 0.0.0.0
+  cors:
+    origins:
+      - "*"

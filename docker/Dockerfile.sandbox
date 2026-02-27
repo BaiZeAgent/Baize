@@ -1,0 +1,32 @@
+# 白泽沙箱镜像
+FROM ubuntu:22.04
+
+# 设置环境变量
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# 安装基础工具
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    nodejs \
+    npm \
+    python3 \
+    python3-pip \
+    bash \
+    coreutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建工作目录
+WORKDIR /workspace
+
+# 创建非 root 用户
+RUN useradd -m -s /bin/bash baize && \
+    chown -R baize:baize /workspace
+
+# 切换到非 root 用户
+USER baize
+
+# 默认命令
+CMD ["sleep", "infinity"]
