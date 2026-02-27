@@ -94,28 +94,45 @@ async function duckduckgoSearch(query: string, count: number): Promise<SearchRes
     const html = await response.text();
     
     // 解析 HTML 提取搜索结果
-    // DuckDuckGo Lite 的结果格式：<a class="result-link" href="...">标题</a>
-    const linkRegex = /<a[^>]*class="result-link"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/gi;
-    const snippetRegex = /<td[^>]*class="result-snippet"[^>]*>([^<]+)<\/td>/gi;
+    // DuckDuckGo Lite 的结果格式：<a rel="nofollow" href="..." class='result-link'>标题</a>
+    // 注意：class 使用单引号
+    const linkRegex = /<a[^>]*class=['"]result-link['"][^>]*>([^<]+)<\/a>/gi;
+    const hrefRegex = /href=["']([^"']+)["']/gi;
     
+    // 先提取所有 result-link 的 a 标签
+    const aTagRegex = /<a[^>]*class=['"]result-link['"][^>]*>[\s\S]*?<\/a>/gi;
     let match;
-    const urls: { url: string; title: string }[] = [];
     
-    while ((match = linkRegex.exec(html)) !== null && urls.length < count) {
-      const url = match[1];
-      const title = match[2].trim();
-      // 过滤掉 DuckDuckGo 自己的链接
-      if (url && !url.includes('duckduckgo.com') && !url.startsWith('/')) {
-        urls.push({ url, title });
+    while ((match = aTagRegex.exec(html)) !== null && results.length < count) {
+      const aTag = match[0];
+      
+      // 提取标题
+      const titleMatch = aTag.match(/>([^<]+)<\/a>/);
+      const title = titleMatch ? titleMatch[1].trim() : '';
+      
+      // 提取 URL
+      const hrefMatch = aTag.match(/href=["']([^"']+)["']/);
+      let resultUrl = hrefMatch ? hrefMatch[1] : '';
+      
+      // DuckDuckGo 的链接是重定向链接，需要提取真实 URL
+      // 格式: //duckduckgo.com/l/?uddg=URL_ENCODED&rut=...
+      if (resultUrl.includes('uddg=')) {
+        const uddgMatch = resultUrl.match(/uddg=([^&]+)/);
+        if (uddgMatch) {
+          resultUrl = decodeURIComponent(uddgMatch[1]);
+        }
       }
-    }
-    
-    for (const item of urls) {
-      results.push({
-        title: item.title,
-        url: item.url,
-        description: '',
-      });
+      
+      // 过滤掉广告和无效链接
+      if (resultUrl && !resultUrl.includes('duckduckgo.com/y.js') && 
+          !resultUrl.includes('bing.com/aclick') && 
+          title && title !== 'more info') {
+        results.push({
+          title: title,
+          url: resultUrl,
+          description: '',
+        });
+      }
     }
     
     logger.debug(`DuckDuckGo Lite 解析到 ${results.length} 个结果`);
