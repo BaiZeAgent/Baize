@@ -2,7 +2,7 @@
 /**
  * 文件操作技能 - JavaScript实现
  * 
- * 输入：从环境变量 BAIZE_PARAMS 或 stdin 获取 JSON 参数
+ * 输入：从环境变量 BAIZE_PARAMS 获取 JSON 参数
  * 输出：输出 JSON 结果到 stdout
  */
 
@@ -19,30 +19,23 @@ async function main() {
     
     // 优先从环境变量获取
     if (process.env.BAIZE_PARAMS) {
-      input = JSON.parse(process.env.BAIZE_PARAMS);
-    } else {
-      // 从 stdin 获取
-      let stdinData = '';
-      process.stdin.setEncoding('utf8');
-      
-      // 同步读取所有stdin
-      const buffer = [];
-      let chunk;
-      while ((chunk = process.stdin.read()) !== null) {
-        buffer.push(chunk);
-      }
-      
-      if (buffer.length > 0) {
-        stdinData = buffer.join('');
-        input = JSON.parse(stdinData);
-      } else {
-        // 没有输入，返回错误
-        outputError('没有输入参数');
+      try {
+        input = JSON.parse(process.env.BAIZE_PARAMS);
+      } catch (e) {
+        outputError(`解析 BAIZE_PARAMS 失败: ${e.message}`);
         return;
       }
+    } else {
+      outputError('没有输入参数 (需要设置 BAIZE_PARAMS 环境变量)');
+      return;
     }
 
     const { params } = input;
+    if (!params) {
+      outputError('参数格式错误: 缺少 params 字段');
+      return;
+    }
+
     const { action, path: filePath, content, encoding = 'utf-8' } = params;
 
     // 验证必要参数

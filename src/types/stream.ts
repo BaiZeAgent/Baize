@@ -38,7 +38,9 @@ export type ThinkingStage =
   | 'reply'         // 直接回复
   | 'ask_missing'   // 询问缺失信息
   | 'clarify'       // 澄清意图
-  | 'unable';       // 没有能力
+  | 'unable'        // 没有能力
+  | 'gap_check'     // 能力缺口检测
+  | 'gap_detected'; // 检测到能力缺口
 
 /** 思考事件数据 */
 export interface ThinkingEventData {

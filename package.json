@@ -25,29 +25,29 @@
   "author": "baize",
   "license": "MIT",
   "dependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "chalk": "^4.1.2",
     "commander": "^12.0.0",
-    "cors": "^2.8.6",
     "dotenv": "^16.4.1",
-    "express": "^5.2.1",
     "inquirer": "^8.2.6",
-    "ora": "^5.4.1",
     "socket.io": "^4.8.3",
     "sql.js": "^1.10.3",
-    "uuid": "^9.0.1",
-    "winston": "^3.19.0",
-    "yaml": "^2.8.2"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.11.16",
     "@types/uuid": "^9.0.8",
     "@vitest/coverage-v8": "^4.0.18",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "ora": "^9.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "winston": "^3.19.0",
+    "yaml": "^2.8.2"
   },
   "engines": {
     "node": ">=18.0.0"

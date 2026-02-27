@@ -106,23 +106,32 @@ const BaizeAPI = (function() {
             buffer += decoder.decode(value, { stream: true });
             
             // 解析SSE事件
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+            // 格式: event: xxx\ndata: {...}\n\n
+            const events = buffer.split('\n\n');
+            buffer = events.pop() || '';
 
-            let eventType = '';
-            for (const line of lines) {
-                if (line.startsWith('event: ')) {
-                    eventType = line.slice(7);
-                } else if (line.startsWith('data: ')) {
-                    try {
-                        const data = JSON.parse(line.slice(6));
-                        // 调用对应的回调
-                        if (callbacks[eventType]) {
-                            callbacks[eventType](data);
+            for (const eventStr of events) {
+                if (!eventStr.trim()) continue;
+                
+                const lines = eventStr.split('\n');
+                let eventType = '';
+                let eventData = null;
+                
+                for (const line of lines) {
+                    if (line.startsWith('event: ')) {
+                        eventType = line.slice(7).trim();
+                    } else if (line.startsWith('data: ')) {
+                        try {
+                            eventData = JSON.parse(line.slice(6));
+                        } catch (e) {
+                            console.error('解析SSE数据失败:', e);
                         }
-                    } catch (e) {
-                        console.error('解析SSE数据失败:', e);
                     }
+                }
+                
+                // 调用对应的回调
+                if (eventType && eventData && callbacks[eventType]) {
+                    callbacks[eventType](eventData);
                 }
             }
         }
@@ -145,9 +154,6 @@ const BaizeAPI = (function() {
      * 获取对话历史
      */
     async function getChatHistory(conversationId) {
-        if (conversationId) {
-            return request('GET', `/api/chat/history?conversationId=${encodeURIComponent(conversationId)}`);
-        }
         return request('GET', '/api/chat/history');
     }
 
@@ -155,9 +161,6 @@ const BaizeAPI = (function() {
      * 清空对话历史
      */
     async function clearChatHistory(conversationId) {
-        if (conversationId) {
-            return request('DELETE', `/api/chat/history?conversationId=${encodeURIComponent(conversationId)}`);
-        }
         return request('DELETE', '/api/chat/history');
     }
 
@@ -263,8 +266,8 @@ const BaizeAPI = (function() {
             const result = await healthCheck();
             return {
                 connected: true,
-                version: result.data?.version,
-                uptime: result.data?.uptime,
+                version: result.version || '3.2.0',
+                uptime: result.uptime,
             };
         } catch (error) {
             return {
@@ -285,7 +288,7 @@ const BaizeAPI = (function() {
         
         // 对话
         chat,
-        chatStream,  // 新增流式对话
+        chatStream,
         getChatHistory,
         clearChatHistory,
         

@@ -1,172 +1,130 @@
 /**
- * 能力缺口检测器 - 检测系统缺失的能力
+ * 能力缺口检测器 - OpenClaw 风格
  * 
- * 第九章 9.2 能力缺口检测
- * 
- * 功能：
- * 1. 分析任务需求
- * 2. 匹配现有能力
- * 3. 识别能力缺口
- * 4. 建议解决方案
+ * 核心逻辑：
+ * 1. 让 LLM 判断用户需求是否能被现有技能满足
+ * 2. 如果不能，识别缺失的能力
+ * 3. 不使用硬编码映射，完全由 LLM 理解
  */
 
 import { getLogger } from '../../observability/logger';
-import { CapabilityGap, Understanding, SkillInfo } from '../../types';
+import { getLLMManager } from '../../llm';
+import { CapabilityGap, SkillInfo } from '../../types';
 
 const logger = getLogger('evolution:gap');
-
-/**
- * 关键词到能力的映射
- */
-const KEYWORD_CAPABILITY_MAP: Record<string, string[]> = {
-  '天气': ['weather', 'forecast', 'temperature'],
-  '股票': ['stock', 'finance', 'trading'],
-  '翻译': ['translate', 'language', 'multilingual'],
-  '邮件': ['email', 'mail', 'smtp'],
-  '日程': ['calendar', 'schedule', 'reminder'],
-  '新闻': ['news', 'rss', 'feed'],
-  '地图': ['map', 'location', 'navigation'],
-  '图片': ['image', 'vision', 'ocr'],
-  '音频': ['audio', 'speech', 'tts', 'stt'],
-  '视频': ['video', 'streaming'],
-  '数据库': ['database', 'sql', 'query'],
-  '网络': ['network', 'http', 'api', 'web'],
-};
 
 /**
  * 能力缺口检测器
  */
 export class CapabilityGapDetector {
+  private llm = getLLMManager();
+
   /**
    * 检测能力缺口
    */
-  async detect(understanding: Understanding, availableSkills: any[]): Promise<CapabilityGap | null> {
-    logger.debug('开始检测能力缺口', { coreNeed: understanding.coreNeed });
+  async detect(userInput: string, availableSkills: SkillInfo[]): Promise<CapabilityGap | null> {
+    logger.debug('开始检测能力缺口', { input: userInput.slice(0, 50) });
 
-    // 1. 分析任务需求
-    const requiredCapabilities = this.analyzeRequirements(understanding);
-    
-    if (requiredCapabilities.length === 0) {
-      return null; // 无法确定需求
-    }
+    // 构建技能列表描述
+    const skillsDesc = availableSkills.length > 0
+      ? availableSkills.map(s => {
+          let desc = `- ${s.name}: ${s.description}`;
+          if (s.whenToUse) {
+            desc += ` (适用: ${s.whenToUse})`;
+          }
+          if (s.capabilities && s.capabilities.length > 0) {
+            desc += ` [能力: ${s.capabilities.join(', ')}]`;
+          }
+          return desc;
+        }).join('\n')
+      : '(无已安装技能)';
 
-    // 2. 获取现有能力
-    const availableCapabilities = this.getAvailableCapabilities(availableSkills);
+    const prompt = `你是白泽的能力缺口检测器。分析用户需求是否能被现有技能满足。
 
-    // 3. 计算缺口
-    const missingCapabilities = requiredCapabilities.filter(
-      cap => !availableCapabilities.some(avail => this.matches(cap, avail))
-    );
+## 用户需求
+${userInput}
 
-    if (missingCapabilities.length === 0) {
-      return null; // 无缺口
-    }
+## 现有技能
+${skillsDesc}
 
-    // 4. 计算置信度
-    const confidence = this.calculateConfidence(understanding, missingCapabilities);
+## 任务
+1. 判断用户需求是否能被现有技能满足
+2. 如果不能，识别缺失的能力
 
-    // 5. 生成建议
-    const suggestedSkills = await this.suggestSkills(missingCapabilities);
+## 返回格式（只返回JSON，不要解释）
+如果能满足：
+{"hasGap": false}
 
-    const gap: CapabilityGap = {
-      id: `gap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      detectedAt: new Date(),
-      userInput: understanding.coreNeed,
-      understanding,
-      missingCapabilities,
-      suggestedSkills,
-      confidence,
-      resolution: 'pending',
-    };
+如果不能：
+{"hasGap": true, "missingCapabilities": ["能力1", "能力2"], "suggestedSkillNames": ["建议技能名"], "confidence": 0.8}`;
 
-    logger.info('检测到能力缺口', {
-      missing: missingCapabilities,
-      confidence: Math.round(confidence * 100) + '%',
-      suggested: suggestedSkills
-    });
+    try {
+      const response = await this.llm.chat([
+        { role: 'user', content: prompt }
+      ], { temperature: 0.1 });
 
-    return gap;
-  }
-
-  /**
-   * 分析任务需求
-   */
-  private analyzeRequirements(understanding: Understanding): string[] {
-    const requirements: string[] = [];
-    const text = (understanding.coreNeed + ' ' + (understanding.literalMeaning || '')).toLowerCase();
-
-    for (const [keyword, capabilities] of Object.entries(KEYWORD_CAPABILITY_MAP)) {
-      if (text.includes(keyword.toLowerCase())) {
-        requirements.push(...capabilities);
+      // 解析 JSON
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        logger.debug('无法解析缺口检测结果');
+        return null;
       }
-    }
 
-    // 去重
-    return [...new Set(requirements)];
-  }
+      const result = JSON.parse(jsonMatch[0]);
 
-  /**
-   * 获取现有能力
-   */
-  private getAvailableCapabilities(skills: any[]): string[] {
-    const capabilities: string[] = [];
-    
-    for (const skill of skills) {
-      if (skill.capabilities) {
-        capabilities.push(...skill.capabilities);
+      if (!result.hasGap) {
+        logger.debug('无能力缺口');
+        return null;
       }
-    }
 
-    return [...new Set(capabilities)];
+      const gap: CapabilityGap = {
+        id: `gap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        detectedAt: new Date(),
+        userInput,
+        understanding: {
+          literalMeaning: userInput,
+          implicitIntent: '',
+          context: {},
+          constraints: [],
+          coreNeed: userInput,
+        },
+        missingCapabilities: result.missingCapabilities || [],
+        suggestedSkills: result.suggestedSkillNames || [],
+        confidence: result.confidence || 0.5,
+        resolution: 'pending',
+      };
+
+      logger.info('检测到能力缺口', {
+        missing: gap.missingCapabilities,
+        suggested: gap.suggestedSkills,
+        confidence: Math.round(gap.confidence * 100) + '%',
+      });
+
+      return gap;
+
+    } catch (error) {
+      logger.error(`能力缺口检测失败: ${error}`);
+      return null;
+    }
   }
 
   /**
-   * 匹配能力
+   * 生成用户提示消息
    */
-  private matches(required: string, available: string): boolean {
-    const r = required.toLowerCase();
-    const a = available.toLowerCase();
-    return r === a || r.includes(a) || a.includes(r);
-  }
+  generatePrompt(gap: CapabilityGap): string {
+    const missing = gap.missingCapabilities.join('、');
+    const suggested = gap.suggestedSkills.length > 0 
+      ? `\n\n建议安装的技能: ${gap.suggestedSkills.join('、')}` 
+      : '';
 
-  /**
-   * 计算置信度
-   */
-  private calculateConfidence(understanding: Understanding, missing: string[]): number {
-    // 基于关键词匹配数量计算置信度
-    let score = 0.5; // 基础分
+    return `我发现缺少以下能力: ${missing}${suggested}
 
-    // 如果用户明确提到"开发"或"创建"技能
-    if (understanding.coreNeed.includes('开发') || 
-        understanding.coreNeed.includes('创建') ||
-        understanding.coreNeed.includes('新技能')) {
-      score += 0.3;
-    }
+是否需要我：
+1. 从技能市场搜索并安装
+2. 尝试用其他方式解决
+3. 暂时忽略
 
-    // 如果有多个缺失能力，置信度降低
-    if (missing.length > 3) {
-      score -= 0.2;
-    }
-
-    return Math.min(1, Math.max(0, score));
-  }
-
-  /**
-   * 建议技能
-   */
-  private async suggestSkills(missingCapabilities: string[]): Promise<string[]> {
-    // 简化实现：返回缺失能力对应的技能名称
-    const suggestions: string[] = [];
-
-    for (const cap of missingCapabilities) {
-      // 尝试将能力转换为技能名
-      const skillName = cap.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      if (!suggestions.includes(skillName)) {
-        suggestions.push(skillName);
-      }
-    }
-
-    return suggestions.slice(0, 3); // 最多返回3个建议
+请告诉我你的选择。`;
   }
 
   /**
@@ -174,19 +132,6 @@ export class CapabilityGapDetector {
    */
   needsConfirmation(gap: CapabilityGap): boolean {
     return gap.confidence < 0.8;
-  }
-
-  /**
-   * 生成用户提示消息
-   */
-  generatePrompt(gap: CapabilityGap): string {
-    const missing = gap.missingCapabilities.join(', ');
-    
-    if (gap.confidence >= 0.8) {
-      return `我发现可能需要以下能力: ${missing}\n是否需要我从技能市场安装或开发新技能？`;
-    } else {
-      return `我注意到可能缺少以下能力: ${missing}\n请问您是否需要我获取这些能力？`;
-    }
   }
 }
 
@@ -198,4 +143,8 @@ export function getGapDetector(): CapabilityGapDetector {
     gapDetector = new CapabilityGapDetector();
   }
   return gapDetector;
+}
+
+export function resetGapDetector(): void {
+  gapDetector = null;
 }

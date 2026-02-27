@@ -1,8 +1,9 @@
 /**
  * 自进化系统 - 主入口
  * 
- * 整合角色团队、权限管理、审批流程和执行器
+ * 整合角色团队、权限管理、审批流程、能力缺口检测和执行器
  */
+
 import {
   Role,
   RoleThought,
@@ -14,6 +15,7 @@ import { getRoleTeamManager, RoleTeamManager } from './team';
 import { getPermissionManager, PermissionManager } from './permission';
 import { getApprovalManager, ApprovalManager } from './approval';
 import { getEvolutionExecutor, EvolutionExecutor } from './executor';
+import { getGapDetector, CapabilityGapDetector } from './gap';
 import { getDatabase } from '../memory/database';
 import { getLogger } from '../observability/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,6 +27,7 @@ export { getRoleTeamManager, RoleTeamManager } from './team';
 export { getPermissionManager, PermissionManager } from './permission';
 export { getApprovalManager, ApprovalManager } from './approval';
 export { getEvolutionExecutor, EvolutionExecutor } from './executor';
+export { getGapDetector, CapabilityGapDetector } from './gap';
 
 /**
  * 自进化管理器
@@ -35,6 +38,7 @@ export class EvolutionManager {
   private permission: PermissionManager;
   private approval: ApprovalManager;
   private executor: EvolutionExecutor;
+  private gapDetector: CapabilityGapDetector;
   private maxIterations = 3;
 
   constructor() {
@@ -42,6 +46,14 @@ export class EvolutionManager {
     this.permission = getPermissionManager();
     this.approval = getApprovalManager();
     this.executor = getEvolutionExecutor();
+    this.gapDetector = getGapDetector();
+  }
+
+  /**
+   * 获取能力缺口检测器
+   */
+  getGapDetector(): CapabilityGapDetector {
+    return this.gapDetector;
   }
 
   /**

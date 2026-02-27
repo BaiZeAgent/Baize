@@ -6,6 +6,7 @@ dist/
 
 # Environment
 .env
+.env.*
 
 # Data
 data/
@@ -24,9 +25,21 @@ Thumbs.db
 
 # Test
 coverage/
+test-*.ts
+test-*.js
+*.test.ts
+*.test.js
+__tests__/
 
 # Misc
 *.log
 *.db
 *.db-wal
 *.db-shm
+
+# Temporary files
+*.tmp
+*.temp
+HelloWorld.js
+hello.txt
+test.txt
