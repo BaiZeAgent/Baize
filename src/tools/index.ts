@@ -8,6 +8,7 @@ import { WebFetchTool } from './web-fetch';
 import { MemorySearchTool, MemoryGetTool, MemorySetTool } from './memory';
 import { ImageGenerateTool, ImageDescribeTool } from './image';
 import { SubAgentTool, TaskDecomposeTool } from './subagent';
+import { BrowserTool } from './browser';
 import { getLogger } from '../observability/logger';
 
 const logger = getLogger('tools:registry');
@@ -123,6 +124,9 @@ function registerBuiltinTools(registry: ToolRegistry): void {
   registry.register(new SubAgentTool());
   registry.register(new TaskDecomposeTool());
 
+  // 浏览器自动化工具
+  registry.register(new BrowserTool());
+
   logger.info(`内置工具注册完成，共 ${registry.size} 个工具`);
 }
 
@@ -145,6 +149,7 @@ export {
   ImageDescribeTool,
   SubAgentTool,
   TaskDecomposeTool,
+  BrowserTool,
 };
 
 // 导出类型
