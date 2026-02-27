@@ -7,7 +7,8 @@
 import { config } from 'dotenv';
 config();
 
-const API_KEY = 'sk-b6cd77165fb14c03afb493470ff314f8';
+// 从环境变量获取 API Key
+const API_KEY = process.env.ALIYUN_API_KEY || process.env.BAIZE_API_KEY || '';
 
 // 颜色输出
 const colors = {

@@ -5,6 +5,11 @@
  * 1. 优先检查内置工具
  * 2. 如果没有，检查技能
  * 3. 根据技能类型选择执行方式
+ * 
+ * V2 新增：
+ * - ReAct 循环执行器
+ * - 工具执行钩子
+ * - 上下文管理
  */
 
 import { exec } from 'child_process';
@@ -361,3 +366,14 @@ export function getExecutor(): Executor {
 export function resetExecutor(): void {
   executorInstance = null;
 }
+
+// 导出 ReAct 执行器 V2
+export {
+  ReActExecutorV2,
+  getReActExecutorV2,
+  resetReActExecutorV2,
+  type ExecutionHooks,
+  type ToolCallEvent,
+  type ToolResultEvent,
+  type ReActResultV2,
+} from './react-executor-v2';

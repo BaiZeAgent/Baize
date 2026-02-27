@@ -16,7 +16,8 @@ export type StreamEventType =
   | 'content'       // 内容输出
   | 'session'       // 会话信息
   | 'done'          // 完成
-  | 'error';        // 错误
+  | 'error'         // 错误
+  | 'strategy_adjust'; // 策略调整
 
 /** 流式事件 */
 export interface StreamEvent {
@@ -52,17 +53,23 @@ export interface ThinkingEventData {
 
 /** 工具调用事件数据 */
 export interface ToolCallEventData {
+  toolCallId?: string;
   tool: string;
-  params: Record<string, unknown>;
-  reason: string;
+  params?: Record<string, unknown>;
+  reason?: string;
+  success?: boolean;
+  duration?: number;
 }
 
 /** 工具结果事件数据 */
 export interface ToolResultEventData {
+  toolCallId?: string;
   tool: string;
   success: boolean;
   result?: unknown;
   duration: number;
+  error?: string;
+  output?: unknown;
 }
 
 /** 内容事件数据 */
@@ -91,6 +98,11 @@ export interface SessionEventData {
   sessionId: string;
 }
 
+/** 策略调整事件数据 */
+export interface StrategyAdjustEventData {
+  message: string;
+}
+
 /** 流式事件数据联合类型 */
 export type StreamEventData = 
   | ThinkingEventData
@@ -99,7 +111,8 @@ export type StreamEventData =
   | ContentEventData
   | DoneEventData
   | ErrorEventData
-  | SessionEventData;
+  | SessionEventData
+  | StrategyAdjustEventData;
 
 // ═══════════════════════════════════════════════════════════════
 // 决策类型（用于提示词构建）

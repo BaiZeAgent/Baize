@@ -42,6 +42,8 @@ export * from './sandbox';
 // 决策层
 export * from './core/thinking/engine';
 export * from './core/brain';
+export { BrainV2, getBrainV2, resetBrainV2, DecisionV2 } from './core/brain/brain-v2';
+export type { IntentType as IntentTypeV2 } from './core/brain/brain-v2';
 export * from './core/router';
 export * from './core/context';
 export * from './core/recovery';
