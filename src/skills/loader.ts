@@ -789,9 +789,24 @@ export class SkillLoader {
     const absoluteSkillPath = path.resolve(skillPath);
     const skillName = path.basename(absoluteSkillPath);
     
+    // 跳过备份目录
+    if (skillName.endsWith('.bak') || skillName.startsWith('.')) {
+      return null;
+    }
+    
     const mdPath = path.join(absoluteSkillPath, 'SKILL.md');
     const yamlPath = path.join(absoluteSkillPath, 'skill.yaml');
     const jsonPath = path.join(absoluteSkillPath, 'skill.json');
+    
+    // 检查是否有 package.json（需要安装依赖）
+    const packageJsonPath = path.join(absoluteSkillPath, 'package.json');
+    const nodeModulesPath = path.join(absoluteSkillPath, 'node_modules');
+    
+    // 自动安装依赖
+    if (fs.existsSync(packageJsonPath) && !fs.existsSync(nodeModulesPath)) {
+      logger.info(`检测到技能 ${skillName} 需要安装依赖，正在自动安装...`);
+      await this.installSkillDependencies(absoluteSkillPath);
+    }
 
     let definition: LoadedSkillDefinition | null = null;
 
@@ -928,6 +943,55 @@ export class SkillLoader {
       case 'critical': return RiskLevel.CRITICAL;
       default: return RiskLevel.LOW;
     }
+  }
+
+  /**
+   * 自动安装技能依赖
+   */
+  private async installSkillDependencies(skillPath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      logger.info(`正在为技能安装依赖: ${skillPath}`);
+      
+      const proc = spawn('npm', ['install'], {
+        cwd: skillPath,
+        shell: true,
+        stdio: 'pipe',
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout?.on('data', (data) => {
+        stdout += data.toString();
+        logger.debug(`npm install: ${data.toString().trim()}`);
+      });
+
+      proc.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          logger.info(`技能依赖安装成功: ${skillPath}`);
+          resolve(true);
+        } else {
+          logger.error(`技能依赖安装失败: ${skillPath}`, { code, stderr });
+          resolve(false);
+        }
+      });
+
+      proc.on('error', (error) => {
+        logger.error(`安装进程错误: ${error.message}`);
+        resolve(false);
+      });
+
+      // 设置超时
+      setTimeout(() => {
+        proc.kill();
+        logger.warn(`安装超时: ${skillPath}`);
+        resolve(false);
+      }, 120000); // 2分钟超时
+    });
   }
 }
 
