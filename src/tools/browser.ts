@@ -253,10 +253,14 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
   };
 
   async execute(params: Record<string, unknown>, context?: ToolContext): Promise<ToolResult<BrowserResult>> {
-    const action = readStringParam(params, 'action', { required: true, label: '操作类型' }) as BrowserAction;
+    // 支持 action 和 operation 两种参数名
+    let action = readStringParam(params, 'action', { label: '操作类型' }) as BrowserAction;
+    if (!action) {
+      action = readStringParam(params, 'operation', { label: '操作类型' }) as BrowserAction;
+    }
     
     if (!action) {
-      return errorResult('操作类型不能为空');
+      return errorResult('操作类型不能为空。请使用 action 参数，可选值: navigate, click, type, extract, screenshot, scroll, wait, evaluate, get_content, get_html, get_url, get_title, fill_form, select, hover, press, go_back, go_forward, refresh, close');
     }
 
     const start = Date.now();
