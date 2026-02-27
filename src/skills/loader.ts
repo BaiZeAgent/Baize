@@ -278,7 +278,22 @@ class DynamicSkill extends Skill {
     }
     
     for (const cmd of commands) {
-      // 打开浏览器
+      // 打开浏览器 (简单技能)
+      if (skillName === 'browser' && cmd.includes('open ') && cmd.includes('http')) {
+        return cmd;
+      }
+      
+      // browser-automation 技能：选择 navigate 命令
+      if (skillName === 'browser-automation' && cmd.includes('browser navigate')) {
+        return cmd;
+      }
+      
+      // agent-browser 技能
+      if (skillName === 'agent-browser' && cmd.includes('agent-browser open')) {
+        return cmd;
+      }
+      
+      // 通用打开浏览器
       if (cmd.includes('open ') && cmd.includes('http')) {
         return cmd;
       }
