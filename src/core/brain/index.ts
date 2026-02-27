@@ -20,6 +20,8 @@ import { getMemory } from '../../memory';
 import { getLogger } from '../../observability/logger';
 import { LLMMessage, CapabilityGap } from '../../types';
 import { StreamEvent } from '../../types/stream';
+import { SkillLoader } from '../../skills/loader';
+import { registerBuiltinSkills } from '../../skills/builtins';
 
 const logger = getLogger('core:brain');
 
@@ -65,6 +67,10 @@ export class Brain {
   // ReAct 配置
   private maxIterations: number = 5;
   private iterationCount: number = 0;
+  
+  // 技能加载状态
+  private static skillsLoaded = false;
+  private static skillsLoading = false;
 
   constructor() {
     this.loadSoul();
@@ -86,9 +92,50 @@ export class Brain {
   }
 
   /**
+   * 确保技能已加载
+   * 延迟加载技能，避免在构造函数中加载
+   */
+  private async ensureSkillsLoaded(): Promise<void> {
+    if (Brain.skillsLoaded) return;
+    
+    // 防止重复加载
+    if (Brain.skillsLoading) {
+      // 等待加载完成
+      while (Brain.skillsLoading) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return;
+    }
+    
+    Brain.skillsLoading = true;
+    
+    try {
+      // 注册内置技能
+      registerBuiltinSkills();
+      
+      // 加载外部技能
+      const loader = new SkillLoader();
+      const skills = await loader.loadAll();
+      for (const skill of skills) {
+        this.skillRegistry.register(skill);
+      }
+      
+      Brain.skillsLoaded = true;
+      logger.info(`技能加载完成，共 ${this.skillRegistry.size} 个技能`);
+    } catch (error) {
+      logger.error(`技能加载失败: ${error}`);
+    } finally {
+      Brain.skillsLoading = false;
+    }
+  }
+
+  /**
    * 流式处理 - ReAct 模式
    */
   async *processStream(userInput: string, sessionId: string = 'default'): AsyncGenerator<StreamEvent> {
+    // 确保技能已加载
+    await this.ensureSkillsLoaded();
+    
     const startTime = Date.now();
     
     logger.info(`处理: ${userInput.slice(0, 50)}...`);
@@ -601,6 +648,9 @@ ${history.join('\n')}
    * 处理用户输入（非流式）
    */
   async process(userInput: string): Promise<Decision> {
+    // 确保技能已加载
+    await this.ensureSkillsLoaded();
+    
     logger.info(`大脑处理: ${userInput.slice(0, 50)}...`);
 
     this.history.push({ role: 'user', content: userInput });
@@ -717,6 +767,14 @@ ${historyText}
   clearHistory(): void {
     this.history = [];
   }
+
+  /**
+   * 重置技能加载状态（用于测试或重新加载技能）
+   */
+  static resetSkillsLoaded(): void {
+    Brain.skillsLoaded = false;
+    Brain.skillsLoading = false;
+  }
 }
 
 let brainInstance: Brain | null = null;
@@ -730,4 +788,5 @@ export function getBrain(): Brain {
 
 export function resetBrain(): void {
   brainInstance = null;
+  Brain.resetSkillsLoaded();
 }
