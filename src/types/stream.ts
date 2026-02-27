@@ -41,7 +41,9 @@ export type ThinkingStage =
   | 'clarify'       // 澄清意图
   | 'unable'        // 没有能力
   | 'gap_check'     // 能力缺口检测
-  | 'gap_detected'; // 检测到能力缺口
+  | 'gap_detected'   // 检测到能力缺口
+  | 'thought'       // 思考中
+  | 'retry';        // 重试
 
 /** 思考事件数据 */
 export interface ThinkingEventData {

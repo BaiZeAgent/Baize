@@ -1,9 +1,11 @@
 /**
- * 大脑 - OpenClaw 风格
+ * 大脑 - ReAct 模式
  * 
- * 核心逻辑：
- * 1. 路由判断 -> 2. 执行工具/技能 -> 3. LLM 处理结果
- * 4. 如果工具不存在/失败 -> 能力缺口检测
+ * 实现 OpenClaw 风格的 ReAct 循环：
+ * 1. Thought (思考): LLM 分析当前状态
+ * 2. Action (行动): 执行工具/技能
+ * 3. Observation (观察): 获取执行结果
+ * 4. 循环直到完成或失败
  */
 
 import fs from 'fs';
@@ -35,6 +37,18 @@ export interface Decision {
 }
 
 /**
+ * ReAct 状态
+ */
+interface ReActState {
+  thought: string;
+  action: string;
+  actionInput: Record<string, unknown>;
+  observation?: string;
+  finished: boolean;
+  response?: string;
+}
+
+/**
  * 大脑
  */
 export class Brain {
@@ -47,6 +61,10 @@ export class Brain {
   private memory = getMemory();
   private history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   private soulContent: string = '';
+  
+  // ReAct 配置
+  private maxIterations: number = 5;
+  private iterationCount: number = 0;
 
   constructor() {
     this.loadSoul();
@@ -68,24 +86,22 @@ export class Brain {
   }
 
   /**
-   * 流式处理
+   * 流式处理 - ReAct 模式
    */
   async *processStream(userInput: string, sessionId: string = 'default'): AsyncGenerator<StreamEvent> {
     const startTime = Date.now();
     
     logger.info(`处理: ${userInput.slice(0, 50)}...`);
 
-    // 添加到历史
     this.history.push({ role: 'user', content: userInput });
     if (this.history.length > 20) {
       this.history = this.history.slice(-20);
     }
 
-    // 记录到情景记忆
     this.memory.recordEpisode('conversation', `用户: ${userInput}`);
 
     try {
-      // 1. 路由判断（传入历史）
+      // 1. 初始路由判断
       const decision = await this.router.route({ 
         userInput, 
         history: this.history 
@@ -105,11 +121,11 @@ export class Brain {
         this.memory.recordEpisode('conversation', `白泽: ${content}`);
       } 
       else if (decision.action === 'tool') {
-        // 执行工具或技能
-        yield* this.executeTool(userInput, decision.toolName || '', decision.toolParams || {});
+        // ReAct 循环执行
+        yield* this.reActLoop(userInput, decision.toolName || '', decision.toolParams || {});
       }
       else {
-        // plan - 先尝试 LLM 处理，如果发现能力缺口再检测
+        // plan - 让 LLM 处理
         yield* this.handlePlan(userInput);
       }
 
@@ -130,64 +146,292 @@ export class Brain {
   }
 
   /**
-   * 执行工具
+   * ReAct 循环
    */
-  private async *executeTool(
+  private async *reActLoop(
     userInput: string, 
-    toolName: string, 
-    toolParams: Record<string, unknown>
+    initialTool: string, 
+    initialParams: Record<string, unknown>
   ): AsyncGenerator<StreamEvent> {
-    // 检查工具或技能是否存在
-    const isTool = this.toolRegistry.has(toolName);
-    const isSkill = !!this.skillRegistry.get(toolName);
+    this.iterationCount = 0;
+    let currentState: ReActState = {
+      thought: '',
+      action: initialTool,
+      actionInput: initialParams,
+      observation: '',
+      finished: false,
+    };
+
+    const reactHistory: string[] = [];
+
+    while (!currentState.finished && this.iterationCount < this.maxIterations) {
+      this.iterationCount++;
+      
+      yield {
+        type: 'thinking',
+        timestamp: Date.now(),
+        data: { stage: 'thought', message: `思考中... (迭代 ${this.iterationCount}/${this.maxIterations})` }
+      };
+
+      // 1. Thought - 思考下一步
+      if (this.iterationCount > 1 || !currentState.action) {
+        const thought = await this.think(userInput, reactHistory);
+        currentState = { ...currentState, ...thought };
+      }
+
+      if (currentState.finished) {
+        // 任务完成
+        const response = currentState.response || '任务已完成';
+        yield* this.streamContent(response);
+        this.history.push({ role: 'assistant', content: response });
+        this.memory.recordEpisode('conversation', `白泽: ${response}`);
+        return;
+      }
+
+      // 2. Action - 执行行动
+      yield {
+        type: 'tool_call',
+        timestamp: Date.now(),
+        data: { tool: currentState.action, params: currentState.actionInput }
+      };
+
+      const observation = await this.executeAction(currentState.action, currentState.actionInput);
+      
+      // 3. Observation - 观察结果
+      yield {
+        type: 'tool_result',
+        timestamp: Date.now(),
+        data: { tool: currentState.action, success: observation.success, duration: observation.duration }
+      };
+
+      currentState.observation = observation.output;
+
+      // 记录到历史
+      reactHistory.push(`Thought: ${currentState.thought}`);
+      reactHistory.push(`Action: ${currentState.action}`);
+      reactHistory.push(`Observation: ${observation.output}`);
+
+      // 4. 验证结果
+      const validation = await this.validateResult(userInput, observation, currentState.action);
+      
+      if (validation.needsRetry && this.iterationCount < this.maxIterations) {
+        // 需要重试
+        yield {
+          type: 'thinking',
+          timestamp: Date.now(),
+          data: { stage: 'retry', message: `结果不理想，尝试其他方案...` }
+        };
+        currentState.action = validation.alternativeAction || '';
+        currentState.actionInput = validation.alternativeParams || {};
+        continue;
+      }
+
+      if (validation.finished) {
+        // 任务完成
+        currentState.finished = true;
+        currentState.response = validation.response;
+      }
+    }
+
+    // 返回最终结果
+    if (!currentState.finished) {
+      // 达到最大迭代次数
+      const response = await this.summarizeResult(userInput, reactHistory);
+      yield* this.streamContent(response);
+      this.history.push({ role: 'assistant', content: response });
+    } else if (currentState.response) {
+      yield* this.streamContent(currentState.response);
+      this.history.push({ role: 'assistant', content: currentState.response });
+    }
+  }
+
+  /**
+   * Thought - 思考下一步
+   */
+  private async think(userInput: string, history: string[]): Promise<ReActState> {
+    const tools = this.toolRegistry.getAll();
+    const skills = this.skillRegistry.getAll();
     
+    const toolsDesc = [...tools.map(t => `- ${t.name}: ${t.description}`), 
+                       ...skills.map(s => `- ${s.name}: ${s.description}`)].join('\n');
+
+    const historyText = history.join('\n');
+
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个智能助手的思考模块。使用 ReAct 模式处理任务。
+
+可用工具:
+${toolsDesc}
+
+规则:
+1. 分析当前状态和用户目标
+2. 决定下一步行动
+3. 如果任务已完成，设置 finished=true 并给出回复
+4. 如果需要重试，给出不同的行动
+
+返回 JSON:
+{
+  "thought": "当前思考",
+  "action": "工具名或 'reply'",
+  "actionInput": {参数},
+  "finished": false,
+  "response": "如果finished=true，这里是最终回复"
+}`
+      },
+      {
+        role: 'user',
+        content: `用户目标: ${userInput}
+
+历史记录:
+${historyText || '(无)'}
+
+请思考下一步。`
+      }
+    ];
+
+    try {
+      const response = await this.llm.chat(messages, { temperature: 0.1 });
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      logger.error(`思考失败: ${error}`);
+    }
+
+    return { thought: '继续尝试', action: 'reply', actionInput: {}, observation: '', finished: true, response: '抱歉，我无法完成这个任务。' };
+  }
+
+  /**
+   * 执行行动
+   */
+  private async executeAction(
+    action: string, 
+    actionInput: Record<string, unknown>
+  ): Promise<{ success: boolean; output: string; duration: number }> {
+    const startTime = Date.now();
+
+    if (action === 'reply') {
+      return { success: true, output: String(actionInput.message || ''), duration: Date.now() - startTime };
+    }
+
+    const isTool = this.toolRegistry.has(action);
+    const isSkill = !!this.skillRegistry.get(action);
+
     if (!isTool && !isSkill) {
-      // 不存在，触发能力缺口检测
-      yield* this.handleCapabilityGap(userInput);
-      return;
+      return { success: false, output: `工具不存在: ${action}`, duration: Date.now() - startTime };
     }
 
-    yield {
-      type: 'tool_call',
-      timestamp: Date.now(),
-      data: { tool: toolName, params: toolParams, reason: '' }
+    const result = await this.executor.executeSkill(action, actionInput);
+
+    return {
+      success: result.success,
+      output: result.output || result.error || '',
+      duration: result.duration || Date.now() - startTime,
     };
+  }
 
-    const result = await this.executor.executeSkill(toolName, toolParams);
+  /**
+   * 验证结果
+   */
+  private async validateResult(
+    userInput: string, 
+    observation: { success: boolean; output: string },
+    action: string
+  ): Promise<{ finished: boolean; needsRetry: boolean; response?: string; alternativeAction?: string; alternativeParams?: Record<string, unknown> }> {
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个结果验证器。判断执行结果是否完成了用户的目标。
 
-    yield {
-      type: 'tool_result',
-      timestamp: Date.now(),
-      data: { tool: toolName, success: result.success, duration: result.duration }
-    };
+返回 JSON:
+{
+  "finished": true/false,
+  "needsRetry": true/false,
+  "reason": "判断原因",
+  "response": "如果finished=true，给用户的回复",
+  "alternativeAction": "如果needsRetry=true，建议的其他工具",
+  "alternativeParams": {}
+}
 
-    if (result.success) {
-      // LLM 处理结果
-      const response = await this.processResult(userInput, toolName, result.output || '');
-      yield* this.streamContent(response);
-      this.history.push({ role: 'assistant', content: response });
-      this.memory.recordEpisode('conversation', `白泽: ${response}`);
-    } else {
-      // 执行失败
-      const response = `执行 ${toolName} 时出错: ${result.error}`;
-      yield* this.streamContent(response);
-      this.history.push({ role: 'assistant', content: response });
+规则:
+1. 如果执行成功且完成了用户目标，finished=true
+2. 如果执行失败或结果不符合预期，needsRetry=true
+3. 不要编造结果，诚实判断`
+      },
+      {
+        role: 'user',
+        content: `用户目标: ${userInput}
+
+执行工具: ${action}
+执行结果: ${observation.output}
+执行状态: ${observation.success ? '成功' : '失败'}
+
+请判断是否完成了用户目标。`
+      }
+    ];
+
+    try {
+      const response = await this.llm.chat(messages, { temperature: 0.1 });
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      logger.error(`验证失败: ${error}`);
     }
+
+    // 默认：如果执行成功就认为完成
+    return {
+      finished: observation.success,
+      needsRetry: !observation.success,
+      response: observation.output,
+    };
+  }
+
+  /**
+   * 总结结果
+   */
+  private async summarizeResult(userInput: string, history: string[]): Promise<string> {
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个智能助手。根据执行历史，给用户一个诚实的回复。
+
+规则:
+1. 如果任务完成，告诉用户结果
+2. 如果任务未完成，诚实说明
+3. 不要编造结果`
+      },
+      {
+        role: 'user',
+        content: `用户目标: ${userInput}
+
+执行历史:
+${history.join('\n')}
+
+请给用户一个回复。`
+      }
+    ];
+
+    const response = await this.llm.chat(messages, { temperature: 0.7 });
+    return response.content;
   }
 
   /**
    * 处理 plan 动作
    */
   private async *handlePlan(userInput: string): AsyncGenerator<StreamEvent> {
-    // 先让 LLM 尝试处理
     const response = await this.handleComplex(userInput);
     
-    // 检查 LLM 是否表示需要某个能力
     const needsCapability = response.includes('需要') && 
                            (response.includes('能力') || response.includes('技能'));
     
     if (needsCapability) {
-      // LLM 表示需要某个能力，触发能力缺口检测
       const gap = await this.gapDetector.detect(
         userInput, 
         this.skillRegistry.getAll().map(s => s.toInfo())
@@ -203,39 +447,12 @@ export class Brain {
         const gapResponse = this.gapDetector.generatePrompt(gap);
         yield* this.streamContent(gapResponse);
         this.history.push({ role: 'assistant', content: gapResponse });
-        this.memory.recordEpisode('conversation', `白泽: ${gapResponse}`);
         return;
       }
     }
     
-    // 正常回复
     yield* this.streamContent(response);
     this.history.push({ role: 'assistant', content: response });
-    this.memory.recordEpisode('conversation', `白泽: ${response}`);
-  }
-
-  /**
-   * 处理能力缺口
-   */
-  private async *handleCapabilityGap(userInput: string): AsyncGenerator<StreamEvent> {
-    yield {
-      type: 'thinking',
-      timestamp: Date.now(),
-      data: { stage: 'gap_check', message: '工具不存在，检测能力缺口...' }
-    };
-
-    const gap = await this.gapDetector.detect(userInput, this.skillRegistry.getAll().map(s => s.toInfo()));
-    
-    if (gap) {
-      const response = this.gapDetector.generatePrompt(gap);
-      yield* this.streamContent(response);
-      this.history.push({ role: 'assistant', content: response });
-      this.memory.recordEpisode('conversation', `白泽: ${response}`);
-    } else {
-      const response = '抱歉，我暂时没有相关能力来完成这个任务。';
-      yield* this.streamContent(response);
-      this.history.push({ role: 'assistant', content: response });
-    }
   }
 
   /**
@@ -247,7 +464,6 @@ export class Brain {
     this.history.push({ role: 'user', content: userInput });
     this.memory.recordEpisode('conversation', `用户: ${userInput}`);
 
-    // 路由判断
     const decision = await this.router.route({ 
       userInput, 
       history: this.history 
@@ -256,7 +472,6 @@ export class Brain {
     if (decision.action === 'reply') {
       const content = decision.content || '好的';
       this.history.push({ role: 'assistant', content });
-      this.memory.recordEpisode('conversation', `白泽: ${content}`);
       return {
         intent: 'chat',
         action: 'reply',
@@ -267,55 +482,26 @@ export class Brain {
     }
 
     if (decision.action === 'tool') {
-      const toolName = decision.toolName || '';
-      const isTool = this.toolRegistry.has(toolName);
-      const isSkill = !!this.skillRegistry.get(toolName);
+      // 使用 ReAct 循环
+      let result = '';
+      for await (const event of this.reActLoop(userInput, decision.toolName || '', decision.toolParams || {})) {
+        if (event.type === 'content') {
+          result += (event.data as any).text || '';
+        }
+      }
       
-      if (!isTool && !isSkill) {
-        const gap = await this.gapDetector.detect(userInput, this.skillRegistry.getAll().map(s => s.toInfo()));
-        const response = gap ? this.gapDetector.generatePrompt(gap) : '工具不存在';
-        return {
-          intent: 'task',
-          action: 'gap_detected',
-          capabilityGap: gap || undefined,
-          response,
-          confidence: 0.8,
-          reason: `工具不存在: ${toolName}`,
-        };
-      }
-
-      const result = await this.executor.executeSkill(toolName, decision.toolParams || {});
-
-      if (result.success) {
-        const response = await this.processResult(userInput, toolName, result.output || '');
-        this.history.push({ role: 'assistant', content: response });
-        this.memory.recordEpisode('conversation', `白泽: ${response}`);
-        return {
-          intent: 'task',
-          action: 'execute',
-          skillName: toolName,
-          skillResult: result.output,
-          response,
-          confidence: 0.9,
-          reason: `执行工具: ${toolName}`,
-        };
-      } else {
-        return {
-          intent: 'task',
-          action: 'execute',
-          skillName: toolName,
-          response: `执行失败: ${result.error}`,
-          confidence: 0.7,
-          reason: `工具执行失败: ${result.error}`,
-        };
-      }
+      return {
+        intent: 'task',
+        action: 'execute',
+        response: result,
+        confidence: 0.9,
+        reason: `ReAct 循环完成 (${this.iterationCount} 次迭代)`,
+      };
     }
 
-    // plan - 先尝试 LLM 处理
     const response = await this.handleComplex(userInput);
     this.history.push({ role: 'assistant', content: response });
-    this.memory.recordEpisode('conversation', `白泽: ${response}`);
-
+    
     return {
       intent: 'chat',
       action: 'reply',
@@ -326,40 +512,15 @@ export class Brain {
   }
 
   /**
-   * LLM 处理技能结果
-   */
-  private async processResult(
-    userInput: string,
-    toolName: string,
-    rawResult: string
-  ): Promise<string> {
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是白泽，一个智能助手。根据工具执行结果回答用户的问题。
-风格：自然、简洁，像朋友一样交流。
-不要说"根据查询结果"这种话，直接说结论。`
-      },
-      {
-        role: 'user',
-        content: `用户问题: ${userInput}\n\n工具: ${toolName}\n结果: ${rawResult}\n\n请用自然语言回答：`
-      }
-    ];
-
-    const response = await this.llm.chat(messages, { temperature: 0.7 });
-    return response.content;
-  }
-
-  /**
    * 处理复杂任务
    */
   private async handleComplex(userInput: string): Promise<string> {
     const tools = this.toolRegistry.getAll();
     const skills = this.skillRegistry.getAll();
     
-    const toolsDesc = [...tools.map(t => `- ${t.name}: ${t.description}`), ...skills.map(s => `- ${s.name}: ${s.description}`)].join('\n');
+    const toolsDesc = [...tools.map(t => `- ${t.name}: ${t.description}`), 
+                       ...skills.map(s => `- ${s.name}: ${s.description}`)].join('\n');
 
-    // 构建历史
     const historyText = this.history.slice(-10).map(h => 
       `${h.role === 'user' ? '用户' : '白泽'}: ${h.content}`
     ).join('\n');
@@ -380,9 +541,8 @@ ${historyText}
 ## 规则
 1. 如果需要使用工具，返回 JSON: {"tool": "工具名", "params": {...}}
 2. 如果可以直接回答，直接回复用户
-3. 如果用户问的是之前对话中提到的内容，根据历史回答
-4. 如果没有相关工具，诚实说明，不要编造能力
-5. 回答要自然、简洁，像朋友一样`
+3. 诚实回答，不要编造能力
+4. 回答要自然、简洁`
       },
       { role: 'user', content: userInput }
     ];

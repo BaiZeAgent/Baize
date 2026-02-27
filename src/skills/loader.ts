@@ -319,7 +319,13 @@ class DynamicSkill extends Skill {
       }
     }
     
-    // 默认返回第一个命令
+    // 默认返回第一个非安装命令
+    for (const cmd of commands) {
+      if (!cmd.includes('npm install') && !cmd.includes('pip install') && !cmd.includes('npm link')) {
+        return cmd;
+      }
+    }
+    // 如果都是安装命令，返回第一个
     return commands[0] || null;
   }
 
