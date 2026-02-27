@@ -110,6 +110,63 @@ export class SkillRegistry {
   getAllCapabilities(): string[] {
     return Array.from(this.capabilityIndex.keys());
   }
+
+  /**
+   * 获取技能的参数 schema
+   */
+  getSkillSchema(name: string): Record<string, unknown> | null {
+    const skill = this.skills.get(name);
+    if (!skill) {
+      return null;
+    }
+    return skill.inputSchema;
+  }
+
+  /**
+   * 获取技能参数的可选值（针对枚举类型参数）
+   */
+  getSkillEnumValues(name: string, paramName: string): string[] | null {
+    const skill = this.skills.get(name);
+    if (!skill) {
+      return null;
+    }
+    const schema = skill.inputSchema as {
+      properties?: Record<string, { enum?: string[] }>;
+    };
+    if (!schema?.properties?.[paramName]?.enum) {
+      return null;
+    }
+    return schema.properties[paramName].enum!;
+  }
+
+  /**
+   * 获取技能的详细描述（包含参数信息）
+   */
+  getSkillDetailedInfo(name: string): string {
+    const skill = this.skills.get(name);
+    if (!skill) {
+      return `技能不存在: ${name}`;
+    }
+    
+    let info = `${skill.name}: ${skill.description}`;
+    const schema = skill.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; enum?: string[]; description?: string }>;
+    };
+    
+    if (schema?.properties) {
+      info += '\n参数:';
+      for (const [param, prop] of Object.entries(schema.properties)) {
+        const required = schema.required?.includes(param) ? '(必填)' : '(可选)';
+        info += `\n  - ${param} ${required}: ${prop.description || prop.type || '未知类型'}`;
+        if (prop.enum) {
+          info += ` [可选值: ${prop.enum.join(', ')}]`;
+        }
+      }
+    }
+    
+    return info;
+  }
 }
 
 // 全局实例

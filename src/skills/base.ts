@@ -41,16 +41,44 @@ export abstract class Skill {
   async validateParams(params: Record<string, unknown>): Promise<ValidationResult> {
     const schema = this.inputSchema as {
       required?: string[];
-      properties?: Record<string, unknown>;
+      properties?: Record<string, {
+        type?: string;
+        enum?: string[];
+        description?: string;
+      }>;
     };
 
-    if (!schema || !schema.required) {
+    if (!schema) {
       return { valid: true };
     }
 
-    for (const field of schema.required) {
-      if (!(field in params)) {
-        return { valid: false, error: `缺少必填参数: ${field}` };
+    // 检查必填参数
+    if (schema.required) {
+      for (const field of schema.required) {
+        if (!(field in params) || params[field] === undefined) {
+          return { valid: false, error: `缺少必填参数: ${field}` };
+        }
+      }
+    }
+
+    // 检查枚举值
+    if (schema.properties) {
+      const invalidParams: string[] = [];
+      const validOptions: string[] = [];
+
+      for (const [field, prop] of Object.entries(schema.properties)) {
+        if (prop.enum && params[field] !== undefined) {
+          const value = String(params[field]);
+          if (!prop.enum.includes(value)) {
+            invalidParams.push(field);
+            validOptions.push(`${field} 可选值: ${prop.enum.join(', ')}`);
+          }
+        }
+      }
+
+      if (invalidParams.length > 0) {
+        const errorMsg = `参数值错误: ${invalidParams.join(', ')}。${validOptions.join('; ')}`;
+        return { valid: false, error: errorMsg };
       }
     }
 

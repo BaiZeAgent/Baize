@@ -300,10 +300,38 @@ export class BrainV2 {
 
   /**
    * 分析任务，生成初始任务列表
+   * 
+   * v3.2.1 优化：提供完整的技能参数模式，确保 LLM 生成正确的参数
    */
   private async analyzeTasks(userInput: string): Promise<Task[]> {
     const skills = this.skillRegistry.getAll();
-    const skillsDesc = skills.map(s => `- ${s.name}: ${s.description}`).join('\n');
+    
+    // 生成详细的技能描述，包含参数模式
+    const skillsDesc = skills.map(s => {
+      const schema = s.inputSchema as {
+        required?: string[];
+        properties?: Record<string, {
+          type?: string;
+          enum?: string[];
+          description?: string;
+          default?: unknown;
+        }>;
+      };
+      
+      let paramDesc = '';
+      if (schema?.properties) {
+        const props = Object.entries(schema.properties).map(([name, prop]) => {
+          const required = schema.required?.includes(name) ? '（必填）' : '';
+          const enumValues = prop.enum ? ` [可选值: ${prop.enum.join(', ')}]` : '';
+          const defaultVal = prop.default !== undefined ? ` [默认: ${prop.default}]` : '';
+          return `    - ${name}${required}: ${prop.description || prop.type || '未知'}${enumValues}${defaultVal}`;
+        }).join('\n');
+        paramDesc = `\n  参数:\n${props}`;
+      }
+      
+      return `### ${s.name}
+  ${s.description}${paramDesc}`;
+    }).join('\n\n');
 
     const messages: LLMMessage[] = [
       {
@@ -311,6 +339,7 @@ export class BrainV2 {
         content: `你是一个任务分析器。分析用户需求，生成需要执行的任务列表。
 
 ## 可用技能
+
 ${skillsDesc}
 
 ## 输出格式
@@ -321,23 +350,27 @@ ${skillsDesc}
     {
       "id": "task_1",
       "skillName": "技能名称",
-      "params": {},
+      "params": {
+        "action": "操作类型（必须使用技能支持的值）",
+        "其他参数": "值"
+      },
       "description": "任务描述"
     }
   ],
   "thinking": "你的分析过程"
 }
 
-## 规则
+## 关键规则
 
-1. 只列出需要调用技能的任务
-2. 如果不需要调用技能，返回空数组
-3. 任务之间可以有依赖关系
-4. 参数要具体、可执行`,
+1. **参数必须准确**：仔细阅读每个技能的参数说明，特别是 action 参数的可选值
+2. **action 参数**：必须使用技能定义中列出的可选值，不要自己创造新的 action
+3. 只列出需要调用技能的任务
+4. 如果不需要调用技能，返回空数组
+5. 参数要具体、可执行`,
       },
       {
         role: 'user',
-        content: `用户需求: ${userInput}\n\n请分析需要执行的任务。`,
+        content: `用户需求: ${userInput}\n\n请仔细分析需要执行的任务，确保参数正确。`,
       },
     ];
 

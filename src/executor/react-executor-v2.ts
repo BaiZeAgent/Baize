@@ -25,10 +25,22 @@ const logger = getLogger('executor:react-v2');
 // 常量配置
 // ═══════════════════════════════════════════════════════════════
 
-const MAX_RUN_LOOP_ITERATIONS = 24;
+const BASE_RUN_LOOP_ITERATIONS = 24;
+const MAX_RUN_LOOP_ITERATIONS = 160;
+const MIN_RUN_LOOP_ITERATIONS = 32;
+const ITERATIONS_PER_ERROR_TYPE = 8;
 const MAX_OVERFLOW_COMPACTION_ATTEMPTS = 3;
 const CONTEXT_WINDOW_WARN_TOKENS = 8000;
 const CONTEXT_WINDOW_HARD_MIN_TOKENS = 1000;
+
+/**
+ * 动态计算最大迭代次数
+ * 参考 OpenClaw 的 resolveMaxRunRetryIterations
+ */
+function resolveMaxIterations(errorTypeCount: number = 1): number {
+  const scaled = BASE_RUN_LOOP_ITERATIONS + Math.max(1, errorTypeCount) * ITERATIONS_PER_ERROR_TYPE;
+  return Math.min(MAX_RUN_LOOP_ITERATIONS, Math.max(MIN_RUN_LOOP_ITERATIONS, scaled));
+}
 
 // ═══════════════════════════════════════════════════════════════
 // 类型定义
@@ -105,7 +117,11 @@ interface ExecutionState {
   strategyAdjusted: boolean;
   toolCalls: ToolResultEvent[];
   contextTokens: number;
-  lastToolError?: { toolName: string; error: string };
+  lastToolError?: { toolName: string; error: string; params?: Record<string, unknown> };
+  /** 已遇到的错误类型集合 */
+  errorTypes: Set<string>;
+  /** 参数验证失败次数 */
+  paramValidationFailures: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -119,9 +135,12 @@ export class ReActExecutorV2 {
   private llm = getLLMManager();
   private lockManager: ResourceLockManager;
   private toolCallCounter = 0;
+  /** 参数验证失败后的自动修正次数 */
+  private static readonly MAX_PARAM_CORRECTION_ATTEMPTS = 3;
 
-  constructor(maxIterations: number = MAX_RUN_LOOP_ITERATIONS) {
-    this.maxIterations = maxIterations;
+  constructor(maxIterations?: number) {
+    // 默认使用动态计算，也支持手动指定
+    this.maxIterations = maxIterations ?? resolveMaxIterations(1);
     this.lockManager = getLockManager();
   }
 
@@ -150,6 +169,8 @@ export class ReActExecutorV2 {
       strategyAdjusted: false,
       toolCalls: [],
       contextTokens: 0,
+      errorTypes: new Set(),
+      paramValidationFailures: 0,
     };
 
     // 如果没有初始任务，直接让 LLM 处理
@@ -274,12 +295,24 @@ export class ReActExecutorV2 {
           if (overflowCompactionAttempts < MAX_OVERFLOW_COMPACTION_ATTEMPTS) {
             overflowCompactionAttempts++;
             
+            // 先尝试截断长工具结果
+            this.truncateToolResults(state);
+            
             // 压缩上下文
             const compacted = await this.compactContext(state, context);
             if (compacted) {
               state.contextTokens = this.estimateTokens(state.currentOutput);
               logger.info('上下文压缩成功', { newTokens: state.contextTokens });
             }
+          }
+          
+          // 如果压缩后仍然过大，强制截断
+          if (state.contextTokens > CONTEXT_WINDOW_WARN_TOKENS * 1.5) {
+            logger.warn('上下文仍然过大，强制截断');
+            // 保留最近的输出
+            const recentOutputs = state.executedTasks.slice(-3).map(t => t.message || '').join('\n');
+            state.currentOutput = recentOutputs.substring(0, CONTEXT_WINDOW_WARN_TOKENS * 2);
+            state.contextTokens = this.estimateTokens(state.currentOutput);
           }
         }
 
@@ -318,8 +351,8 @@ export class ReActExecutorV2 {
       });
     }
 
-    // 执行任务
-    const taskResult = await this.executeTask(taskInfo, context);
+    // 执行任务（带参数自动修正）
+    const taskResult = await this.executeTaskWithCorrection(taskInfo, context);
     const duration = Date.now() - startTime;
 
     // 创建工具事件
@@ -338,6 +371,210 @@ export class ReActExecutorV2 {
     }
 
     return { taskResult, toolEvent };
+  }
+
+  /**
+   * 执行任务（带参数自动修正）
+   * 
+   * v3.2.1 优化：增加对"未知操作"错误的支持
+   */
+  private async executeTaskWithCorrection(
+    taskInfo: { skillName: string; params: Record<string, unknown>; description: string },
+    context: ReActContextV2
+  ): Promise<TaskResult> {
+    let currentParams = { ...taskInfo.params };
+    let correctionAttempts = 0;
+
+    while (correctionAttempts < ReActExecutorV2.MAX_PARAM_CORRECTION_ATTEMPTS) {
+      const result = await this.executeTask({ ...taskInfo, params: currentParams }, context);
+
+      if (result.success) {
+        return result;
+      }
+
+      // 检查是否是参数验证错误
+      const errorMsg = result.error || '';
+      const isParamError = errorMsg.includes('参数值错误') || 
+                          errorMsg.includes('缺少必填参数') ||
+                          errorMsg.includes('未知操作');
+      
+      if (isParamError) {
+        correctionAttempts++;
+        
+        // 增强错误消息（如果是"未知操作"错误）
+        const enhancedError = this.enhanceParamError(taskInfo.skillName, currentParams, errorMsg);
+        
+        // 尝试自动修正参数
+        const correctedParams = this.tryCorrectParamsSync(
+          taskInfo.skillName,
+          currentParams,
+          enhancedError
+        );
+        
+        if (correctedParams) {
+          logger.info('参数自动修正', {
+            skillName: taskInfo.skillName,
+            originalParams: currentParams,
+            correctedParams,
+            attempt: correctionAttempts,
+          });
+          currentParams = correctedParams;
+          continue;
+        }
+      }
+
+      // 无法修正或不是参数错误，直接返回
+      return result;
+    }
+
+    // 超过最大修正次数
+    return {
+      taskId: `task_${Date.now()}`,
+      success: false,
+      data: {},
+      message: '执行失败',
+      error: `参数自动修正失败，已尝试 ${correctionAttempts} 次`,
+      duration: 0,
+    };
+  }
+
+  /**
+   * 同步版本的参数修正方法
+   * 
+   * v3.2.1 优化：支持多种错误消息格式
+   */
+  private tryCorrectParamsSync(
+    skillName: string,
+    params: Record<string, unknown>,
+    errorMsg: string
+  ): Record<string, unknown> | null {
+    const skill = this.skillRegistry.get(skillName);
+    if (!skill) {
+      return null;
+    }
+
+    const schema = skill.inputSchema as {
+      properties?: Record<string, { enum?: string[]; type?: string; description?: string }>;
+    };
+
+    if (!schema?.properties) {
+      return null;
+    }
+
+    const correctedParams = { ...params };
+    let hasCorrection = false;
+
+    // 1. 尝试从错误消息解析参数名和可选值
+    // 格式1: [可选值: xxx, yyy]
+    const enumMatch = errorMsg.match(/\[可选值:\s*([^\]]+)\]/);
+    // 格式2: action 可选值: xxx, yyy 或 xxx可选值: xxx, yyy
+    const actionMatch = errorMsg.match(/(\w+)\s*可选值:\s*([^\n]+)/i);
+    // 格式3: 参数值错误: xxx
+    const paramMatch = errorMsg.match(/参数值错误:\s*(\w+)/);
+    
+    // 如果找到了可选值信息
+    if (enumMatch || actionMatch) {
+      let validOptions: string[] = [];
+      let paramName = '';
+      
+      if (enumMatch && paramMatch) {
+        validOptions = enumMatch[1].split(',').map(s => s.trim()).filter(s => s);
+        paramName = paramMatch[1];
+      } else if (actionMatch) {
+        paramName = actionMatch[1];
+        validOptions = actionMatch[2].split(',').map(s => s.trim()).filter(s => s);
+      }
+      
+      if (validOptions.length > 0 && paramName) {
+        correctedParams[paramName] = validOptions[0];
+        hasCorrection = true;
+        logger.info('自动修正参数', { paramName, oldValue: params[paramName], newValue: validOptions[0] });
+      }
+    }
+
+    // 2. 如果无法从错误消息解析，尝试从 schema 获取
+    if (!hasCorrection) {
+      for (const [paramName, prop] of Object.entries(schema.properties)) {
+        if (prop.enum && params[paramName] !== undefined) {
+          const currentValue = String(params[paramName]);
+          if (!prop.enum.includes(currentValue)) {
+            correctedParams[paramName] = prop.enum[0];
+            hasCorrection = true;
+            logger.info('从schema自动修正参数', { paramName, oldValue: currentValue, newValue: prop.enum[0] });
+            break;
+          }
+        }
+      }
+    }
+
+    return hasCorrection ? correctedParams : null;
+  }
+
+  /**
+   * 尝试自动修正参数
+   * 
+   * v3.2.1 优化：支持多种错误格式，增强自动修正能力
+   */
+  private async tryCorrectParams(
+    skillName: string,
+    params: Record<string, unknown>,
+    errorMsg: string,
+    context: ReActContextV2
+  ): Promise<Record<string, unknown> | null> {
+    const skill = this.skillRegistry.get(skillName);
+    if (!skill) {
+      return null;
+    }
+
+    const schema = skill.inputSchema as {
+      properties?: Record<string, { enum?: string[]; type?: string; description?: string }>;
+    };
+
+    if (!schema?.properties) {
+      return null;
+    }
+
+    const correctedParams = { ...params };
+    let hasCorrection = false;
+
+    // 1. 尝试从错误消息解析参数名和可选值
+    // 格式1: [可选值: xxx, yyy]
+    const enumMatch = errorMsg.match(/\[可选值:\s*([^\]]+)\]/);
+    // 格式2: action 可选值: xxx, yyy
+    const actionMatch = errorMsg.match(/action\s*可选值:\s*([^\n]+)/i);
+    // 格式3: 参数值错误: xxx
+    const paramMatch = errorMsg.match(/参数值错误:\s*(\w+)/);
+    
+    if ((enumMatch || actionMatch) && paramMatch) {
+      const validOptionsStr = enumMatch ? enumMatch[1] : (actionMatch ? actionMatch[1] : '');
+      const validOptions = validOptionsStr.split(',').map(s => s.trim()).filter(s => s);
+      const paramName = paramMatch[1];
+      
+      if (validOptions.length > 0) {
+        // 使用第一个有效选项
+        correctedParams[paramName] = validOptions[0];
+        hasCorrection = true;
+        logger.info('自动修正参数', { paramName, oldValue: params[paramName], newValue: validOptions[0] });
+      }
+    }
+
+    // 2. 如果无法从错误消息解析，尝试从 schema 获取
+    if (!hasCorrection) {
+      for (const [paramName, prop] of Object.entries(schema.properties)) {
+        if (prop.enum && params[paramName] !== undefined) {
+          const currentValue = String(params[paramName]);
+          if (!prop.enum.includes(currentValue)) {
+            // 使用第一个有效选项
+            correctedParams[paramName] = prop.enum[0];
+            hasCorrection = true;
+            logger.info('从schema自动修正参数', { paramName, oldValue: currentValue, newValue: prop.enum[0] });
+            break;
+          }
+        }
+      }
+    }
+
+    return hasCorrection ? correctedParams : null;
   }
 
   /**
@@ -365,13 +602,16 @@ export class ReActExecutorV2 {
       }
 
       if (!skill) {
-        throw new Error(`技能不存在: ${taskInfo.skillName}`);
+        const availableSkills = this.skillRegistry.getAll().map(s => s.name).join(', ');
+        throw new Error(`技能不存在: ${taskInfo.skillName}。可用技能: ${availableSkills}`);
       }
 
       // 验证参数
       const validation = await skill.validateParams(taskInfo.params);
       if (!validation.valid) {
-        throw new Error(validation.error || '参数验证失败');
+        // 增强错误消息，包含技能的详细参数信息
+        const detailedError = this.enhanceParamError(skill.name, taskInfo.params, validation.error || '参数验证失败');
+        throw new Error(detailedError);
       }
 
       // 执行技能
@@ -414,7 +654,58 @@ export class ReActExecutorV2 {
   }
 
   /**
+   * 增强参数错误消息
+   * 
+   * v3.2.1 优化：处理"未知操作"错误，添加可选值提示
+   */
+  private enhanceParamError(
+    skillName: string,
+    params: Record<string, unknown>,
+    originalError: string
+  ): string {
+    const skill = this.skillRegistry.get(skillName);
+    if (!skill) {
+      return originalError;
+    }
+
+    const schema = skill.inputSchema as {
+      required?: string[];
+      properties?: Record<string, {
+        type?: string;
+        enum?: string[];
+        description?: string;
+      }>;
+    };
+
+    let enhanced = originalError;
+
+    // 检查是否是"未知操作"类型的错误
+    const unknownOpMatch = originalError.match(/未知操作:\s*(\w+)/i);
+    if (unknownOpMatch && schema?.properties?.action?.enum) {
+      // 直接添加可选值，格式化以便自动修正
+      enhanced = `参数值错误: action。当前值 "${unknownOpMatch[1]}" 不在允许的选项中。action 可选值: ${schema.properties.action.enum.join(', ')}`;
+      return enhanced;
+    }
+
+    if (schema?.properties) {
+      // 添加可用参数选项
+      for (const [paramName, prop] of Object.entries(schema.properties)) {
+        if (prop.enum && params[paramName] !== undefined) {
+          const currentValue = String(params[paramName]);
+          if (!prop.enum.includes(currentValue)) {
+            enhanced += ` [可选值: ${prop.enum.join(', ')}]`;
+          }
+        }
+      }
+    }
+
+    return enhanced;
+  }
+
+  /**
    * 获取 LLM 决策 - OpenClaw 风格
+   * 
+   * v3.2.1 优化：增强错误反馈，提供更详细的参数修正建议
    */
   private async getLLMDecision(
     pendingTasks: Task[],
@@ -436,6 +727,42 @@ export class ReActExecutorV2 {
       `${tc.toolName}: ${tc.success ? '成功' : '失败'} (${tc.duration}ms)`
     ).join('\n');
 
+    // 构建技能详细信息（特别是在有错误时）
+    let errorGuidance = '';
+    if (state.lastToolError && state.lastToolError.toolName) {
+      const detailedInfo = this.skillRegistry.getSkillDetailedInfo(state.lastToolError.toolName);
+      
+      // 解析错误信息，提供更具体的修正建议
+      let specificGuidance = '';
+      const errorMsg = state.lastToolError.error || '';
+      
+      // 检测参数值错误
+      const enumMatch = errorMsg.match(/\[可选值:\s*([^\]]+)\]/);
+      const paramMatch = errorMsg.match(/参数值错误:\s*(\w+)/);
+      
+      if (enumMatch && paramMatch) {
+        const validOptions = enumMatch[1];
+        const paramName = paramMatch[1];
+        specificGuidance = `\n
+**重要修正指导**：
+- 错误的参数: ${paramName}
+- 正确的可选值: ${validOptions}
+- 请在下次执行时使用上述正确的参数值`;
+      }
+      
+      errorGuidance = `\n
+## ⚠️ 错误分析
+
+**失败的技能**: ${state.lastToolError.toolName}
+**错误信息**: ${state.lastToolError.error}
+
+## 技能参数说明
+${detailedInfo}
+${specificGuidance}
+
+**请仔细阅读上述信息，在下次执行时使用正确的参数值！**`;
+    }
+
     const messages: LLMMessage[] = [
       {
         role: 'system',
@@ -455,15 +782,13 @@ ${toolCallHistory || '无'}
 
 ## 待执行任务
 ${pendingSummary || '无'}
-
-${state.lastToolError ? `## 最后的错误
-${state.lastToolError.toolName}: ${state.lastToolError.error}` : ''}
-
+${errorGuidance}
 ## 决策选项
 
 1. **execute**: 执行下一个任务
    - 当有待执行任务且没有严重错误时
    - 必须提供 task 对象
+   - **如果有参数错误，必须使用正确的参数值**
 
 2. **adjust**: 调整策略
    - 当执行结果不理想需要重新规划时
@@ -482,27 +807,28 @@ ${state.lastToolError.toolName}: ${state.lastToolError.error}` : ''}
 输出 JSON 格式：
 {
   "action": "execute|adjust|complete|abort",
-  "thinking": "你的思考过程",
-  "task": { "skillName": "xxx", "params": {}, "description": "xxx" },
+  "thinking": "你的思考过程（分析错误原因，说明如何修正）",
+  "task": { "skillName": "xxx", "params": { "action": "正确的值", ... }, "description": "xxx" },
   "adjustment": "调整说明",
   "message": "完成消息",
   "reason": "中止原因"
 }
 
-## 规则
+## 关键规则
 
-1. 如果有待执行任务且没有错误，优先执行
-2. 如果有错误但可以恢复，考虑 adjust
-3. 如果用户需求已满足，选择 complete
-4. 如果错误无法恢复，选择 abort
-5. 每次只做一个决策
-6. 先思考再决策`,
+1. **参数必须精确匹配**：如果之前的错误是参数值错误，必须使用技能定义中列出的可选值
+2. 如果有待执行任务且没有错误，优先执行
+3. 如果有错误但可以恢复，使用正确的参数重新执行
+4. 如果用户需求已满足，选择 complete
+5. 如果错误无法恢复，选择 abort
+6. 每次只做一个决策
+7. 先思考再决策`,
       },
       {
         role: 'user',
         content: `用户需求: ${userIntent || '未知'}
 
-请根据当前状态做出决策。`,
+请根据当前状态做出决策。如果有参数错误，请使用正确的参数值重新执行。`,
       },
     ];
 
@@ -569,6 +895,59 @@ ${state.lastToolError.toolName}: ${state.lastToolError.error}` : ''}
     } catch (error) {
       logger.error('上下文压缩失败', { error });
       return false;
+    }
+  }
+
+  /**
+   * 截断过长的工具结果
+   * 参考 OpenClaw 的 truncateOversizedToolResultsInSession
+   */
+  private truncateToolResults(state: ExecutionState, maxTokens: number = CONTEXT_WINDOW_WARN_TOKENS): void {
+    for (const task of state.executedTasks) {
+      if (task.message && this.estimateTokens(task.message) > 2000) {
+        // 截断长消息，保留前后部分
+        const message = task.message;
+        const halfTokens = 1000;
+        const prefixEnd = this.findTruncationPoint(message, halfTokens);
+        const suffixStart = this.findTruncationPoint(message, halfTokens, true);
+        
+        task.message = message.substring(0, prefixEnd) +
+          `\n... [已截断，原始长度: ${message.length} 字符] ...\n` +
+          message.substring(suffixStart);
+        
+        logger.info('工具结果已截断', { 
+          taskId: task.taskId,
+          originalLength: message.length,
+          truncatedLength: task.message.length,
+        });
+      }
+    }
+  }
+
+  /**
+   * 找到截断点（避免在单词中间截断）
+   */
+  private findTruncationPoint(text: string, targetTokens: number, fromEnd: boolean = false): number {
+    const estimatedChars = targetTokens * 2; // 粗略估计
+    const whitespaceRegex = /\s/;
+    
+    if (fromEnd) {
+      const startPos = Math.max(0, text.length - estimatedChars);
+      // 找到下一个空白字符
+      for (let i = startPos; i < text.length; i++) {
+        if (whitespaceRegex.test(text[i])) {
+          return i;
+        }
+      }
+      return startPos;
+    } else {
+      // 找到前一个空白字符
+      for (let i = estimatedChars; i >= 0; i--) {
+        if (whitespaceRegex.test(text[i])) {
+          return i;
+        }
+      }
+      return estimatedChars;
     }
   }
 

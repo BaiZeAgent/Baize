@@ -247,13 +247,38 @@ export class Brain {
 
   /**
    * Thought - 思考下一步
+   * 
+   * v3.2.1 优化：提供完整的技能参数模式
    */
   private async think(userInput: string, history: string[]): Promise<ReActState> {
     const tools = this.toolRegistry.getAll();
     const skills = this.skillRegistry.getAll();
     
-    const toolsDesc = [...tools.map(t => `- ${t.name}: ${t.description}`), 
-                       ...skills.map(s => `- ${s.name}: ${s.description}`)].join('\n');
+    // 生成详细的技能描述，包含参数模式
+    const skillsDesc = skills.map(s => {
+      const schema = s.inputSchema as {
+        required?: string[];
+        properties?: Record<string, {
+          type?: string;
+          enum?: string[];
+          description?: string;
+        }>;
+      };
+      
+      let paramDesc = '';
+      if (schema?.properties) {
+        const props = Object.entries(schema.properties).map(([name, prop]) => {
+          const required = schema.required?.includes(name) ? '（必填）' : '';
+          const enumValues = prop.enum ? ` [可选值: ${prop.enum.join(', ')}]` : '';
+          return `    - ${name}${required}: ${prop.description || prop.type || '未知'}${enumValues}`;
+        }).join('\n');
+        paramDesc = `\n  参数:\n${props}`;
+      }
+      
+      return `${s.name}: ${s.description}${paramDesc}`;
+    }).join('\n\n');
+
+    const toolsDescSimple = tools.map(t => `${t.name}: ${t.description}`).join('\n');
 
     const historyText = history.join('\n');
 
@@ -262,20 +287,29 @@ export class Brain {
         role: 'system',
         content: `你是一个智能助手的思考模块。使用 ReAct 模式处理任务。
 
-可用工具:
-${toolsDesc}
+## 可用技能（带参数说明）
 
-规则:
-1. 分析当前状态和用户目标
-2. 决定下一步行动
-3. 如果任务已完成，设置 finished=true 并给出回复
-4. 如果需要重试，给出不同的行动
+${skillsDesc}
+
+## 可用工具
+
+${toolsDescSimple}
+
+## 关键规则
+
+1. **参数必须精确**：使用技能时，必须使用参数说明中列出的可选值
+2. **action 参数**：如果参数说明中有 [可选值: xxx, yyy]，必须使用其中的值
+3. 分析当前状态和用户目标
+4. 决定下一步行动
+5. 如果任务已完成，设置 finished=true 并给出回复
+
+## 返回格式
 
 返回 JSON:
 {
-  "thought": "当前思考",
-  "action": "工具名或 'reply'",
-  "actionInput": {参数},
+  "thought": "当前思考（分析应该使用什么参数）",
+  "action": "技能名称",
+  "actionInput": { "action": "必须使用可选值中的值", "path": "路径" },
   "finished": false,
   "response": "如果finished=true，这里是最终回复"
 }`
@@ -287,7 +321,7 @@ ${toolsDesc}
 历史记录:
 ${historyText || '(无)'}
 
-请思考下一步。`
+请思考下一步，确保参数正确。`
       }
     ];
 
@@ -296,7 +330,10 @@ ${historyText || '(无)'}
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const result = JSON.parse(jsonMatch[0]);
+        // 验证并自动修正参数
+        result.actionInput = this.validateAndCorrectParams(result.action, result.actionInput || {});
+        return result;
       }
     } catch (error) {
       logger.error(`思考失败: ${error}`);
@@ -306,7 +343,38 @@ ${historyText || '(无)'}
   }
 
   /**
+   * 验证并自动修正参数
+   */
+  private validateAndCorrectParams(skillName: string, params: Record<string, unknown>): Record<string, unknown> {
+    const skill = this.skillRegistry.get(skillName);
+    if (!skill) return params;
+
+    const schema = skill.inputSchema as {
+      properties?: Record<string, { enum?: string[] }>;
+    };
+
+    if (!schema?.properties) return params;
+
+    const correctedParams = { ...params };
+
+    for (const [paramName, prop] of Object.entries(schema.properties)) {
+      if (prop.enum && params[paramName] !== undefined) {
+        const currentValue = String(params[paramName]);
+        if (!prop.enum.includes(currentValue)) {
+          // 自动修正为第一个有效值
+          correctedParams[paramName] = prop.enum[0];
+          logger.info(`自动修正参数: ${paramName} 从 "${currentValue}" 改为 "${prop.enum[0]}"`);
+        }
+      }
+    }
+
+    return correctedParams;
+  }
+
+  /**
    * 执行行动
+   * 
+   * v3.2.1 优化：增加参数验证和自动修正
    */
   private async executeAction(
     action: string, 
@@ -325,13 +393,87 @@ ${historyText || '(无)'}
       return { success: false, output: `工具不存在: ${action}`, duration: Date.now() - startTime };
     }
 
-    const result = await this.executor.executeSkill(action, actionInput);
+    // 先验证参数
+    let params = { ...actionInput };
+    
+    if (isSkill) {
+      // 先进行参数验证
+      params = this.validateAndCorrectParams(action, params);
+    }
+
+    const result = await this.executor.executeSkill(action, params);
+
+    // 如果失败且是参数错误，尝试自动修正
+    if (!result.success && result.error) {
+      const errorMsg = result.error;
+      if (errorMsg.includes('未知操作') || errorMsg.includes('参数值错误')) {
+        // 尝试从错误中提取正确值
+        const correctedParams = this.correctParamsFromError(action, params, errorMsg);
+        if (correctedParams) {
+          logger.info(`参数错误自动重试: ${action}`, { 
+            original: params, 
+            corrected: correctedParams 
+          });
+          
+          const retryResult = await this.executor.executeSkill(action, correctedParams);
+          return {
+            success: retryResult.success,
+            output: retryResult.output || retryResult.error || '',
+            duration: Date.now() - startTime,
+          };
+        }
+      }
+    }
 
     return {
       success: result.success,
       output: result.output || result.error || '',
       duration: result.duration || Date.now() - startTime,
     };
+  }
+
+  /**
+   * 从错误消息中修正参数
+   */
+  private correctParamsFromError(
+    skillName: string, 
+    params: Record<string, unknown>,
+    errorMsg: string
+  ): Record<string, unknown> | null {
+    const skill = this.skillRegistry.get(skillName);
+    if (!skill) return null;
+
+    const schema = skill.inputSchema as {
+      properties?: Record<string, { enum?: string[] }>;
+    };
+    if (!schema?.properties) return null;
+
+    const correctedParams = { ...params };
+    let hasCorrection = false;
+
+    // 检测"未知操作"错误
+    const unknownOpMatch = errorMsg.match(/未知操作:\s*(\w+)/i);
+    if (unknownOpMatch && schema.properties.action?.enum) {
+      correctedParams.action = schema.properties.action.enum[0];
+      hasCorrection = true;
+      logger.info(`修正未知操作: ${unknownOpMatch[1]} -> ${correctedParams.action}`);
+    }
+
+    // 检测参数值错误
+    const enumMatch = errorMsg.match(/可选值:\s*([^\n]+)/i);
+    const paramMatch = errorMsg.match(/参数值错误:\s*(\w+)/);
+    
+    if (enumMatch && paramMatch) {
+      const validOptions = enumMatch[1].split(',').map(s => s.trim()).filter(s => s);
+      const paramName = paramMatch[1];
+      if (validOptions.length > 0) {
+        correctedParams[paramName] = validOptions[0];
+        hasCorrection = true;
+        logger.info(`修正参数错误: ${paramName} -> ${validOptions[0]}`);
+      }
+    }
+
+    return hasCorrection ? correctedParams : null;
   }
 
   /**
