@@ -65,21 +65,24 @@ class BrowserManager {
 
     const puppeteer = await import('puppeteer');
     
+    // 默认使用可视化模式，可通过环境变量 BROWSER_HEADLESS=true 切换无头模式
+    const headless = process.env.BROWSER_HEADLESS === 'true';
+    
     const options: LaunchOptions = {
-      headless: true,
+      headless,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
         '--window-size=1920,1080',
         '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        // 仅在无头模式下禁用 GPU
+        ...(headless ? ['--disable-gpu', '--disable-accelerated-2d-canvas'] : []),
       ],
-      defaultViewport: {
+      defaultViewport: headless ? {
         width: 1920,
         height: 1080,
-      },
+      } : null, // 可视化模式使用系统默认视口
     };
 
     logger.info('启动浏览器...');
