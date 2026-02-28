@@ -32,7 +32,25 @@ type BrowserAction =
   | 'refresh'
   | 'close'
   | 'get_url'
-  | 'get_title';
+  | 'get_title'
+  | 'snapshot';  // 关键：获取页面元素快照
+
+// 元素引用映射（用于快照）
+interface ElementRef {
+  ref: string;
+  tag: string;
+  type?: string;
+  text?: string;
+  placeholder?: string;
+  value?: string;
+  ariaLabel?: string;
+  id?: string;
+  className?: string;
+  href?: string;
+}
+
+// 全局元素引用缓存
+const elementRefsCache = new Map<string, ElementRef>();
 
 // 浏览器操作结果
 interface BrowserResult {
@@ -170,10 +188,16 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
   name = 'browser';
   label = 'Browser Automation';
   description = `浏览器自动化工具。支持导航、点击、输入、提取内容、截图等操作。
+
+【重要】操作流程：
+1. 先用 snapshot 获取页面元素快照，了解页面结构
+2. 使用返回的 ref (如 e1, e2) 或 selector 进行操作
+
 操作类型：
+- snapshot: 获取页面可交互元素快照（推荐先执行此操作）
 - navigate: 导航到URL
-- click: 点击元素
-- type: 输入文本
+- click: 点击元素（可用 ref 或 selector）
+- type: 输入文本（可用 ref 或 selector）
 - extract: 提取页面内容
 - screenshot: 截取屏幕
 - scroll: 滚动页面
@@ -200,7 +224,7 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
         description: '操作类型',
         enum: ['navigate', 'click', 'type', 'extract', 'screenshot', 'scroll', 'wait', 
                'evaluate', 'get_content', 'get_html', 'fill_form', 'select', 'hover',
-               'press', 'go_back', 'go_forward', 'refresh', 'close', 'get_url', 'get_title'],
+               'press', 'go_back', 'go_forward', 'refresh', 'close', 'get_url', 'get_title', 'snapshot'],
       },
       url: {
         type: 'string',
@@ -208,7 +232,11 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
       },
       selector: {
         type: 'string',
-        description: 'CSS选择器 (用于 click, type, wait, hover, select)',
+        description: 'CSS选择器或元素引用如 e1, e2 (用于 click, type, wait, hover, select)',
+      },
+      ref: {
+        type: 'string',
+        description: '快照中的元素引用，如 e1, e2 (可替代 selector)',
       },
       text: {
         type: 'string',
@@ -263,7 +291,7 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
     }
     
     if (!action) {
-      return errorResult('操作类型不能为空。请使用 action 参数，可选值: navigate, click, type, extract, screenshot, scroll, wait, evaluate, get_content, get_html, get_url, get_title, fill_form, select, hover, press, go_back, go_forward, refresh, close');
+      return errorResult('操作类型不能为空。请使用 action 参数，可选值: snapshot, navigate, click, type, extract, screenshot, scroll, wait, evaluate, get_content, get_html, get_url, get_title, fill_form, select, hover, press, go_back, go_forward, refresh, close');
     }
 
     const start = Date.now();
@@ -273,6 +301,9 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
       let result: BrowserResult;
 
       switch (action) {
+        case 'snapshot':
+          result = await this.snapshot(params);
+          break;
         case 'navigate':
           result = await this.navigate(params);
           break;
@@ -349,6 +380,168 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
   }
 
   /**
+   * 解析元素引用，支持 ref (e1, e2) 或 selector
+   */
+  private resolveSelector(params: Record<string, unknown>): string | null {
+    // 优先使用 ref 参数
+    const ref = readStringParam(params, 'ref');
+    if (ref && ref.match(/^e\d+$/)) {
+      const cached = elementRefsCache.get(ref);
+      if (cached) {
+        // 根据元素类型构建选择器
+        if (cached.id) return `#${cached.id}`;
+        if (cached.className) return `.${cached.className.split(' ')[0]}`;
+        if (cached.ariaLabel) return `[aria-label="${cached.ariaLabel}"]`;
+        if (cached.placeholder) return `[placeholder="${cached.placeholder}"]`;
+        // 通用选择器
+        return cached.tag;
+      }
+    }
+    
+    // 其次使用 selector 参数
+    const selector = readStringParam(params, 'selector');
+    if (selector && selector.match(/^e\d+$/)) {
+      const cached = elementRefsCache.get(selector);
+      if (cached) {
+        if (cached.id) return `#${cached.id}`;
+        if (cached.className) return `.${cached.className.split(' ')[0]}`;
+        if (cached.ariaLabel) return `[aria-label="${cached.ariaLabel}"]`;
+        if (cached.placeholder) return `[placeholder="${cached.placeholder}"]`;
+        return cached.tag;
+      }
+    }
+    
+    return selector || null;
+  }
+
+  /**
+   * 获取页面元素快照 - 关键功能！
+   * 返回页面上所有可交互元素的列表，让 LLM 知道该操作什么
+   */
+  private async snapshot(params: Record<string, unknown>): Promise<BrowserResult> {
+    const page = await browserManager.getPage();
+    
+    // 清除旧的缓存
+    elementRefsCache.clear();
+    
+    // 获取页面上所有可交互元素
+    const elements = await page.evaluate(() => {
+      const interactiveElements: Array<{
+        tag: string;
+        type?: string;
+        text?: string;
+        placeholder?: string;
+        value?: string;
+        ariaLabel?: string;
+        id?: string;
+        className?: string;
+        href?: string;
+        name?: string;
+        role?: string;
+      }> = [];
+      
+      // 可交互元素选择器
+      const selectors = [
+        'a[href]', 'button', 'input', 'textarea', 'select',
+        '[role="button"]', '[role="link"]', '[role="textbox"]',
+        '[onclick]', '[tabindex]:not([tabindex="-1"])',
+        'label', '[for]'
+      ];
+      
+      const seen = new Set<Element>();
+      
+      for (const selector of selectors) {
+        try {
+          const els = document.querySelectorAll(selector);
+          els.forEach(el => {
+            if (seen.has(el)) return;
+            seen.add(el);
+            
+            const rect = el.getBoundingClientRect();
+            // 只获取可见元素
+            if (rect.width === 0 || rect.height === 0) return;
+            if (window.getComputedStyle(el).visibility === 'hidden') return;
+            
+            const getAttr = (name: string) => el.getAttribute(name) || undefined;
+            
+            interactiveElements.push({
+              tag: el.tagName.toLowerCase(),
+              type: getAttr('type'),
+              text: el.textContent?.trim().substring(0, 100) || undefined,
+              placeholder: getAttr('placeholder'),
+              value: (el as HTMLInputElement).value?.substring(0, 100) || undefined,
+              ariaLabel: getAttr('aria-label') || getAttr('aria-label'.toLowerCase()),
+              id: el.id || undefined,
+              className: el.className && typeof el.className === 'string' ? el.className : undefined,
+              href: getAttr('href'),
+              name: getAttr('name'),
+              role: getAttr('role'),
+            });
+          });
+        } catch (e) {}
+      }
+      
+      return interactiveElements;
+    });
+    
+    // 构建快照文本
+    const lines: string[] = [];
+    lines.push('【页面元素快照】');
+    lines.push(`URL: ${page.url()}`);
+    lines.push(`标题: ${await page.title()}`);
+    lines.push(`共发现 ${elements.length} 个可交互元素\n`);
+    
+    // 为每个元素分配引用
+    elements.forEach((el, index) => {
+      const ref = `e${index + 1}`;
+      const info: ElementRef = { ref, ...el };
+      elementRefsCache.set(ref, info);
+      
+      // 构建元素描述
+      let desc = `[${ref}] <${el.tag}`;
+      if (el.type) desc += ` type="${el.type}"`;
+      if (el.id) desc += ` id="${el.id}"`;
+      if (el.className) desc += ` class="${el.className.split(' ')[0]}"`;
+      if (el.placeholder) desc += ` placeholder="${el.placeholder}"`;
+      if (el.ariaLabel) desc += ` aria-label="${el.ariaLabel}"`;
+      if (el.href) desc += ` href="${el.href.substring(0, 50)}"`;
+      desc += '>';
+      
+      if (el.text && el.text.length > 0) {
+        const text = el.text.substring(0, 80).replace(/\n/g, ' ');
+        desc += ` "${text}"`;
+      }
+      
+      if (el.value && el.type !== 'password') {
+        desc += ` [value: "${el.value.substring(0, 30)}"]`;
+      }
+      
+      lines.push(desc);
+    });
+    
+    lines.push('\n【使用说明】');
+    lines.push('- 使用 ref 值 (如 e1, e2) 作为 selector 参数进行操作');
+    lines.push('- 例如: action=click, selector=e1');
+    lines.push('- 例如: action=type, selector=e3, text=搜索内容');
+    
+    return {
+      action: 'snapshot',
+      success: true,
+      data: {
+        url: page.url(),
+        title: await page.title(),
+        elements: elements.length,
+        snapshot: lines.join('\n'),
+        refs: Array.from(elementRefsCache.entries()).map(([k, v]) => ({ ...v, ref: k })),
+      },
+      message: `获取到 ${elements.length} 个可交互元素`,
+      url: page.url(),
+      title: await page.title(),
+      tookMs: 0,
+    };
+  }
+
+  /**
    * 导航到URL
    */
   private async navigate(params: Record<string, unknown>): Promise<BrowserResult> {
@@ -388,58 +581,78 @@ export class BrowserTool extends BaseTool<Record<string, unknown>, BrowserResult
    * 点击元素
    */
   private async click(params: Record<string, unknown>): Promise<BrowserResult> {
-    const selector = readStringParam(params, 'selector', { required: true, label: '选择器' });
-    if (!selector) {
-      return { action: 'click', success: false, message: '选择器不能为空', tookMs: 0 };
+    const resolvedSelector = this.resolveSelector(params);
+    if (!resolvedSelector) {
+      return { action: 'click', success: false, message: '选择器不能为空，请先执行 snapshot 获取元素引用', tookMs: 0 };
     }
 
     const page = await browserManager.getPage();
     const timeout = readNumberParam(params, 'timeout') ?? 30000;
 
-    await page.waitForSelector(selector, { timeout });
-    await page.click(selector);
+    try {
+      await page.waitForSelector(resolvedSelector, { timeout, visible: true });
+      await page.click(resolvedSelector);
 
-    // 等待可能的导航
-    await new Promise(resolve => setTimeout(resolve, 500));
+      // 等待可能的导航
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    return {
-      action: 'click',
-      success: true,
-      url: page.url(),
-      message: `已点击元素: ${selector}`,
-      tookMs: 0,
-    };
+      return {
+        action: 'click',
+        success: true,
+        url: page.url(),
+        message: `已点击元素: ${resolvedSelector}`,
+        tookMs: 0,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      return { 
+        action: 'click', 
+        success: false, 
+        message: `点击失败: ${errorMsg}。请先执行 snapshot 获取正确的元素引用`, 
+        tookMs: 0 
+      };
+    }
   }
 
   /**
    * 输入文本
    */
   private async type(params: Record<string, unknown>): Promise<BrowserResult> {
-    const selector = readStringParam(params, 'selector', { required: true, label: '选择器' });
+    const resolvedSelector = this.resolveSelector(params);
     const text = readStringParam(params, 'text', { required: true, label: '文本' });
     
-    if (!selector || text === undefined) {
-      return { action: 'type', success: false, message: '选择器和文本不能为空', tookMs: 0 };
+    if (!resolvedSelector || text === undefined) {
+      return { action: 'type', success: false, message: '选择器和文本不能为空，请先执行 snapshot 获取元素引用', tookMs: 0 };
     }
 
     const page = await browserManager.getPage();
     const timeout = readNumberParam(params, 'timeout') ?? 30000;
     const clear = readBooleanParam(params, 'clear', true);
 
-    await page.waitForSelector(selector, { timeout });
-    
-    if (clear) {
-      await page.click(selector, { clickCount: 3 }); // 选中全部
-    }
-    
-    await page.type(selector, text);
+    try {
+      await page.waitForSelector(resolvedSelector, { timeout, visible: true });
+      
+      if (clear) {
+        await page.click(resolvedSelector, { clickCount: 3 }); // 选中全部
+      }
+      
+      await page.type(resolvedSelector, text);
 
-    return {
-      action: 'type',
-      success: true,
-      message: `已在 ${selector} 输入文本`,
-      tookMs: 0,
-    };
+      return {
+        action: 'type',
+        success: true,
+        message: `已在 ${resolvedSelector} 输入文本: ${text}`,
+        tookMs: 0,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      return { 
+        action: 'type', 
+        success: false, 
+        message: `输入失败: ${errorMsg}。请先执行 snapshot 获取正确的元素引用`, 
+        tookMs: 0 
+      };
+    }
   }
 
   /**
