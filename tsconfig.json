@@ -19,8 +19,19 @@
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "noEmit": false,
+    "noEmitOnError": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests",
+    "examples",
+    "skills",
+    "test-*.ts",
+    "vitest.config.ts",
+    "src/__tests__"
+  ]
 }

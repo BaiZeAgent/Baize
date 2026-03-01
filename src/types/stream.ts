@@ -43,7 +43,12 @@ export type ThinkingStage =
   | 'gap_check'     // 能力缺口检测
   | 'gap_detected'   // 检测到能力缺口
   | 'thought'       // 思考中
-  | 'retry';        // 重试
+  | 'retry'         // 重试
+  | 'intent_analysis'    // 意图分析
+  | 'intent_understood'  // 意图理解完成
+  | 'boundary_check'     // 边界检查
+  | 'planning'           // 规划中
+  | 'plan_created';      // 计划创建完成
 
 /** 思考事件数据 */
 export interface ThinkingEventData {

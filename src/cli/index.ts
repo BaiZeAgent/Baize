@@ -1,17 +1,17 @@
 /**
- * CLI交互模块
+ * CLI交互模块 - V3 版本
  * 
- * v3.2.0 更新：
- * - 支持流式输出
- * - 支持思考过程展示
- * - 支持多轮对话
- * - 保持现有命令兼容
+ * 使用统一大脑 V3：
+ * - 智能路由器
+ * - 任务规划器
+ * - 增强记忆
+ * - 元认知引擎
  */
 
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { getBrain } from '../core/brain';
-import { getMemory } from '../memory';
+import { getBrainV3 } from '../core/brain-v3';
+import { getEnhancedMemory } from '../memory/v3';
 import { getLLMManager } from '../llm';
 import { getLogger } from '../observability/logger';
 import { initDatabase } from '../memory/database';
@@ -19,8 +19,7 @@ import { SkillLoader } from '../skills/loader';
 import { getSkillRegistry } from '../skills/registry';
 import { registerBuiltinSkills } from '../skills/builtins';
 import { getClawHubClient } from '../skills/market';
-import { startWebServer } from '../interaction/webServer';
-import { createAPIServer } from '../interaction/api';
+import { StreamEvent } from '../types/stream';
 
 const logger = getLogger('cli');
 
@@ -54,11 +53,12 @@ async function initialize(): Promise<void> {
 export async function startInteractive(): Promise<void> {
   await initialize();
 
-  const brain = getBrain();
-  const memory = getMemory();
+  const brain = getBrainV3();
+  const memory = getEnhancedMemory();
   const llmManager = getLLMManager();
 
-  console.log(chalk.green('\n🦌 白泽3.2 已启动'));
+  console.log(chalk.green('\n🦌 白泽 V3 已启动'));
+  console.log(chalk.gray('使用统一大脑 V3 架构'));
   console.log(chalk.gray('输入 "exit" 退出，输入 "help" 查看帮助\n'));
 
   const providers = llmManager.getAvailableProviders();
@@ -147,27 +147,23 @@ async function handleInput(
     return;
   }
 
-  // 清空历史命令
-  if (input.toLowerCase() === 'clear') {
-    brain.clearHistory();
-    console.log(chalk.gray('对话历史已清空\n'));
+  // 状态命令
+  if (input.toLowerCase() === 'status' || input.toLowerCase() === 'stats') {
+    showStats(brain);
     return;
   }
 
-  // 历史命令
-  if (input.toLowerCase() === 'history') {
-    const history = brain.getHistory();
-    console.log(chalk.gray('\n对话历史:'));
-    for (const h of history) {
-      const prefix = h.role === 'user' ? '你: ' : '白泽: ';
-      console.log(chalk.gray(`  ${prefix}${h.content}`));
-    }
+  // 自我评估命令
+  if (input.toLowerCase() === 'self' || input.toLowerCase() === 'assess') {
+    const assessment = await brain.getSelfAssessment();
+    console.log(chalk.cyan('\n【自我评估】'));
+    console.log(chalk.gray(assessment));
     console.log();
     return;
   }
 
   try {
-    memory.recordEpisode('conversation', `用户: ${input}`);
+    memory.recordEvent('user_input', input);
 
     console.log();
     let thinkingShown = false;
@@ -182,12 +178,15 @@ async function handleInput(
             thinkingShown = true;
           }
           const thinkingData = event.data as any;
-          console.log(chalk.gray(`  → ${thinkingData.message}`));
+          console.log(chalk.gray(`  → [${thinkingData.stage}] ${thinkingData.message}`));
           break;
 
         case 'tool_call':
           const toolCallData = event.data as any;
           console.log(chalk.blue(`  → 调用工具: ${toolCallData.tool}`));
+          if (toolCallData.reason) {
+            console.log(chalk.gray(`    理由: ${toolCallData.reason}`));
+          }
           break;
 
         case 'tool_result':
@@ -221,11 +220,16 @@ async function handleInput(
           const errorData = event.data as any;
           console.log(chalk.red(`错误: ${errorData.message}`));
           break;
+          
+        case 'strategy_adjust':
+          const strategyData = event.data as any;
+          console.log(chalk.yellow(`  ⚡ 策略调整: ${strategyData.message}`));
+          break;
       }
     }
 
     if (fullContent) {
-      memory.recordEpisode('conversation', `白泽: ${fullContent}`);
+      memory.recordEvent('assistant_reply', fullContent);
     }
 
     console.log();
@@ -237,13 +241,33 @@ async function handleInput(
 }
 
 /**
+ * 显示统计信息
+ */
+function showStats(brain: any): void {
+  console.log(chalk.cyan('\n【系统状态】'));
+  
+  const routerStats = brain.getRouterStats();
+  console.log(chalk.gray(`路由统计:`));
+  console.log(chalk.gray(`  总路由次数: ${routerStats.totalRoutings}`));
+  console.log(chalk.gray(`  成功率: ${(routerStats.successRate * 100).toFixed(1)}%`));
+  
+  const memoryStats = brain.getMemoryStats();
+  console.log(chalk.gray(`\n记忆统计:`));
+  console.log(chalk.gray(`  事件数: ${memoryStats.eventsCount}`));
+  console.log(chalk.gray(`  学习记录: ${memoryStats.learningRecords}`));
+  console.log(chalk.gray(`  偏好数: ${memoryStats.preferencesCount}`));
+  
+  console.log();
+}
+
+/**
  * 单次对话模式
  */
 export async function chatOnce(message: string): Promise<void> {
   await initialize();
 
-  const brain = getBrain();
-  const memory = getMemory();
+  const brain = getBrainV3();
+  const memory = getEnhancedMemory();
 
   try {
     let thinkingShown = false;
@@ -258,7 +282,7 @@ export async function chatOnce(message: string): Promise<void> {
             thinkingShown = true;
           }
           const thinkingData = event.data as any;
-          console.log(chalk.gray(`  → ${thinkingData.message}`));
+          console.log(chalk.gray(`  → [${thinkingData.stage}] ${thinkingData.message}`));
           break;
 
         case 'content':
@@ -287,7 +311,7 @@ export async function chatOnce(message: string): Promise<void> {
     }
 
     if (fullContent) {
-      memory.recordEpisode('conversation', `白泽: ${fullContent}`);
+      memory.recordEvent('assistant_reply', fullContent);
     }
 
   } catch (error) {
@@ -303,7 +327,7 @@ export async function runTests(): Promise<void> {
   await initialize();
 
   console.log(chalk.cyan('\n═══════════════════════════════════════════════════════════════'));
-  console.log(chalk.cyan('           白泽3.2 功能测试'));
+  console.log(chalk.cyan('           白泽 V3 功能测试'));
   console.log(chalk.cyan('═══════════════════════════════════════════════════════════════\n'));
 
   const tests = [
@@ -332,25 +356,25 @@ export async function runTests(): Promise<void> {
       },
     },
     {
-      name: '记忆系统',
+      name: '增强记忆',
       run: async () => {
-        const mem = getMemory();
-        mem.recordEpisode('test', '测试记忆');
+        const mem = getEnhancedMemory();
+        mem.recordEvent('test', '测试记忆');
         return '正常';
       },
     },
     {
-      name: '大脑决策',
+      name: '统一大脑V3',
       run: async () => {
-        const b = getBrain();
-        const decision = await b.process('你好');
-        return `意图: ${decision.intent}, 动作: ${decision.action}`;
+        const b = getBrainV3();
+        const result = await b.process('你好');
+        return `成功: ${result.success}, 置信度: ${result.confidence.toFixed(2)}`;
       },
     },
     {
       name: '流式处理',
       run: async () => {
-        const b = getBrain();
+        const b = getBrainV3();
         let count = 0;
         for await (const _ of b.processStream('你好', 'test')) {
           count++;
@@ -409,12 +433,6 @@ async function main() {
     case 'skill':
       await handleSkillCommand(args.slice(1));
       break;
-    case 'web':
-      await startWeb();
-      break;
-    case 'api':
-      await startAPI();
-      break;
     case 'help':
     case '--help':
     case '-h':
@@ -425,31 +443,6 @@ async function main() {
       console.log(chalk.gray('使用 "baize help" 查看帮助'));
       process.exit(1);
   }
-}
-
-async function startWeb(): Promise<void> {
-  console.log(chalk.cyan('\n启动白泽 Web 服务...'));
-  console.log(chalk.gray('API 服务: http://localhost:3000'));
-  console.log(chalk.gray('Web 界面: http://localhost:8080'));
-  console.log();
-  
-  const apiServer = createAPIServer({ port: 3000 });
-  await apiServer.start();
-  startWebServer(8080);
-  
-  console.log(chalk.green('✓ 服务已启动'));
-  console.log(chalk.gray('按 Ctrl+C 停止服务\n'));
-}
-
-async function startAPI(): Promise<void> {
-  console.log(chalk.cyan('\n启动白泽 API 服务...'));
-  
-  const port = parseInt(args[1]) || 3000;
-  const apiServer = createAPIServer({ port });
-  await apiServer.start();
-  
-  console.log(chalk.green(`✓ API 服务已启动: http://localhost:${port}`));
-  console.log(chalk.gray('按 Ctrl+C 停止服务\n'));
 }
 
 async function handleSkillCommand(skillArgs: string[]): Promise<void> {
@@ -593,16 +586,20 @@ async function showSkillInfo(slug: string): Promise<void> {
 }
 
 function showHelp(): void {
-  console.log(chalk.cyan('\n白泽3.2 命令行工具'));
+  console.log(chalk.cyan('\n白泽 V3 命令行工具'));
   console.log(chalk.gray('\n用法:'));
   console.log(chalk.gray('  baize                    启动交互模式'));
-  console.log(chalk.gray('  baize start              启动交互模式'));
-  console.log(chalk.gray('  baize chat <msg>         单次对话'));
-  console.log(chalk.gray('  baize test               运行测试'));
-  console.log(chalk.gray('  baize skill <command>    技能管理'));
-  console.log(chalk.gray('  baize web                启动 Web 服务'));
-  console.log(chalk.gray('  baize api [port]         启动 API 服务'));
-  console.log(chalk.gray('  baize help               显示帮助'));
+  console.log(chalk.gray(' 	baize start              启动交互模式'));
+  console.log(chalk.gray(' 	baize chat <msg>         单次对话'));
+  console.log(chalk.gray(' 	baize test               运行测试'));
+  console.log(chalk.gray(' 	baize skill <command>    技能管理'));
+  console.log(chalk.gray(' 	baize help               显示帮助'));
+  console.log();
+  console.log(chalk.gray('交互模式命令:'));
+  console.log(chalk.gray(' 	help      显示帮助'));
+  console.log(chalk.gray(' 	status    显示系统状态'));
+  console.log(chalk.gray(' 	self      自我评估'));
+  console.log(chalk.gray(' 	exit      退出'));
   console.log();
 }
 

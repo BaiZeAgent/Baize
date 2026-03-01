@@ -4,9 +4,9 @@
 
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { getBrain } from '../core/brain';
+import { getBrainV3 } from '../core/brain-v3';
 import { getSkillRegistry } from '../skills/registry';
-import { getMemory } from '../memory';
+import { getEnhancedMemory } from '../memory/v3';
 import { initDatabase } from '../memory/database';
 import { getCostManager } from '../core/cost';
 import { getLLMManager } from '../llm';
@@ -85,17 +85,17 @@ export function createAPIServer(options: { port: number } = { port: 3000 }) {
       // 确保初始化
       await initializeAPI();
 
-      const brain = getBrain();
+      const brain = getBrainV3();
       const decision = await brain.process(message);
 
       res.json({
         success: true,
         data: {
-          type: decision.action,
+          type: decision.intent?.type || 'unknown',
           response: decision.response,
-          skill: decision.skillName,
           intent: decision.intent,
           conversationId,
+          confidence: decision.confidence,
         },
       });
     } catch (error) {
@@ -125,7 +125,7 @@ export function createAPIServer(options: { port: number } = { port: 3000 }) {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      const brain = getBrain();
+      const brain = getBrainV3();
       
       for await (const event of brain.processStream(message, conversationId)) {
         res.write(`event: ${event.type}\n`);
@@ -148,15 +148,13 @@ export function createAPIServer(options: { port: number } = { port: 3000 }) {
   app.get('/api/chat/history', async (req: Request, res: Response) => {
     try {
       await initializeAPI();
-      const brain = getBrain();
-      const history = brain.getHistory();
+      const memory = getEnhancedMemory();
+      const stats = memory.getStats();
       res.json({
         success: true,
         data: {
-          history: history.map(h => ({
-            role: h.role,
-            content: h.content
-          })),
+          totalMemories: stats.totalMemories,
+          byType: stats.byType,
           conversationId: 'default'
         }
       });
@@ -169,11 +167,11 @@ export function createAPIServer(options: { port: number } = { port: 3000 }) {
   app.delete('/api/chat/history', async (req: Request, res: Response) => {
     try {
       await initializeAPI();
-      const brain = getBrain();
-      brain.clearHistory();
+      const memory = getEnhancedMemory();
+      memory.clearWorkingMemory();
       res.json({
         success: true,
-        message: '对话历史已清空'
+        message: '工作记忆已清空'
       });
     } catch (error) {
       res.status(500).json({ error: String(error) });
@@ -222,13 +220,11 @@ export function createAPIServer(options: { port: number } = { port: 3000 }) {
   app.get('/api/memory/stats', async (req: Request, res: Response) => {
     try {
       await initializeAPI();
-      const memory = getMemory();
+      const memory = getEnhancedMemory();
+      const stats = memory.getStats();
       res.json({
         success: true,
-        data: {
-          episodicCount: memory.getEpisodes().length,
-          preferences: Object.keys(memory.getAllPreferences()).length,
-        }
+        data: stats
       });
     } catch (error) {
       res.status(500).json({ error: String(error) });
@@ -243,11 +239,8 @@ export function createAPIServer(options: { port: number } = { port: 3000 }) {
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'q is required' });
       }
-      const memory = getMemory();
-      const episodes = memory.getEpisodes(undefined, 100);
-      const results = episodes.filter(e => 
-        e.content.toLowerCase().includes(query.toLowerCase())
-      );
+      const memory = getEnhancedMemory();
+      const results = await memory.queryFacts(query, 10);
       res.json({
         success: true,
         data: { results }

@@ -211,8 +211,10 @@ export interface SkillInfo {
 export interface SkillContext {
   userId?: string;
   conversationId?: string;
+  sessionId?: string;
   memory?: unknown;
   config?: unknown;
+  workspaceDir?: string;
 }
 
 /** 验证结果 */

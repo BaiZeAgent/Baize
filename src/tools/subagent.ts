@@ -8,7 +8,7 @@
  */
 
 import { BaseTool, ToolResult, readStringParam, readArrayParam, readNumberParam, jsonResult, errorResult } from './base';
-import { getBrain } from '../core/brain';
+import { getBrainV3 } from '../core/brain-v3';
 import { getLogger } from '../observability/logger';
 
 const logger = getLogger('tools:subagent');
@@ -119,14 +119,14 @@ export class SubAgentTool extends BaseTool<Record<string, unknown>, SubAgentResu
     const start = Date.now();
     
     try {
-      const brain = getBrain();
+      const brain = getBrainV3();
       const decision = await brain.process(task);
       
-      const result = decision.response || decision.skillResult || '完成';
+      const result = decision.response || '完成';
       
       return {
         task,
-        success: true,
+        success: decision.success,
         result,
         duration: Date.now() - start,
       };
