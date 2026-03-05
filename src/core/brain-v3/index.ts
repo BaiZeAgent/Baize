@@ -1,11 +1,12 @@
 /**
- * 统一大脑 V3 - 真正的智能助手核心 (修复版)
+ * 统一大脑 V3 - 真正的智能助手核心 (增强版)
  * 
  * 整合组件：
  * 1. 智能路由器 - 深度意图理解
  * 2. 任务规划器 - 复杂任务分解
  * 3. 增强记忆 - 语义记忆和上下文
  * 4. 元认知引擎 - 自我反思和学习
+ * 5. 统一执行器 - L1-L4层执行能力
  */
 
 import fs from 'fs';
@@ -24,6 +25,7 @@ import { Skill } from '../../skills/base';
 import { BaseTool, ToolResult } from '../../tools/base';
 import { SkillLoader } from '../../skills/loader';
 import { registerBuiltinSkills } from '../../skills/builtins';
+import { getUnifiedExecutor } from '../executor';
 
 const logger = getLogger('core:brain-v3');
 
@@ -36,6 +38,7 @@ export interface BrainV3Config {
   enableMetacognition?: boolean;
   enableLearning?: boolean;
   enableReflection?: boolean;
+  useUnifiedExecutor?: boolean;  // 是否使用统一执行器
 }
 
 export interface ProcessingResult {
@@ -60,6 +63,7 @@ export class UnifiedBrainV3 {
   private meta = getMetacognition();
   private skillRegistry = getSkillRegistry();
   private toolRegistry = getToolRegistry();
+  private unifiedExecutor = getUnifiedExecutor();
   
   private config: BrainV3Config;
   private soulContent: string = '';
@@ -73,6 +77,7 @@ export class UnifiedBrainV3 {
       enableMetacognition: config.enableMetacognition ?? true,
       enableLearning: config.enableLearning ?? true,
       enableReflection: config.enableReflection ?? true,
+      useUnifiedExecutor: config.useUnifiedExecutor ?? true,  // 默认启用
     };
     
     this.loadSoul();
@@ -183,6 +188,18 @@ export class UnifiedBrainV3 {
     this.memory.setContext(userInput);
     
     try {
+      // ═══════════════════════════════════════════════════════════
+      // 使用统一执行器（新功能）
+      // ═══════════════════════════════════════════════════════════
+      if (this.config.useUnifiedExecutor) {
+        yield* this.processWithUnifiedExecutor(userInput, sessionId, startTime);
+        return;
+      }
+      
+      // ═══════════════════════════════════════════════════════════
+      // 原有流程（保留兼容性）
+      // ═══════════════════════════════════════════════════════════
+      
       // 第一阶段：深度意图理解
       yield {
         type: 'thinking',
@@ -271,6 +288,44 @@ export class UnifiedBrainV3 {
   }
   
   /**
+   * 使用统一执行器处理（新功能）
+   */
+  private async *processWithUnifiedExecutor(
+    userInput: string,
+    sessionId: string,
+    startTime: number
+  ): AsyncGenerator<StreamEvent> {
+    logger.info(`[大脑V3] 使用统一执行器处理`);
+    
+    try {
+      // 使用统一执行器的流式执行
+      for await (const event of this.unifiedExecutor.executeStream(userInput, {
+        sessionId,
+        conversationId: sessionId,
+      })) {
+        yield event;
+      }
+      
+      // 记录到记忆系统
+      this.memory.recordEvent('assistant_reply', '执行完成');
+      
+      // 反思
+      if (this.config.enableReflection) {
+        this.reflectAsync(userInput, startTime);
+      }
+      
+    } catch (error) {
+      logger.error(`[大脑V3] 统一执行器错误: ${error}`);
+      
+      yield {
+        type: 'error',
+        timestamp: Date.now(),
+        data: { code: 'EXECUTOR_ERROR', message: String(error) }
+      };
+    }
+  }
+  
+  /**
    * 非流式处理
    */
   async process(userInput: string, sessionId: string = 'default'): Promise<ProcessingResult> {
@@ -284,6 +339,23 @@ export class UnifiedBrainV3 {
     let confidence = 0.5;
     
     try {
+      // 使用统一执行器
+      if (this.config.useUnifiedExecutor) {
+        const result = await this.unifiedExecutor.execute(userInput, {
+          sessionId,
+          conversationId: sessionId,
+        });
+        
+        return {
+          success: result.success,
+          response: result.output?.output || result.validation.summary,
+          intent: result.analysis.taskType,
+          confidence: result.validation.score,
+          duration: result.totalDuration,
+        };
+      }
+      
+      // 原有流程
       const routeDecision = await this.router.route({
         userInput,
         sessionId,
@@ -649,6 +721,13 @@ ${this.skillRegistry.getAll().map(s => `- ${s.name}: ${s.description}`).join('\n
   
   getMemoryStats(): any {
     return this.memory.getStats();
+  }
+  
+  /**
+   * 获取执行器统计信息（新功能）
+   */
+  getExecutorStats(): any {
+    return this.unifiedExecutor.getStats();
   }
 }
 

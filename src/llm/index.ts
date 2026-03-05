@@ -6,6 +6,7 @@
  */
 import YAML from 'yaml';
 import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
 import { LLMMessage, LLMOptions, LLMResponse, LLMProviderConfig } from '../types';
 import { BaseLLMProvider } from './base';
@@ -14,7 +15,37 @@ import { OllamaProvider } from './providers/ollama';
 import { getLogger } from '../observability/logger';
 import { getCostManager } from '../core/cost';
 
-dotenv.config();
+// 尝试从多个位置加载.env文件
+const envPaths = [
+  // 当前工作目录
+  path.resolve(process.cwd(), '.env'),
+  // 项目根目录（相对于dist/llm/index.js）
+  path.resolve(__dirname, '..', '..', '.env'),
+  // 用户主目录
+  path.resolve(process.env.HOME || '', '.baize', '.env'),
+];
+
+let envLoaded = false;
+for (const envPath of envPaths) {
+  try {
+    if (fs.existsSync(envPath)) {
+      const result = dotenv.config({ path: envPath });
+      if (!result.error) {
+        envLoaded = true;
+        // 只在调试时输出
+        // console.log(`[dotenv] 已加载: ${envPath}`);
+        break;
+      }
+    }
+  } catch (e) {
+    // 继续尝试下一个路径
+  }
+}
+
+if (!envLoaded) {
+  // 最后尝试默认的dotenv.config()
+  dotenv.config();
+}
 
 const logger = getLogger('llm:manager');
 
@@ -45,8 +76,58 @@ export class LLMManager {
    * 从配置文件创建LLM管理器
    */
   static fromConfig(configPath: string = 'config/llm.yaml'): LLMManager {
-    const content = fs.readFileSync(configPath, 'utf-8');
+    // 尝试多个可能的配置文件路径
+    const possiblePaths = [
+      configPath,
+      // 当前工作目录
+      configPath,
+      // 包安装目录
+      require('path').join(__dirname, '..', '..', configPath),
+      // 用户主目录
+      require('path').join(require('os').homedir(), '.baize', configPath),
+    ];
+    
+    let content: string | null = null;
+    let usedPath: string | null = null;
+    
+    for (const p of possiblePaths) {
+      try {
+        if (fs.existsSync(p)) {
+          content = fs.readFileSync(p, 'utf-8');
+          usedPath = p;
+          break;
+        }
+      } catch (e) {
+        // 继续尝试下一个路径
+      }
+    }
+    
+    if (!content) {
+      // 如果找不到配置文件，使用默认配置
+      logger.warn('未找到LLM配置文件，使用默认配置');
+      const defaultConfig: LLMConfig = {
+        default: 'aliyun',
+        providers: {
+          aliyun: {
+            enabled: true,
+            type: 'openai-compatible',
+            baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+            model: 'qwen-max',
+            temperature: 0.7,
+            maxTokens: 4096,
+            timeout: 60000,
+          },
+        },
+        strategy: {
+          taskMapping: { thinking: 'aliyun', simple: 'aliyun' },
+          fallback: 'aliyun',
+        },
+      };
+      return new LLMManager(defaultConfig);
+    }
+    
     const config = YAML.parse(content) as LLMConfig;
+    logger.info(`已加载LLM配置: ${usedPath}`);
     return new LLMManager(config);
   }
 

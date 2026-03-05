@@ -5,18 +5,18 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "baize": "dist/cli/index.js"
+    "baize": "dist/cli/bootstrap.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/cli/index.js",
-    "dev": "ts-node src/cli/index.ts",
+    "start": "node dist/cli/bootstrap.js",
+    "dev": "ts-node src/cli/bootstrap.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist",
-    "web": "npm run build && node dist/cli/index.js web",
-    "web:dev": "ts-node src/cli/index.ts web"
+    "web": "npm run build && node dist/cli/bootstrap.js web",
+    "web:dev": "ts-node src/cli/bootstrap.ts web"
   },
   "keywords": [
     "ai",

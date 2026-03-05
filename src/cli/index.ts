@@ -10,6 +10,24 @@
 
 import * as readline from 'readline';
 import chalk from 'chalk';
+import * as fs from 'fs';
+import * as path from 'path';
+import dotenv from 'dotenv';
+
+// 首先加载.env文件
+const envPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '..', '.env'),
+  path.resolve(__dirname, '..', '..', '.env'),
+];
+
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
+
 import { getBrainV3 } from '../core/brain-v3';
 import { getEnhancedMemory } from '../memory/v3';
 import { getLLMManager } from '../llm';
@@ -589,17 +607,17 @@ function showHelp(): void {
   console.log(chalk.cyan('\n白泽 V3 命令行工具'));
   console.log(chalk.gray('\n用法:'));
   console.log(chalk.gray('  baize                    启动交互模式'));
-  console.log(chalk.gray(' 	baize start              启动交互模式'));
-  console.log(chalk.gray(' 	baize chat <msg>         单次对话'));
-  console.log(chalk.gray(' 	baize test               运行测试'));
-  console.log(chalk.gray(' 	baize skill <command>    技能管理'));
-  console.log(chalk.gray(' 	baize help               显示帮助'));
+  console.log(chalk.gray('      baize start              启动交互模式'));
+  console.log(chalk.gray('      baize chat <msg>         单次对话'));
+  console.log(chalk.gray('      baize test               运行测试'));
+  console.log(chalk.gray('      baize skill <command>    技能管理'));
+  console.log(chalk.gray('      baize help               显示帮助'));
   console.log();
   console.log(chalk.gray('交互模式命令:'));
-  console.log(chalk.gray(' 	help      显示帮助'));
-  console.log(chalk.gray(' 	status    显示系统状态'));
-  console.log(chalk.gray(' 	self      自我评估'));
-  console.log(chalk.gray(' 	exit      退出'));
+  console.log(chalk.gray('      help      显示帮助'));
+  console.log(chalk.gray('      status    显示系统状态'));
+  console.log(chalk.gray('      self      自我评估'));
+  console.log(chalk.gray('      exit      退出'));
   console.log();
 }
 
