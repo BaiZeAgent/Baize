@@ -350,56 +350,53 @@ export class EnhancedExecutor {
           }
         }
 
-        // 失败，尝试恢复
-        const recovery = await this.recoveryEngine.recover(
-          new Error(result.error || '任务执行失败'),
-          {
-            task: { skillName: currentSkill, params: currentParams },
-            userInput: context.userInput,
-            previousAttempts: attemptCount,
-          }
+        // 失败，LLM探索：分析失败原因，决定下一步
+        const exploration = await this.exploreAfterFailure(
+          task,
+          { skillName: currentSkill, params: currentParams },
+          result.error || '任务执行失败',
+          context,
+          state
         );
-
-        state.recoveryHistory.push(recovery);
-        if (context.hooks?.onRecovery) {
-          await context.hooks.onRecovery(recovery);
-        }
-
-        if (!recovery.shouldRetry) {
-          // 不可恢复
+        
+        if (exploration.done) {
+          // LLM认为无法完成
           result.retries = attemptCount - 1;
-          if (context.hooks?.onTaskError) {
-            await context.hooks.onTaskError(task, new Error(result.error || '不可恢复'));
-          }
           return result;
         }
-
-        // 应用恢复策略
-        const adjusted = this.applyRecovery(task, recovery, currentParams, currentSkill);
-        currentParams = adjusted.params;
-        currentSkill = adjusted.skillName;
-
-        // 记录恢复经验
-        this.recoveryEngine.recordExperience(
-          new Error(result.error || ''),
-          recovery.rootCause,
-          recovery.strategy,
-          false // 暂时标记为失败，成功后会更新
-        );
+        
+        if (exploration.newPlan) {
+          // LLM决定换一个完全不同的方案
+          logger.info(`[探索] 换方案: ${exploration.reasoning}`);
+          return this.executeTaskWithRetry(
+            exploration.newPlan.tasks[0],
+            exploration.newPlan,
+            context,
+            state
+          );
+        }
+        
+        // 应用LLM建议的调整
+        if (exploration.adjustedParams) {
+          currentParams = { ...currentParams, ...exploration.adjustedParams };
+        }
+        if (exploration.newSkill) {
+          currentSkill = exploration.newSkill;
+        }
 
       } catch (error) {
         logger.error(`[执行任务] ${task.id} 异常: ${error}`);
         
-        // 异常恢复
-        const recovery = await this.recoveryEngine.recover(error as Error, {
-          task: { skillName: currentSkill, params: currentParams },
-          userInput: context.userInput,
-          previousAttempts: attemptCount,
-        });
-
-        state.recoveryHistory.push(recovery);
-
-        if (!recovery.shouldRetry) {
+        // 异常探索
+        const exploration = await this.exploreAfterFailure(
+          task,
+          { skillName: currentSkill, params: currentParams },
+          (error as Error).message,
+          context,
+          state
+        );
+        
+        if (exploration.done) {
           return {
             taskId: task.id,
             success: false,
@@ -410,10 +407,22 @@ export class EnhancedExecutor {
             retries: attemptCount - 1,
           };
         }
-
-        const adjusted = this.applyRecovery(task, recovery, currentParams, currentSkill);
-        currentParams = adjusted.params;
-        currentSkill = adjusted.skillName;
+        
+        if (exploration.newPlan) {
+          return this.executeTaskWithRetry(
+            exploration.newPlan.tasks[0],
+            exploration.newPlan,
+            context,
+            state
+          );
+        }
+        
+        if (exploration.adjustedParams) {
+          currentParams = { ...currentParams, ...exploration.adjustedParams };
+        }
+        if (exploration.newSkill) {
+          currentSkill = exploration.newSkill;
+        }
       }
     }
 
@@ -777,6 +786,149 @@ ${failCount > 0 ? `失败任务:\n${state.failedTasks.join(', ')}` : ''}
       duration: 0,
       retries: state.retries.get(task.id) || 0,
     };
+  }
+
+  /**
+   * LLM探索：失败后分析原因，决定下一步
+   */
+  private async exploreAfterFailure(
+    task: SubTask,
+    current: { skillName: string; params: Record<string, unknown> },
+    error: string,
+    context: ExecutionContext,
+    state: ExecutionState
+  ): Promise<{
+    done: boolean;
+    newPlan?: ExecutionPlan;
+    newSkill?: string;
+    adjustedParams?: Record<string, unknown>;
+    reasoning: string;
+  }> {
+    // 获取已尝试的方案
+    const triedSkills = state.recoveryHistory
+      .map(r => r.alternativeTool)
+      .filter(Boolean);
+    
+    // 获取可用工具
+    const availableTools = this.getAvailableToolsDescription();
+    
+    // LLM分析
+    const response = await this.llm.chat([
+      {
+        role: 'system',
+        content: `你是任务执行专家。当一个方案失败后，分析原因并决定下一步。
+
+## 可用操作
+
+1. **retry**: 调整参数重试当前工具
+   {"action": "retry", "adjustedParams": {...}, "reasoning": "原因"}
+
+2. **switch**: 换一个工具
+   {"action": "switch", "newTool": "工具名", "params": {...}, "reasoning": "原因"}
+
+3. **replan**: 完全重新规划
+   {"action": "replan", "reasoning": "当前方案不可行，需要换思路"}
+
+4. **abort**: 放弃
+   {"action": "abort", "reasoning": "无法完成"}
+
+## 规则
+
+1. 分析失败的根本原因
+2. 考虑是否有其他方式可以达成目标
+3. 不要重复已经失败的方案
+4. 输出有效的JSON`
+      },
+      {
+        role: 'user',
+        content: `## 任务
+${context.userInput}
+
+## 当前尝试
+工具: ${current.skillName}
+参数: ${JSON.stringify(current.params)}
+
+## 失败原因
+${error}
+
+## 已尝试过的工具
+${triedSkills.length > 0 ? triedSkills.join(', ') : '无'}
+
+## 可用工具
+${availableTools}
+
+## 下一步操作
+请输出JSON格式的决策：`
+      }
+    ], { temperature: 0.3 });
+
+    // 解析响应
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { done: true, reasoning: '无法解析LLM响应' };
+    }
+
+    try {
+      const decision = JSON.parse(jsonMatch[0]);
+      
+      switch (decision.action) {
+        case 'retry':
+          return {
+            done: false,
+            adjustedParams: decision.adjustedParams,
+            reasoning: decision.reasoning
+          };
+          
+        case 'switch':
+          return {
+            done: false,
+            newSkill: decision.newTool,
+            adjustedParams: decision.params,
+            reasoning: decision.reasoning
+          };
+          
+        case 'replan':
+          // 重新规划
+          const newPlan = await this.thinkingEngine.think(context.userInput, {
+            failedTool: current.skillName,
+            failureReason: error,
+          });
+          return {
+            done: false,
+            newPlan,
+            reasoning: decision.reasoning
+          };
+          
+        case 'abort':
+          return {
+            done: true,
+            reasoning: decision.reasoning
+          };
+          
+        default:
+          return { done: true, reasoning: '未知操作' };
+      }
+    } catch (e) {
+      return { done: true, reasoning: '解析失败: ' + (e as Error).message };
+    }
+  }
+
+  /**
+   * 获取可用工具描述
+   */
+  private getAvailableToolsDescription(): string {
+    const skills = this.skillRegistry.getAll();
+    const tools = this.toolRegistry.getAll();
+    const lines: string[] = [];
+
+    for (const skill of skills) {
+      lines.push(`- ${skill.name}: ${skill.description.slice(0, 50)}`);
+    }
+    for (const tool of tools) {
+      lines.push(`- ${tool.name}: ${tool.description.slice(0, 50)}`);
+    }
+
+    return lines.join('\n');
   }
 
   /**
