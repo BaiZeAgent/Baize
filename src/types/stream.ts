@@ -36,6 +36,7 @@ export type ThinkingStage =
   | 'matched'       // 规则匹配
   | 'decide'        // 决策中
   | 'tool_call'     // 调用工具
+  | 'tool_selection' // 选择工具
   | 'reply'         // 直接回复
   | 'ask_missing'   // 询问缺失信息
   | 'clarify'       // 澄清意图
