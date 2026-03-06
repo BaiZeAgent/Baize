@@ -84,9 +84,7 @@ export type {
   // 思考层类型
   SubTask,
   ExecutionPlan,
-  ReasoningResult,
-  ReasoningStep,
-  DecompositionResult,
+  TaskType,
   // 执行层类型
   ExecutionContext,
   ExecutionHooks,

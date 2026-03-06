@@ -132,22 +132,45 @@ export class EnhancedExecutor {
       
       logger.info(`[执行] 计划: ${plan.id}, 任务数: ${plan.tasks.length}`);
 
+      // 对话类型直接返回
+      if (plan.tasks.length === 1 && plan.tasks[0].skillName === 'chat') {
+        const response = plan.tasks[0].params.response as string || '你好！有什么我可以帮助你的吗？';
+        return {
+          success: true,
+          plan,
+          taskResults: [{
+            taskId: 'chat_response',
+            success: true,
+            data: { response },
+            message: response,
+            duration: 0,
+            retries: 0,
+          }],
+          finalMessage: response,
+          duration: Date.now() - startTime,
+          totalIterations: 0,
+          recoveryUsed: false,
+          reflections: [],
+        };
+      }
+
       // 执行计划
       const result = await this.executePlan(plan, context);
 
-      // 反思
-      const reflection = await this.metacognition.reflect(userInput, {
-        success: result.success,
-        steps: result.taskResults.map(r => ({
-          action: r.taskId,
-          result: r.message,
-          success: r.success,
-        })),
-        errors: result.taskResults.filter(r => !r.success).map(r => r.error || ''),
-        duration: Date.now() - startTime,
+      // 反思异步执行，不等待
+      setImmediate(() => {
+        this.metacognition.reflect(userInput, {
+          success: result.success,
+          steps: result.taskResults.map(r => ({
+            action: r.taskId,
+            result: r.message,
+            success: r.success,
+          })),
+          errors: result.taskResults.filter(r => !r.success).map(r => r.error || ''),
+          duration: Date.now() - startTime,
+        }).catch(e => logger.error('反思失败: ' + e));
       });
 
-      result.reflections = reflection.lessons;
       result.duration = Date.now() - startTime;
 
       return result;
@@ -544,6 +567,41 @@ export class EnhancedExecutor {
   ): Promise<string> {
     const successCount = state.completedTasks.filter(r => r.success).length;
     const failCount = state.failedTasks.length;
+
+    // 检查是否有特殊数据需要展示（真实数据优先）
+    const lastResult = state.completedTasks[state.completedTasks.length - 1];
+    
+    // 根据用户请求决定返回格式
+    const wantMultiple = context.userInput.includes('前') || 
+                         context.userInput.includes('列表') || 
+                         context.userInput.includes('列出') ||
+                         context.userInput.includes('几个');
+    
+    // 如果用户要求多个结果，优先返回列表
+    if (wantMultiple && lastResult?.data?.results) {
+      const results = lastResult.data.results as any[];
+      if (results.length > 0 && results[0].link && results[0].link !== 'undefined') {
+        let msg = `找到了 ${results.length} 个结果：
+`;
+        results.forEach((v, i) => {
+          if (v.link && v.link !== 'undefined') {
+            msg += `${i + 1}. ${v.title}
+   链接: ${v.link}
+   播放: ${v.playCount || '未知'}
+`;
+          }
+        });
+        return msg;
+      }
+    }
+    
+    // 默认返回第一个结果
+    if (lastResult?.data?.firstVideo) {
+      const v = lastResult.data.firstVideo as any;
+      if (v.link && v.link !== 'undefined') {
+        return `找到了！第一个视频是「${v.title}」，链接是 ${v.link}，播放量 ${v.playCount}。`;
+      }
+    }
 
     const messages: LLMMessage[] = [
       {

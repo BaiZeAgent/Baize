@@ -1,5 +1,5 @@
 /**
- * 记忆系统 - 三层记忆结构 + 五维度学习
+ * 记忆系统 - 三层记忆结构 + 五维度学习 + 执行经验
  */
 import { BaizeDatabase, getDatabase } from './database';
 import { 
@@ -24,6 +24,20 @@ export enum LearningDimension {
 }
 
 /**
+ * 执行经验
+ */
+export interface ExecutionExperience {
+  id?: number;
+  task: string;           // 任务描述
+  tool: string;           // 使用的工具
+  params: Record<string, unknown>; // 参数
+  success: boolean;       // 是否成功
+  context: string;        // 上下文关键词（B站、天气、文件等）
+  errorMessage?: string;  // 失败原因
+  timestamp: number;      // 时间戳
+}
+
+/**
  * 记忆系统
  */
 export class MemorySystem {
@@ -31,6 +45,164 @@ export class MemorySystem {
 
   constructor() {
     this.db = getDatabase();
+    this.initExperienceTable();
+  }
+
+  /**
+   * 初始化经验表
+   */
+  private initExperienceTable(): void {
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS execution_experience (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task TEXT NOT NULL,
+        tool TEXT NOT NULL,
+        params TEXT,
+        success INTEGER NOT NULL,
+        context TEXT,
+        error_message TEXT,
+        timestamp INTEGER
+      )
+    `);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 执行经验
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * 记录执行经验
+   */
+  recordExperience(exp: ExecutionExperience): void {
+    const timestamp = exp.timestamp || Date.now();
+    
+    this.db.run(
+      `INSERT INTO execution_experience (task, tool, params, success, context, error_message, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        exp.task,
+        exp.tool,
+        JSON.stringify(exp.params || {}),
+        exp.success ? 1 : 0,
+        exp.context || '',
+        exp.errorMessage || '',
+        timestamp
+      ]
+    );
+    
+    logger.debug(`记录执行经验: ${exp.task.slice(0, 30)} -> ${exp.tool} (${exp.success ? '成功' : '失败'})`);
+  }
+
+  /**
+   * 查找相似任务的成功经验
+   */
+  findSuccessExperience(task: string, excludeTool?: string): ExecutionExperience | null {
+    // 提取关键词
+    const keywords = this.extractKeywords(task);
+    
+    // 查找成功的经验
+    const rows = this.db.all(
+      `SELECT * FROM execution_experience 
+       WHERE success = 1 
+       ORDER BY timestamp DESC 
+       LIMIT 20`,
+      []
+    );
+
+    for (const row of rows) {
+      const exp: ExecutionExperience = {
+        id: row.id as number,
+        task: row.task as string,
+        tool: row.tool as string,
+        params: JSON.parse(row.params as string || '{}'),
+        success: row.success === 1,
+        context: row.context as string,
+        timestamp: row.timestamp as number,
+      };
+
+      // 排除指定工具
+      if (excludeTool && exp.tool === excludeTool) {
+        continue;
+      }
+
+      // 检查关键词匹配
+      const expKeywords = this.extractKeywords(exp.task + ' ' + exp.context);
+      const matchScore = this.calculateMatchScore(keywords, expKeywords);
+      
+      if (matchScore > 0.3) {
+        logger.info(`[经验] 找到相似成功经验: ${exp.task.slice(0, 30)} -> ${exp.tool}`);
+        return exp;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 查找失败经验（避免重复失败）
+   */
+  findFailedTools(task: string): string[] {
+    const keywords = this.extractKeywords(task);
+    const failedTools: string[] = [];
+
+    const rows = this.db.all(
+      `SELECT DISTINCT tool FROM execution_experience 
+       WHERE success = 0 AND timestamp > ?`,
+      [Date.now() - 7 * 24 * 60 * 60 * 1000] // 最近7天
+    );
+
+    for (const row of rows) {
+      failedTools.push(row.tool as string);
+    }
+
+    return failedTools;
+  }
+
+  /**
+   * 获取工具的成功率
+   */
+  getToolSuccessRate(tool: string): { success: number; total: number; rate: number } {
+    const result = this.db.get(
+      `SELECT 
+        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as success,
+        COUNT(*) as total
+       FROM execution_experience 
+       WHERE tool = ?`,
+      [tool]
+    );
+
+    const success = (result?.success as number) || 0;
+    const total = (result?.total as number) || 0;
+    const rate = total > 0 ? success / total : 0;
+
+    return { success, total, rate };
+  }
+
+  /**
+   * 提取关键词
+   */
+  private extractKeywords(text: string): string[] {
+    // 简单的关键词提取
+    const stopWords = new Set(['的', '了', '是', '在', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '那', '什么', '怎么', '帮', '请', '能', '可以']);
+    
+    const words = text.toLowerCase()
+      .replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 1 && !stopWords.has(w));
+    
+    return [...new Set(words)];
+  }
+
+  /**
+   * 计算关键词匹配分数
+   */
+  private calculateMatchScore(keywords1: string[], keywords2: string[]): number {
+    if (keywords1.length === 0 || keywords2.length === 0) return 0;
+    
+    const set2 = new Set(keywords2);
+    const matches = keywords1.filter(k => set2.has(k)).length;
+    
+    return matches / Math.max(keywords1.length, keywords2.length);
   }
 
   // ═══════════════════════════════════════════════════════════════

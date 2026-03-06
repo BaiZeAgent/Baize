@@ -1,20 +1,24 @@
 /**
- * 思考层 - 任务分解与推理引擎
+ * 思考层 - 任务分析与规划引擎
  * 
- * 核心能力：
- * 1. 任务分解 - 将复杂任务分解为可执行的子任务
- * 2. 推理引擎 - 进行逻辑推理，生成执行计划
- * 3. 规划生成 - 生成最优执行方案
- * 4. 依赖分析 - 分析任务之间的依赖关系
+ * 核心理念：
+ * - 信任LLM的判断能力，让它一次性决定怎么处理
+ * - 不硬编码关键词，不预设流程
+ * - LLM自己决定是对话、简单任务还是复杂任务
+ * - 查询历史经验辅助决策
+ * 
+ * 任务类型：
+ * 1. chat - 普通对话，直接回复
+ * 2. simple_task - 简单任务，单工具调用
+ * 3. complex_task - 复杂任务，多步骤执行
  */
 
-import { getLLMManager } from '../../llm';
 import { getSkillRegistry } from '../../skills/registry';
 import { getToolRegistry } from '../../tools';
-import { getLogger } from '../../observability/logger';
+import { getLLMManager } from '../../llm';
 import { getMemory } from '../../memory';
+import { getLogger } from '../../observability/logger';
 import { LLMMessage, RiskLevel } from '../../types';
-import { getMetacognition, ComplexityAnalysis } from './metacognition';
 
 const logger = getLogger('core:thinking');
 
@@ -22,17 +26,20 @@ const logger = getLogger('core:thinking');
 // 类型定义
 // ═══════════════════════════════════════════════════════════════
 
+/** 任务类型 */
+export type TaskType = 'chat' | 'simple_task' | 'complex_task';
+
 /** 子任务 */
 export interface SubTask {
   id: string;
-  description: string;
   skillName: string;
+  description: string;
   params: Record<string, unknown>;
-  dependencies: string[];      // 依赖的任务ID
+  dependencies: string[];
   riskLevel: RiskLevel;
-  estimatedTime: number;       // 预估时间(秒)
-  isOptional: boolean;         // 是否可选
-  fallbackTaskId?: string;     // 失败时的替代任务
+  estimatedTime: number;
+  isOptional: boolean;
+  fallbackTaskId?: string;
 }
 
 /** 执行计划 */
@@ -40,44 +47,33 @@ export interface ExecutionPlan {
   id: string;
   description: string;
   tasks: SubTask[];
-  parallelGroups: string[][];  // 可并行执行的任务组
+  parallelGroups: string[][];
   estimatedTotalTime: number;
   riskAssessment: {
     level: RiskLevel;
     factors: string[];
     mitigations: string[];
   };
-  successCriteria: string[];   // 成功标准
-  rollbackPlan?: string;       // 回滚计划
+  successCriteria: string[];
+  /** 是否从经验中学习 */
+  fromExperience?: boolean;
 }
 
-/** 推理结果 */
-export interface ReasoningResult {
-  conclusion: string;
-  steps: ReasoningStep[];
-  confidence: number;
-  assumptions: string[];
-  alternatives: string[];
-}
-
-/** 推理步骤 */
-export interface ReasoningStep {
-  step: number;
-  action: string;
-  reasoning: string;
-  result: string;
-  confidence: number;
-}
-
-/** 任务分解结果 */
-export interface DecompositionResult {
-  success: boolean;
-  subtasks: SubTask[];
-  dependencies: Map<string, string[]>;
-  executionOrder: string[];
-  reasoning: string;
-  canSimplify: boolean;
-  simplifiedVersion?: ExecutionPlan;
+/** LLM决策结果 */
+interface LLMDecision {
+  type: TaskType;
+  response?: string;
+  tool?: string;
+  params?: Record<string, unknown>;
+  confidence?: number;
+  steps?: Array<{
+    id: string;
+    tool: string;
+    description: string;
+    params: Record<string, unknown>;
+    dependencies: string[];
+  }>;
+  reasoning?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -85,477 +81,282 @@ export interface DecompositionResult {
 // ═══════════════════════════════════════════════════════════════
 
 export class ThinkingEngine {
-  private llm = getLLMManager();
   private skillRegistry = getSkillRegistry();
   private toolRegistry = getToolRegistry();
+  private llm = getLLMManager();
   private memory = getMemory();
-  private metacognition = getMetacognition();
 
   /**
    * 思考入口
-   * 对用户输入进行深度思考和规划
    */
-  async think(userInput: string): Promise<ExecutionPlan> {
-    logger.info(`[思考] 开始思考: ${userInput.slice(0, 50)}...`);
+  async think(userInput: string, context?: { failedTool?: string; failureReason?: string }): Promise<ExecutionPlan> {
+    logger.info(`[思考] 开始分析: ${userInput.slice(0, 50)}...`);
 
-    // 1. 分析任务复杂度
-    const complexity = await this.metacognition.analyzeComplexity(userInput);
-    logger.info(`[思考] 复杂度: ${complexity.score}, 子任务数: ${complexity.subtaskCount}`);
+    try {
+      const tools = this.getAvailableTools();
 
-    // 2. 根据复杂度选择策略
-    if (complexity.score <= 3) {
-      // 简单任务：直接生成单步计划
-      return this.generateSimplePlan(userInput, complexity);
-    } else if (complexity.score <= 6) {
-      // 中等任务：分解后规划
-      return this.generateMediumPlan(userInput, complexity);
-    } else {
-      // 复杂任务：深度分解和规划
-      return this.generateComplexPlan(userInput, complexity);
+      // 1. 查询经验
+      const experience = this.memory.findSuccessExperience(userInput, context?.failedTool);
+      
+      if (experience && !context?.failedTool) {
+        // 有成功经验，直接用
+        logger.info(`[思考] 使用历史经验: ${experience.tool}`);
+        return this.createPlanFromExperience(userInput, experience);
+      }
+
+      // 2. 查询失败的工具（避免重复）
+      const failedTools = this.memory.findFailedTools(userInput);
+      const failedToolsStr = failedTools.length > 0 ? `\n注意：以下工具之前失败过，请优先考虑其他方案：${failedTools.join(', ')}` : '';
+
+      // 3. LLM决策
+      const decision = await this.getLLMDecision(userInput, tools, failedToolsStr, context);
+
+      logger.info(`[思考] LLM决策: type=${decision.type}, reasoning=${decision.reasoning?.slice(0, 100)}`);
+
+      // 4. 根据决策生成计划
+      switch (decision.type) {
+        case 'chat':
+          return this.createChatPlan(userInput, decision);
+        case 'simple_task':
+          return this.createSimpleTaskPlan(userInput, decision);
+        case 'complex_task':
+          return this.createComplexTaskPlan(userInput, decision);
+        default:
+          return this.createChatPlan(userInput, {
+            type: 'chat',
+            response: '我需要更多信息来帮助你。',
+          });
+      }
+
+    } catch (error) {
+      logger.error(`[思考] 错误: ${error}`);
+      return this.createChatPlan(userInput, {
+        type: 'chat',
+        response: `抱歉，我在处理你的请求时遇到了问题。请换一种方式描述？`,
+      });
     }
   }
 
   /**
-   * 生成简单计划（单步任务）
+   * LLM决策
    */
-  private async generateSimplePlan(
-    userInput: string,
-    complexity: ComplexityAnalysis
-  ): Promise<ExecutionPlan> {
-    // 直接匹配工具
-    const match = await this.matchTool(userInput);
+  private async getLLMDecision(
+    userInput: string, 
+    tools: string, 
+    failedToolsHint: string,
+    context?: { failedTool?: string; failureReason?: string }
+  ): Promise<LLMDecision> {
     
-    const task: SubTask = {
-      id: 'task_1',
-      description: userInput,
-      skillName: match.toolName,
-      params: match.params,
-      dependencies: [],
-      riskLevel: this.assessRiskLevel(match.toolName, match.params),
-      estimatedTime: complexity.timeEstimate,
-      isOptional: false,
-    };
-
-    return {
-      id: `plan_${Date.now()}`,
-      description: `执行: ${userInput}`,
-      tasks: [task],
-      parallelGroups: [['task_1']],
-      estimatedTotalTime: complexity.timeEstimate,
-      riskAssessment: {
-        level: task.riskLevel,
-        factors: [],
-        mitigations: [],
-      },
-      successCriteria: ['任务成功执行'],
-    };
-  }
-
-  /**
-   * 生成中等计划（多步任务）
-   */
-  private async generateMediumPlan(
-    userInput: string,
-    complexity: ComplexityAnalysis
-  ): Promise<ExecutionPlan> {
-    // 分解任务
-    const decomposition = await this.decomposeTask(userInput, complexity);
-    
-    if (!decomposition.success || decomposition.subtasks.length === 0) {
-      // 分解失败，回退到简单计划
-      return this.generateSimplePlan(userInput, complexity);
-    }
-
-    // 构建执行计划
-    return this.buildExecutionPlan(userInput, decomposition, complexity);
-  }
-
-  /**
-   * 生成复杂计划（深度分解）
-   */
-  private async generateComplexPlan(
-    userInput: string,
-    complexity: ComplexityAnalysis
-  ): Promise<ExecutionPlan> {
-    logger.info('[思考] 复杂任务，开始深度分解');
-
-    // 1. 能力评估
-    const assessment = await this.metacognition.assessCapability(userInput);
-    
-    if (!assessment.canComplete) {
-      // 生成澄清计划
-      return this.generateClarificationPlan(userInput, assessment);
-    }
-
-    // 2. 深度分解
-    const decomposition = await this.deepDecompose(userInput, complexity, assessment);
-
-    // 3. 推理验证
-    const reasoning = await this.reason(userInput, decomposition);
-
-    // 4. 构建计划
-    const plan = this.buildExecutionPlan(userInput, decomposition, complexity);
-
-    // 5. 添加风险缓解
-    plan.riskAssessment.mitigations = reasoning.assumptions;
-
-    return plan;
-  }
-
-  /**
-   * 分解任务
-   */
-  async decomposeTask(
-    userInput: string,
-    complexity: ComplexityAnalysis
-  ): Promise<DecompositionResult> {
-    // 获取可用工具
-    const tools = this.getAvailableTools();
+    const contextHint = context?.failedTool 
+      ? `\n\n重要提示：之前使用 ${context.failedTool} 失败了，原因：${context.failureReason}。请选择不同的工具或更复杂的方案。`
+      : '';
 
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: `你是一个任务分解专家。将复杂任务分解为可执行的子任务。
+        content: `你是一个智能助手的决策核心。分析用户输入，决定如何处理。
 
 ## 可用工具
 ${tools}
+${failedToolsHint}${contextHint}
 
-## 分解规则
-1. 每个子任务必须能由单个工具完成
-2. 明确标注任务之间的依赖关系
-3. 标注哪些任务可以并行执行
-4. 为每个任务估算执行时间
-5. 标注任务的风险等级
+## 判断任务类型
 
-## 输出格式
-{
-  "success": true/false,
-  "subtasks": [
-    {
-      "id": "task_1",
-      "description": "任务描述",
-      "skillName": "工具名称",
-      "params": {},
-      "dependencies": [],
-      "estimatedTime": 秒数,
-      "riskLevel": "low|medium|high|critical",
-      "isOptional": false
-    }
-  ],
-  "executionOrder": ["task_1", "task_2"],
-  "reasoning": "分解理由"
-}`,
+1. **chat**: 普通对话，不需要调用工具
+   - 问候、闲聊、常识性问题
+   - 用户只是在和你交流
+
+2. **simple_task**: 简单任务，一个工具就能完成
+   - 单一明确的操作
+   - 例如：查时间、简单计算、创建文件
+
+3. **complex_task**: 复杂任务，需要多个步骤
+   - 需要多个工具配合
+   - 例如：搜索网站并提取数据、多步操作
+
+## 输出格式（必须是有效的JSON）
+
+### chat类型：
+{"type":"chat","response":"回复内容","reasoning":"为什么是对话"}
+
+### simple_task类型：
+{"type":"simple_task","tool":"工具名","params":{},"reasoning":"为什么是简单任务"}
+
+### complex_task类型：
+{"type":"complex_task","steps":[{"id":"step_1","tool":"工具名","description":"描述","params":{},"dependencies":[]},{"id":"step_2","tool":"工具名","description":"描述","params":{},"dependencies":["step_1"]}],"reasoning":"为什么是复杂任务"}
+
+## 重要
+1. 必须输出有效JSON
+2. 工具名必须在可用工具列表中
+3. 不要编造工具`
       },
       {
         role: 'user',
-        content: `请分解以下任务：
-${userInput}
-
-任务复杂度: ${complexity.score}
-预计子任务数: ${complexity.subtaskCount}`,
-      },
+        content: userInput
+      }
     ];
 
-    try {
-      const response = await this.llm.chat(messages, { temperature: 0.3 });
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        
-        const subtasks: SubTask[] = (parsed.subtasks || []).map((t: any) => ({
-          id: t.id,
-          description: t.description,
-          skillName: t.skillName,
-          params: t.params || {},
-          dependencies: t.dependencies || [],
-          riskLevel: this.parseRiskLevel(t.riskLevel),
-          estimatedTime: t.estimatedTime || 10,
-          isOptional: t.isOptional || false,
-        }));
-
-        // 构建依赖图
-        const dependencies = new Map<string, string[]>();
-        for (const task of subtasks) {
-          dependencies.set(task.id, task.dependencies);
-        }
-
-        // 计算执行顺序
-        const executionOrder = this.topologicalSort(subtasks, dependencies);
-
-        return {
-          success: true,
-          subtasks,
-          dependencies,
-          executionOrder,
-          reasoning: parsed.reasoning || '',
-          canSimplify: subtasks.length > 3,
-        };
-      }
-    } catch (error) {
-      logger.error(`[任务分解] 错误: ${error}`);
-    }
-
-    return {
-      success: false,
-      subtasks: [],
-      dependencies: new Map(),
-      executionOrder: [],
-      reasoning: '分解失败',
-      canSimplify: false,
-    };
-  }
-
-  /**
-   * 深度分解（用于复杂任务）
-   */
-  private async deepDecompose(
-    userInput: string,
-    complexity: ComplexityAnalysis,
-    assessment: any
-  ): Promise<DecompositionResult> {
-    // 先进行初步分解
-    const initialDecomposition = await this.decomposeTask(userInput, complexity);
+    const response = await this.llm.chat(messages, { temperature: 0.3 });
     
-    if (!initialDecomposition.success) {
-      return initialDecomposition;
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { type: 'chat', response: response.content, reasoning: 'LLM未返回结构化决策' };
     }
-
-    // 对每个子任务进行进一步验证
-    const validatedSubtasks: SubTask[] = [];
-    
-    for (const task of initialDecomposition.subtasks) {
-      // 验证工具是否存在
-      const toolExists = this.skillRegistry.get(task.skillName) || 
-                        this.toolRegistry.has(task.skillName);
-      
-      if (toolExists) {
-        validatedSubtasks.push(task);
-      } else {
-        // 尝试找替代工具
-        const alternative = await this.findAlternativeTool(task);
-        if (alternative) {
-          validatedSubtasks.push({
-            ...task,
-            skillName: alternative,
-            description: `${task.description} (使用替代工具: ${alternative})`,
-          });
-        } else if (!task.isOptional) {
-          // 必需任务无法执行，标记问题
-          logger.warn(`[深度分解] 无法找到工具: ${task.skillName}`);
-          validatedSubtasks.push({
-            ...task,
-            skillName: 'ask_user',
-            description: `需要用户帮助: ${task.description}`,
-          });
-        }
-      }
-    }
-
-    return {
-      ...initialDecomposition,
-      subtasks: validatedSubtasks,
-    };
-  }
-
-  /**
-   * 推理引擎
-   */
-  async reason(
-    userInput: string,
-    decomposition: DecompositionResult
-  ): Promise<ReasoningResult> {
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是一个推理引擎。验证任务分解是否合理，并生成推理链。
-
-## 推理规则
-1. 验证每个子任务是否必要
-2. 验证依赖关系是否正确
-3. 验证执行顺序是否最优
-4. 识别潜在的失败点
-5. 提出假设和替代方案
-
-## 输出格式
-{
-  "conclusion": "最终结论",
-  "steps": [
-    {
-      "step": 1,
-      "action": "动作描述",
-      "reasoning": "推理过程",
-      "result": "推理结果",
-      "confidence": 0.0-1.0
-    }
-  ],
-  "confidence": 0.0-1.0,
-  "assumptions": ["假设1", "假设2"],
-  "alternatives": ["替代方案1", "替代方案2"]
-}`,
-      },
-      {
-        role: 'user',
-        content: `用户目标: ${userInput}
-
-任务分解:
-${decomposition.subtasks.map(t => `- ${t.id}: ${t.skillName} - ${t.description}`).join('\n')}
-
-执行顺序: ${decomposition.executionOrder.join(' -> ')}
-
-请验证这个分解方案是否合理。`,
-      },
-    ];
 
     try {
-      const response = await this.llm.chat(messages, { temperature: 0.3 });
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          conclusion: parsed.conclusion || '',
-          steps: parsed.steps || [],
-          confidence: parsed.confidence || 0.5,
-          assumptions: parsed.assumptions || [],
-          alternatives: parsed.alternatives || [],
-        };
+      const decision = JSON.parse(jsonMatch[0]) as LLMDecision;
+      if (!['chat', 'simple_task', 'complex_task'].includes(decision.type)) {
+        decision.type = 'chat';
       }
-    } catch (error) {
-      logger.error(`[推理] 错误: ${error}`);
+      return decision;
+    } catch {
+      return { type: 'chat', response: response.content, reasoning: 'JSON解析失败' };
     }
-
-    return {
-      conclusion: '推理失败',
-      steps: [],
-      confidence: 0.5,
-      assumptions: [],
-      alternatives: [],
-    };
   }
 
   /**
-   * 匹配工具
+   * 从经验创建计划
    */
-  private async matchTool(
-    userInput: string
-  ): Promise<{ toolName: string; params: Record<string, unknown>; confidence: number }> {
-    const tools = this.getAvailableTools();
-
-    const messages: LLMMessage[] = [
-      {
-        role: 'system',
-        content: `你是一个工具匹配专家。为用户请求选择最合适的工具。
-
-## 可用工具
-${tools}
-
-## 输出格式
-{
-  "toolName": "工具名称",
-  "params": {},
-  "confidence": 0.0-1.0
-}`,
-      },
-      {
-        role: 'user',
-        content: userInput,
-      },
-    ];
-
-    try {
-      const response = await this.llm.chat(messages, { temperature: 0.2 });
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          toolName: parsed.toolName,
-          params: parsed.params || {},
-          confidence: parsed.confidence || 0.5,
-        };
-      }
-    } catch (error) {
-      logger.error(`[工具匹配] 错误: ${error}`);
-    }
-
+  private createPlanFromExperience(userInput: string, experience: any): ExecutionPlan {
     return {
-      toolName: 'unknown',
-      params: {},
-      confidence: 0,
-    };
-  }
-
-  /**
-   * 构建执行计划
-   */
-  private buildExecutionPlan(
-    userInput: string,
-    decomposition: DecompositionResult,
-    complexity: ComplexityAnalysis
-  ): ExecutionPlan {
-    // 计算并行组
-    const parallelGroups = this.computeParallelGroups(
-      decomposition.subtasks,
-      decomposition.dependencies
-    );
-
-    // 计算总时间
-    const totalTime = decomposition.subtasks.reduce(
-      (sum, t) => sum + t.estimatedTime,
-      0
-    );
-
-    // 风险评估
-    const maxRisk = Math.max(
-      ...decomposition.subtasks.map(t => this.riskLevelToNumber(t.riskLevel))
-    );
-
-    return {
-      id: `plan_${Date.now()}`,
-      description: userInput,
-      tasks: decomposition.subtasks,
-      parallelGroups,
-      estimatedTotalTime: totalTime,
-      riskAssessment: {
-        level: this.numberToRiskLevel(maxRisk),
-        factors: decomposition.subtasks
-          .filter(t => t.riskLevel !== RiskLevel.LOW)
-          .map(t => `${t.id}: ${t.riskLevel}`),
-        mitigations: [],
-      },
-      successCriteria: ['所有必需任务成功完成'],
-    };
-  }
-
-  /**
-   * 生成澄清计划
-   */
-  private generateClarificationPlan(
-    userInput: string,
-    assessment: any
-  ): ExecutionPlan {
-    return {
-      id: `plan_${Date.now()}`,
-      description: `需要澄清: ${userInput}`,
+      id: `plan_exp_${Date.now()}`,
+      description: `经验驱动: ${userInput.slice(0, 50)}`,
       tasks: [{
-        id: 'clarify',
-        description: '向用户询问更多信息',
-        skillName: 'ask_user',
-        params: { questions: assessment.helpQuestions },
+        id: 'task_1',
+        description: userInput,
+        skillName: experience.tool,
+        params: experience.params || {},
         dependencies: [],
         riskLevel: RiskLevel.LOW,
-        estimatedTime: 30,
+        estimatedTime: 10,
         isOptional: false,
       }],
-      parallelGroups: [['clarify']],
-      estimatedTotalTime: 30,
-      riskAssessment: {
-        level: RiskLevel.LOW,
-        factors: [],
-        mitigations: [],
-      },
-      successCriteria: ['用户提供了足够的信息'],
+      parallelGroups: [['task_1']],
+      estimatedTotalTime: 10,
+      riskAssessment: { level: RiskLevel.LOW, factors: [], mitigations: [] },
+      successCriteria: ['任务执行成功'],
+      fromExperience: true,
+    };
+  }
+
+  /**
+   * 创建对话计划
+   */
+  private createChatPlan(userInput: string, decision: LLMDecision): ExecutionPlan {
+    return {
+      id: `plan_chat_${Date.now()}`,
+      description: `对话回复: ${userInput.slice(0, 50)}`,
+      tasks: [{
+        id: 'chat_response',
+        description: '直接回复用户',
+        skillName: 'chat',
+        params: { response: decision.response || '你好！有什么我可以帮助你的吗？' },
+        dependencies: [],
+        riskLevel: RiskLevel.LOW,
+        estimatedTime: 1,
+        isOptional: false,
+      }],
+      parallelGroups: [['chat_response']],
+      estimatedTotalTime: 1,
+      riskAssessment: { level: RiskLevel.LOW, factors: [], mitigations: [] },
+      successCriteria: ['用户得到回复'],
+    };
+  }
+
+  /**
+   * 创建简单任务计划
+   */
+  private createSimpleTaskPlan(userInput: string, decision: LLMDecision): ExecutionPlan {
+    const toolName = decision.tool || 'unknown';
+    const params = decision.params || {};
+
+    // 验证工具
+    const skill = this.skillRegistry.get(toolName);
+    const hasTool = this.toolRegistry.has(toolName);
+
+    if (!skill && !hasTool) {
+      return this.createChatPlan(userInput, {
+        type: 'chat',
+        response: `我理解你想执行这个任务，但没有找到合适的工具。你可以换一种方式描述吗？`,
+        reasoning: `工具 ${toolName} 不存在`
+      });
+    }
+
+    return {
+      id: `plan_simple_${Date.now()}`,
+      description: `简单任务: ${userInput.slice(0, 50)}`,
+      tasks: [{
+        id: 'task_1',
+        description: userInput,
+        skillName: toolName,
+        params: params,
+        dependencies: [],
+        riskLevel: this.assessRisk(toolName, params),
+        estimatedTime: 10,
+        isOptional: false,
+      }],
+      parallelGroups: [['task_1']],
+      estimatedTotalTime: 10,
+      riskAssessment: { level: this.assessRisk(toolName, params), factors: [], mitigations: [] },
+      successCriteria: ['任务执行成功'],
+    };
+  }
+
+  /**
+   * 创建复杂任务计划
+   */
+  private createComplexTaskPlan(userInput: string, decision: LLMDecision): ExecutionPlan {
+    const steps = decision.steps || [];
+
+    if (steps.length === 0) {
+      return this.createChatPlan(userInput, {
+        type: 'chat',
+        response: '我理解这是一个复杂的任务，但需要更多信息来规划。你能详细描述一下吗？',
+      });
+    }
+
+    const tasks: SubTask[] = steps.map((step, index) => ({
+      id: step.id || `task_${index + 1}`,
+      description: step.description,
+      skillName: step.tool,
+      params: step.params || {},
+      dependencies: step.dependencies || [],
+      riskLevel: this.assessRisk(step.tool, step.params),
+      estimatedTime: 30,
+      isOptional: false,
+    }));
+
+    // 验证工具
+    const validTasks: SubTask[] = [];
+    for (const task of tasks) {
+      const skill = this.skillRegistry.get(task.skillName);
+      const hasTool = this.toolRegistry.has(task.skillName);
+      if (skill || hasTool) {
+        validTasks.push(task);
+      } else {
+        logger.warn(`[思考] 工具不存在: ${task.skillName}`);
+      }
+    }
+
+    if (validTasks.length === 0) {
+      return this.createChatPlan(userInput, {
+        type: 'chat',
+        response: `我没有找到合适的工具来完成这个任务。请换一种方式描述？`,
+      });
+    }
+
+    const parallelGroups = this.computeParallelGroups(validTasks);
+    const totalTime = validTasks.reduce((sum, t) => sum + t.estimatedTime, 0);
+    const maxRisk = Math.max(...validTasks.map(t => this.riskLevelToNumber(t.riskLevel)));
+
+    return {
+      id: `plan_complex_${Date.now()}`,
+      description: `复杂任务: ${userInput.slice(0, 50)}`,
+      tasks: validTasks,
+      parallelGroups,
+      estimatedTotalTime: totalTime,
+      riskAssessment: { level: this.numberToRiskLevel(maxRisk), factors: [], mitigations: [] },
+      successCriteria: ['所有步骤执行成功'],
     };
   }
 
@@ -565,158 +366,76 @@ ${tools}
   private getAvailableTools(): string {
     const skills = this.skillRegistry.getAll();
     const tools = this.toolRegistry.getAll();
+    const lines: string[] = [];
 
-    const skillDesc = skills.map(s => {
-      let desc = `- ${s.name}: ${s.description}`;
-      if (s.inputSchema?.properties) {
-        const params = Object.keys(s.inputSchema.properties).join(', ');
-        desc += ` [参数: ${params}]`;
-      }
-      return desc;
-    }).join('\n');
-
-    const toolDesc = tools.map(t => `- ${t.name}: ${t.description}`).join('\n');
-
-    return `技能:\n${skillDesc}\n\n工具:\n${toolDesc}`;
-  }
-
-  /**
-   * 查找替代工具
-   */
-  private async findAlternativeTool(task: SubTask): Promise<string | null> {
-    const skills = this.skillRegistry.getAll();
-    
-    // 根据描述相似度查找
     for (const skill of skills) {
-      if (skill.description.toLowerCase().includes(task.description.toLowerCase().slice(0, 20))) {
-        return skill.name;
+      // 特殊处理browser-automation
+      if (skill.name === 'browser-automation') {
+        lines.push(`- browser-automation: 浏览器自动化，支持多种操作
+  用法示例: {"tool":"browser-automation","params":{"action":"bilibili_search","keyword":"搜索词"}}
+  可用action: bilibili_search(搜索B站), open(打开网页), screenshot(截图)`);
+        continue;
       }
+      
+      const caps = skill.capabilities?.length > 0 ? ` (${skill.capabilities.slice(0, 3).join(', ')})` : '';
+      lines.push(`- ${skill.name}: ${skill.description.slice(0, 60)}${caps}`);
     }
-    
-    return null;
+
+    for (const tool of tools) {
+      lines.push(`- ${tool.name}: ${tool.description.slice(0, 60)}`);
+    }
+
+    return lines.join('\n');
   }
 
   /**
-   * 评估风险等级
+   * 评估风险
    */
-  private assessRiskLevel(
-    toolName: string,
-    params: Record<string, unknown>
-  ): RiskLevel {
-    // 高风险操作
-    const highRiskOps = ['delete', 'remove', 'format', 'drop', 'truncate'];
-    for (const op of highRiskOps) {
-      if (toolName.toLowerCase().includes(op) || 
-          JSON.stringify(params).toLowerCase().includes(op)) {
-        return RiskLevel.HIGH;
-      }
-    }
+  private assessRisk(toolName: string, params: Record<string, unknown>): RiskLevel {
+    const highRisk = ['delete', 'remove', 'drop', 'format', 'shutdown'];
+    const mediumRisk = ['write', 'create', 'modify', 'execute'];
 
-    // 中风险操作
-    const mediumRiskOps = ['write', 'update', 'modify', 'change'];
-    for (const op of mediumRiskOps) {
-      if (toolName.toLowerCase().includes(op)) {
-        return RiskLevel.MEDIUM;
-      }
-    }
+    const toolLower = toolName.toLowerCase();
+    const paramsStr = JSON.stringify(params).toLowerCase();
 
+    for (const p of highRisk) {
+      if (toolLower.includes(p) || paramsStr.includes(p)) return RiskLevel.HIGH;
+    }
+    for (const p of mediumRisk) {
+      if (toolLower.includes(p) || paramsStr.includes(p)) return RiskLevel.MEDIUM;
+    }
     return RiskLevel.LOW;
-  }
-
-  /**
-   * 解析风险等级字符串
-   */
-  private parseRiskLevel(level: string | undefined): RiskLevel {
-    switch (level?.toLowerCase()) {
-      case 'low': return RiskLevel.LOW;
-      case 'medium': return RiskLevel.MEDIUM;
-      case 'high': return RiskLevel.HIGH;
-      case 'critical': return RiskLevel.CRITICAL;
-      default: return RiskLevel.LOW;
-    }
-  }
-
-  /**
-   * 拓扑排序
-   */
-  private topologicalSort(
-    tasks: SubTask[],
-    dependencies: Map<string, string[]>
-  ): string[] {
-    const result: string[] = [];
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
-
-    const visit = (taskId: string) => {
-      if (visited.has(taskId)) return;
-      if (visiting.has(taskId)) {
-        // 循环依赖，跳过
-        return;
-      }
-
-      visiting.add(taskId);
-
-      const deps = dependencies.get(taskId) || [];
-      for (const dep of deps) {
-        visit(dep);
-      }
-
-      visiting.delete(taskId);
-      visited.add(taskId);
-      result.push(taskId);
-    };
-
-    for (const task of tasks) {
-      visit(task.id);
-    }
-
-    return result;
   }
 
   /**
    * 计算并行组
    */
-  private computeParallelGroups(
-    tasks: SubTask[],
-    dependencies: Map<string, string[]>
-  ): string[][] {
+  private computeParallelGroups(tasks: SubTask[]): string[][] {
     const groups: string[][] = [];
-    const assigned = new Set<string>();
+    const completed = new Set<string>();
+    const remaining = new Set(tasks.map(t => t.id));
 
-    // 按依赖层级分组
-    while (assigned.size < tasks.length) {
-      const group: string[] = [];
-      
-      for (const task of tasks) {
-        if (assigned.has(task.id)) continue;
-        
-        const deps = dependencies.get(task.id) || [];
-        const allDepsAssigned = deps.every(d => assigned.has(d));
-        
-        if (allDepsAssigned) {
-          group.push(task.id);
+    while (remaining.size > 0) {
+      const ready: string[] = [];
+      for (const taskId of remaining) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task && task.dependencies.every(dep => completed.has(dep))) {
+          ready.push(taskId);
         }
       }
-      
-      if (group.length === 0) {
-        // 避免死循环，将剩余任务加入
-        for (const task of tasks) {
-          if (!assigned.has(task.id)) {
-            group.push(task.id);
-          }
-        }
+      if (ready.length === 0) {
+        const taskId = remaining.values().next().value;
+        if (taskId) ready.push(taskId);
       }
-      
-      groups.push(group);
-      group.forEach(id => assigned.add(id));
+      groups.push(ready);
+      ready.forEach(id => {
+        completed.add(id);
+        remaining.delete(id);
+      });
     }
-
     return groups;
   }
 
-  /**
-   * 风险等级转数字
-   */
   private riskLevelToNumber(level: RiskLevel): number {
     switch (level) {
       case RiskLevel.LOW: return 1;
@@ -727,9 +446,6 @@ ${tools}
     }
   }
 
-  /**
-   * 数字转风险等级
-   */
   private numberToRiskLevel(num: number): RiskLevel {
     if (num >= 4) return RiskLevel.CRITICAL;
     if (num >= 3) return RiskLevel.HIGH;

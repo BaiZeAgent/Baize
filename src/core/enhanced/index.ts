@@ -20,10 +20,8 @@ export type {
 
 export type { 
   SubTask, 
-  ExecutionPlan, 
-  ReasoningResult, 
-  ReasoningStep, 
-  DecompositionResult 
+  ExecutionPlan,
+  TaskType
 } from './thinking';
 
 export type { 
@@ -61,14 +59,6 @@ const logger = getLogger('core:enhanced');
 
 /**
  * 增强版白泽核心
- * 
- * 使用方法：
- * ```typescript
- * import { EnhancedBaizeCore } from './enhanced';
- * 
- * const core = new EnhancedBaizeCore();
- * const result = await core.process('帮我分析这个数据文件');
- * ```
  */
 export class EnhancedBaizeCore {
   private metacognition: MetacognitionEngine;
@@ -97,11 +87,11 @@ export class EnhancedBaizeCore {
   ): Promise<import('./execution').ExecutionResult> {
     const startTime = Date.now();
     
-    // 1. 思考和规划（包含能力评估）
+    // 1. 思考和规划
     logger.info(`[增强核心] 开始思考: ${userInput.slice(0, 50)}...`);
     const plan = await this.thinking.think(userInput);
 
-    // 2. 执行（传递计划，避免重复评估）
+    // 2. 执行
     logger.info(`[增强核心] 开始执行计划: ${plan.id}, 任务数: ${plan.tasks.length}`);
     const result = await this.executor.execute(userInput, {
       sessionId: context?.sessionId || 'default',
@@ -109,7 +99,7 @@ export class EnhancedBaizeCore {
       workspaceDir: context?.workspaceDir || process.cwd(),
       userInput,
       history: context?.history,
-    }, plan);  // 传递计划
+    }, plan);
 
     return result;
   }
