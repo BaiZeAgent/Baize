@@ -37,6 +37,7 @@ export type ThinkingStage =
   | 'decide'        // 决策中
   | 'tool_call'     // 调用工具
   | 'tool_selection' // 选择工具
+  | 'quick_reply'   // 快速回复
   | 'reply'         // 直接回复
   | 'ask_missing'   // 询问缺失信息
   | 'clarify'       // 澄清意图
@@ -49,7 +50,10 @@ export type ThinkingStage =
   | 'intent_understood'  // 意图理解完成
   | 'boundary_check'     // 边界检查
   | 'planning'           // 规划中
-  | 'plan_created';      // 计划创建完成
+  | 'plan_created'       // 计划创建完成
+  | 'task_analysis'      // 任务分析
+  | 'analysis_complete'  // 分析完成
+  | 'strategy_selected';  // 策略选择完成
 
 /** 思考事件数据 */
 export interface ThinkingEventData {

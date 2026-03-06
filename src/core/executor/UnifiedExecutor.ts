@@ -250,6 +250,44 @@ export class UnifiedExecutor {
   ): AsyncGenerator<StreamEvent> {
     const startTime = Date.now();
     
+    // ═══════════════════════════════════════════════════════════════
+    // 快速分类：先用小模型判断是简单聊天还是复杂任务
+    // 这一步只需要 ~200ms，避免对简单任务做完整分析
+    // ═══════════════════════════════════════════════════════════════
+    
+    const quickClass = await this.quickClassify(userInput);
+    
+    logger.info(`[统一执行器] 快速分类: ${quickClass.type} (${quickClass.confidence.toFixed(2)})`);
+    
+    // 如果是简单聊天且置信度高，直接回复
+    if (quickClass.type === 'simple' && quickClass.confidence > 0.7) {
+      yield {
+        type: 'thinking',
+        timestamp: Date.now(),
+        data: { stage: 'quick_reply' as any, message: '简单对话，直接回复' }
+      };
+      
+      const response = await this.generateDirectResponse(userInput);
+      
+      yield {
+        type: 'content',
+        timestamp: Date.now(),
+        data: { text: response, isDelta: false }
+      };
+      
+      yield {
+        type: 'done',
+        timestamp: Date.now(),
+        data: { duration: Date.now() - startTime }
+      };
+      
+      return;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 复杂任务：走完整分析流程
+    // ═══════════════════════════════════════════════════════════════
+    
     yield {
       type: 'thinking',
       timestamp: Date.now(),
@@ -273,9 +311,7 @@ export class UnifiedExecutor {
         data: { stage: 'strategy_selected' as any, message: `策略: ${strategy.type}` }
       };
       
-      // ═══════════════════════════════════════════════════════════════
       // 对于 direct 策略或简单任务类型，直接用 LLM 回复，不调用工具
-      // ═══════════════════════════════════════════════════════════════
       if (strategy.type === 'direct' || ['greeting', 'thanks', 'chat'].includes(analysis.taskType)) {
         const response = await this.generateDirectResponse(userInput);
         
@@ -360,6 +396,94 @@ export class UnifiedExecutor {
         data: { code: 'EXECUTION_ERROR', message: String(error) }
       };
     }
+  }
+  
+  /**
+   * 快速分类 - 用小模型判断任务类型
+   * 目标：在 ~200ms 内完成分类，避免对简单任务做完整分析
+   */
+  private async quickClassify(userInput: string): Promise<{ type: 'simple' | 'complex'; confidence: number; reason?: string }> {
+    // 1. 先用规则快速判断（0ms）
+    const ruleResult = this.quickClassifyByRules(userInput);
+    if (ruleResult.confidence > 0.9) {
+      return ruleResult;
+    }
+    
+    // 2. 用 LLM 快速分类（~200ms）
+    try {
+      const response = await this.llm.chat([
+        {
+          role: 'system',
+          content: `你是任务分类器。判断用户输入是"简单"还是"复杂"。
+
+简单：问候、闲聊、问答、情感交流，不需要调用工具
+复杂：需要执行操作、调用工具、多步骤任务
+
+只输出JSON：{"type":"simple或complex","confidence":0.0-1.0}`
+        },
+        { role: 'user', content: userInput }
+      ], { temperature: 0.1, maxTokens: 50 });
+      
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          type: parsed.type === 'complex' ? 'complex' : 'simple',
+          confidence: Math.min(1, Math.max(0, parsed.confidence || 0.5))
+        };
+      }
+    } catch (error) {
+      logger.debug(`[统一执行器] 快速分类失败: ${error}`);
+    }
+    
+    // 默认：简单
+    return { type: 'simple', confidence: 0.5 };
+  }
+  
+  /**
+   * 规则快速分类 - 0ms
+   */
+  private quickClassifyByRules(userInput: string): { type: 'simple' | 'complex'; confidence: number; reason?: string } {
+    const input = userInput.toLowerCase().trim();
+    const len = input.length;
+    
+    // 极短问候
+    const greetings = ['你好', '您好', 'hi', 'hello', 'hey', '嗨', '哈喽', '早上好', '下午好', '晚上好'];
+    if (len < 15 && greetings.some(g => input.includes(g))) {
+      return { type: 'simple', confidence: 0.95, reason: '简单问候' };
+    }
+    
+    // 感谢
+    const thanks = ['谢谢', '感谢', 'thanks', 'thank you', '多谢'];
+    if (len < 20 && thanks.some(t => input.includes(t))) {
+      return { type: 'simple', confidence: 0.95, reason: '感谢' };
+    }
+    
+    // 明确的工具关键词
+    const toolKeywords = [
+      '读取文件', '写入文件', '创建文件', '删除文件', '编辑文件',
+      '搜索', '打开浏览器', '点击', '截图', '填表',
+      '执行命令', '运行脚本', '安装',
+      '查询天气', '获取时间', '计算'
+    ];
+    
+    if (toolKeywords.some(k => input.includes(k))) {
+      return { type: 'complex', confidence: 0.85, reason: '包含工具关键词' };
+    }
+    
+    // 明确的聊天关键词
+    const chatKeywords = [
+      '你好吗', '怎么样', '你觉得', '你认为',
+      '什么是', '为什么', '怎么理解', '解释一下',
+      '帮我写', '帮我改', '帮我翻译'
+    ];
+    
+    if (chatKeywords.some(k => input.includes(k))) {
+      return { type: 'simple', confidence: 0.8, reason: '聊天/问答' };
+    }
+    
+    // 无法确定
+    return { type: 'simple', confidence: 0.5, reason: '无法确定' };
   }
   
   private selectStrategy(analysis: TaskAnalysis): ExecutionStrategy {
