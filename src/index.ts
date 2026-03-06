@@ -48,6 +48,60 @@ export * from './core/router';
 export * from './core/context';
 export * from './core/recovery';
 
+// ═══════════════════════════════════════════════════════════════
+// 增强模块 - 核心优化
+// ═══════════════════════════════════════════════════════════════
+export {
+  // 元认知层
+  MetacognitionEngine,
+  getMetacognition,
+  resetMetacognition,
+  // 思考层
+  ThinkingEngine,
+  getThinkingEngine,
+  resetThinkingEngine,
+  // 执行层
+  EnhancedExecutor,
+  getEnhancedExecutor,
+  resetEnhancedExecutor,
+  // 恢复层
+  RecoveryEngine,
+  getRecoveryEngine,
+  resetRecoveryEngine,
+  // 统一入口
+  EnhancedBaizeCore,
+  getEnhancedCore,
+  resetEnhancedCore,
+} from './core/enhanced';
+
+// 增强模块类型导出
+export type {
+  // 元认知层类型
+  CapabilityAssessment,
+  ComplexityAnalysis,
+  SelfReflection,
+  CapabilityBoundary,
+  // 思考层类型
+  SubTask,
+  ExecutionPlan,
+  ReasoningResult,
+  ReasoningStep,
+  DecompositionResult,
+  // 执行层类型
+  ExecutionContext,
+  ExecutionHooks,
+  TaskResult,
+  ExecutionProgress,
+  // 恢复层类型
+  ErrorRootCause,
+  ErrorType,
+  ErrorCategory,
+  RecoveryStrategy,
+  StrategyType,
+  RecoveryResult,
+  RecoveryExperience,
+} from './core/enhanced';
+
 // 安全层
 export * from './security';
 

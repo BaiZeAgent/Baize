@@ -1,16 +1,19 @@
 {
   "name": "baize",
-  "version": "3.1.1",
-  "description": "白泽3.0 - JARVIS级AI助手",
+  "version": "3.2.0",
+  "description": "白泽3.2 - JARVIS级AI助手（增强版）",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "baize": "dist/cli/bootstrap.js"
+    "baize": "dist/cli/bootstrap.js",
+    "baize-enhanced": "dist/cli/enhanced.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/cli/bootstrap.js",
+    "start:enhanced": "node dist/cli/enhanced.js",
     "dev": "ts-node src/cli/bootstrap.ts",
+    "dev:enhanced": "ts-node src/cli/enhanced.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -22,7 +25,9 @@
     "ai",
     "assistant",
     "jarvis",
-    "llm"
+    "llm",
+    "enhanced",
+    "metacognition"
   ],
   "author": "baize",
   "license": "MIT",
