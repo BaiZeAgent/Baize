@@ -324,12 +324,30 @@ export class EnhancedExecutor {
         );
 
         if (result.success) {
-          // 成功
-          result.retries = attemptCount - 1;
-          if (context.hooks?.onTaskComplete) {
-            await context.hooks.onTaskComplete(task, result);
+          // 检查点：LLM判断结果是否符合预期
+          const checkpoint = await this.checkpoint(task, result, context);
+          
+          if (checkpoint.status === 'good') {
+            // 结果符合预期
+            result.retries = attemptCount - 1;
+            if (context.hooks?.onTaskComplete) {
+              await context.hooks.onTaskComplete(task, result);
+            }
+            return result;
           }
-          return result;
+          
+          if (checkpoint.status === 'adjust' && checkpoint.adjustedParams) {
+            // 需要调整参数重试
+            logger.info(`[检查点] 调整参数: ${checkpoint.reason}`);
+            currentParams = { ...currentParams, ...checkpoint.adjustedParams };
+            continue;
+          }
+          
+          if (checkpoint.status === 'upgrade') {
+            // 需要升级方案
+            logger.info(`[检查点] 升级方案: ${checkpoint.reason}`);
+            return this.upgradeAndRetry(task, plan, context, state, checkpoint.reason || '结果不符合预期');
+          }
         }
 
         // 失败，尝试恢复
@@ -644,6 +662,134 @@ ${failCount > 0 ? `失败任务:\n${state.failedTasks.join(', ')}` : ''}
         return `任务部分完成。成功 ${successCount} 个，失败 ${failCount} 个。`;
       }
     }
+  }
+
+  /**
+   * 检查点：LLM判断执行结果是否符合预期
+   */
+  private async checkpoint(
+    task: SubTask,
+    result: TaskResult,
+    context: ExecutionContext
+  ): Promise<{ status: 'good' | 'adjust' | 'upgrade'; reason?: string; adjustedParams?: Record<string, unknown> }> {
+    // 简单任务不需要检查点
+    if (task.skillName === 'chat' || task.skillName === 'time' || task.skillName === 'calculator') {
+      return { status: 'good' };
+    }
+
+    // 有明确有效数据的认为成功
+    if (result.data && Object.keys(result.data).length > 0) {
+      // 检查数据是否有效
+      if (result.data.firstVideo) {
+        const v = result.data.firstVideo as any;
+        if (v.link && v.link !== 'undefined') {
+          return { status: 'good' };
+        }
+      }
+      if (result.data.results) {
+        const results = result.data.results as any[];
+        if (results.length > 0 && results[0].link && results[0].link !== 'undefined') {
+          return { status: 'good' };
+        }
+      }
+    }
+
+    // 让LLM判断
+    try {
+      const response = await this.llm.chat([
+        {
+          role: 'system',
+          content: `你是执行监控器。快速判断执行结果是否符合预期。
+
+输出格式（必须是JSON）：
+{"status":"good" | "adjust" | "upgrade","reason":"原因","adjustedParams":{}}
+
+判断标准：
+- good: 结果符合预期
+- adjust: 方向对但参数需要微调
+- upgrade: 方向错了，需要换方案`
+        },
+        {
+          role: 'user',
+          content: `任务: ${task.description}
+工具: ${task.skillName}
+结果: ${JSON.stringify(result.data).slice(0, 300)}
+成功: ${result.success}
+
+这个结果符合预期吗？`
+        }
+      ], { temperature: 0.1, maxTokens: 200 });
+
+      const jsonMatch = response.content.match(/{[sS]*}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      logger.debug(`[检查点] LLM判断失败: ${e}`);
+    }
+
+    // 默认认为成功
+    return { status: 'good' };
+  }
+
+  /**
+   * 升级方案并重试
+   */
+  private async upgradeAndRetry(
+    task: SubTask,
+    plan: ExecutionPlan,
+    context: ExecutionContext,
+    state: ExecutionState,
+    reason: string
+  ): Promise<TaskResult> {
+    logger.info(`[升级] 原因: ${reason}`);
+
+    // 记录失败经验
+    this.memory.recordExperience({
+      task: context.userInput,
+      tool: task.skillName,
+      params: task.params,
+      success: false,
+      context: this.extractContext(context.userInput),
+      errorMessage: reason,
+      timestamp: Date.now(),
+    });
+
+    // 让思考引擎重新规划
+    const newPlan = await this.thinkingEngine.think(context.userInput, {
+      failedTool: task.skillName,
+      failureReason: reason,
+    });
+
+    // 如果新计划不同，执行新计划
+    if (newPlan.tasks.length > 0 && newPlan.tasks[0].skillName !== task.skillName) {
+      logger.info(`[升级] 新方案: ${newPlan.tasks[0].skillName}`);
+      return this.executeTaskWithRetry(newPlan.tasks[0], newPlan, context, state);
+    }
+
+    // 无法升级
+    return {
+      taskId: task.id,
+      success: false,
+      data: {},
+      message: '',
+      error: `无法找到更好的方案: ${reason}`,
+      duration: 0,
+      retries: state.retries.get(task.id) || 0,
+    };
+  }
+
+  /**
+   * 提取上下文关键词
+   */
+  private extractContext(text: string): string {
+    const keywords: string[] = [];
+    if (text.includes('B站') || text.includes('bilibili')) keywords.push('B站');
+    if (text.includes('天气')) keywords.push('天气');
+    if (text.includes('文件')) keywords.push('文件');
+    if (text.includes('搜索')) keywords.push('搜索');
+    if (text.includes('时间') || text.includes('几点')) keywords.push('时间');
+    return keywords.join(',');
   }
 
   /**
