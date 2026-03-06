@@ -267,8 +267,8 @@ ${failedToolsHint}${contextHint}
    * 创建简单任务计划
    */
   private createSimpleTaskPlan(userInput: string, decision: LLMDecision): ExecutionPlan {
-    const toolName = decision.tool || 'unknown';
-    const params = decision.params || {};
+    let toolName = decision.tool || 'unknown';
+    let params = decision.params || {};
 
     // 验证工具
     const skill = this.skillRegistry.get(toolName);
@@ -280,6 +280,11 @@ ${failedToolsHint}${contextHint}
         response: `我理解你想执行这个任务，但没有找到合适的工具。你可以换一种方式描述吗？`,
         reasoning: `工具 ${toolName} 不存在`
       });
+    }
+
+    // 浏览器自动化使用task参数格式
+    if (toolName === 'browser-automation') {
+      params = { task: userInput };
     }
 
     return {

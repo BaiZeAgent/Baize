@@ -595,40 +595,8 @@ export class EnhancedExecutor {
     const successCount = state.completedTasks.filter(r => r.success).length;
     const failCount = state.failedTasks.length;
 
-    // 检查是否有特殊数据需要展示（真实数据优先）
+    // 获取最后一个任务的结果数据
     const lastResult = state.completedTasks[state.completedTasks.length - 1];
-    
-    // 根据用户请求决定返回格式
-    const wantMultiple = context.userInput.includes('前') || 
-                         context.userInput.includes('列表') || 
-                         context.userInput.includes('列出') ||
-                         context.userInput.includes('几个');
-    
-    // 如果用户要求多个结果，优先返回列表
-    if (wantMultiple && lastResult?.data?.results) {
-      const results = lastResult.data.results as any[];
-      if (results.length > 0 && results[0].link && results[0].link !== 'undefined') {
-        let msg = `找到了 ${results.length} 个结果：
-`;
-        results.forEach((v, i) => {
-          if (v.link && v.link !== 'undefined') {
-            msg += `${i + 1}. ${v.title}
-   链接: ${v.link}
-   播放: ${v.playCount || '未知'}
-`;
-          }
-        });
-        return msg;
-      }
-    }
-    
-    // 默认返回第一个结果
-    if (lastResult?.data?.firstVideo) {
-      const v = lastResult.data.firstVideo as any;
-      if (v.link && v.link !== 'undefined') {
-        return `找到了！第一个视频是「${v.title}」，链接是 ${v.link}，播放量 ${v.playCount}。`;
-      }
-    }
 
     const messages: LLMMessage[] = [
       {
@@ -636,8 +604,8 @@ export class EnhancedExecutor {
         content: `你是一个智能助手。根据任务执行结果，给用户一个友好的回复。
 
 ## 规则
-1. 总结执行结果
-2. 如果有失败，说明原因和已采取的措施
+1. 如果有数据结果，直接展示给用户（标题、链接等）
+2. 数据必须是真实的，来自执行结果，不要编造
 3. 使用自然语言，像朋友一样交流
 4. 不要过于技术化`,
       },
@@ -645,19 +613,14 @@ export class EnhancedExecutor {
         role: 'user',
         content: `用户请求: ${context.userInput}
 
-执行计划: ${plan.description}
-总任务数: ${plan.tasks.length}
-成功: ${successCount}
-失败: ${failCount}
-
 执行结果:
 ${state.completedTasks.map(r => 
-  `- ${r.taskId}: ${r.success ? '成功' : '失败'} - ${r.message.slice(0, 100)}`
+  `- ${r.taskId}: ${r.success ? '成功' : '失败'}\n  消息: ${r.message}\n  数据: ${JSON.stringify(r.data || {})}`
 ).join('\n')}
 
-${failCount > 0 ? `失败任务:\n${state.failedTasks.join(', ')}` : ''}
+${lastResult?.data ? `\n关键数据:\n${JSON.stringify(lastResult.data, null, 2)}` : ''}
 
-请给用户一个回复。`,
+请根据执行结果给用户回复。如果有数据，直接展示真实数据。`,
       },
     ];
 

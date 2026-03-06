@@ -26,12 +26,11 @@ try {
 const { 
   task,           // 任务描述
   url,            // 起始URL（可选）
-  maxSteps = 20,  // 最大步数
-  timeout = 60000 // 总超时
+  maxSteps = 15,  // 最大步数
+  timeout = 90000 // 总超时
 } = input;
 
 // LLM配置
-const LLM_API = process.env.ALIYUN_API_KEY ? 'aliyun' : 'openai';
 const LLM_KEY = process.env.ALIYUN_API_KEY || process.env.OPENAI_API_KEY;
 const LLM_URL = process.env.ALIYUN_API_KEY 
   ? 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
@@ -99,28 +98,12 @@ async function getPageState() {
   
   // 获取页面关键信息
   const pageInfo = await page.evaluate(() => {
-    // 提取可见文本
-    const getVisibleText = (el, depth = 0) => {
-      if (depth > 3) return '';
-      if (el.style?.display === 'none' || el.style?.visibility === 'hidden') return '';
-      
-      let text = '';
-      for (const child of el.childNodes) {
-        if (child.nodeType === 3) { // 文本节点
-          text += child.textContent + ' ';
-        } else if (child.nodeType === 1) { // 元素节点
-          text += getVisibleText(child, depth + 1) + ' ';
-        }
-      }
-      return text;
-    };
-    
     // 提取可交互元素
     const interactiveElements = [];
     const selectors = ['a', 'button', 'input', 'textarea', 'select', '[onclick]', '[role="button"]'];
     
     selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach((el, i) => {
+      document.querySelectorAll(sel).forEach((el) => {
         const text = (el.textContent || el.value || el.placeholder || '').trim().slice(0, 50);
         const type = el.tagName.toLowerCase();
         const id = el.id;
@@ -139,9 +122,12 @@ async function getPageState() {
       });
     });
     
+    // 提取页面文本
+    const bodyText = document.body.innerText.slice(0, 2000);
+    
     return {
-      visibleText: getVisibleText(document.body).slice(0, 3000),
-      interactiveElements: interactiveElements.slice(0, 50)
+      bodyText,
+      interactiveElements: interactiveElements.slice(0, 30)
     };
   });
   
@@ -156,65 +142,64 @@ async function getPageState() {
  * LLM决策下一步操作
  */
 async function decideNextAction(task, pageState, history) {
-  const systemPrompt = `你是一个浏览器操作Agent。根据当前页面状态和任务目标，决定下一步操作。
+  const systemPrompt = `你是浏览器操作Agent。根据页面状态决定下一步操作。
 
 ## 可用操作
 
-1. **navigate**: 导航到URL
+1. navigate - 导航到URL（搜索任务推荐）
    {"action": "navigate", "url": "https://..."}
 
-2. **click**: 点击元素
-   {"action": "click", "selector": "button.submit" 或 "text:登录"}
+2. click - 点击元素
+   {"action": "click", "selector": "text:按钮文字"}
 
-3. **fill**: 填写输入框
-   {"action": "fill", "selector": "input.search", "value": "搜索内容"}
+3. fill - 填写输入框
+   {"action": "fill", "selector": "input[type=text]", "value": "内容"}
 
-4. **scroll**: 滚动页面
+4. scroll - 滚动页面
    {"action": "scroll", "direction": "down"}
 
-5. **wait**: 等待
+5. wait - 等待
    {"action": "wait", "ms": 2000}
 
-6. **extract**: 提取信息（任务完成时）
-   {"action": "extract", "data": {...}, "message": "提取到的信息"}
+6. extract - 提取数据
+   {"action": "extract", "data": {...}}
 
-7. **done**: 任务完成
-   {"action": "done", "message": "任务完成说明"}
+7. done - 任务完成
+   {"action": "done", "message": "完成说明"}
 
-## 选择器格式
+## 搜索URL模板
 
-- CSS选择器: "button.submit", "input[name='q']"
-- 文本选择器: "text:登录", "text:搜索"
-- 组合选择器: "button >> text:提交"
+- B站: https://search.bilibili.com/all?keyword=关键词
+- 百度: https://www.baidu.com/s?wd=关键词
+- Google: https://www.google.com/search?q=关键词
+- 小红书: https://www.xiaohongshu.com/search_result?keyword=关键词
 
 ## 规则
 
-1. 仔细观察页面上的可交互元素
-2. 选择最合适的操作完成目标
-3. 如果遇到问题，尝试其他方式
-4. 任务完成后使用 extract 或 done
-5. 必须输出有效的JSON`;
+1. 搜索任务直接用URL导航，不要在首页找搜索框
+2. 观察页面元素，选择正确选择器
+3. 任务完成时用extract或done
+4. 输出JSON格式`;
 
-  const userPrompt = `## 任务目标
+  const userPrompt = `## 任务
 ${task}
 
-## 当前页面状态
+## 当前页面
 URL: ${pageState.url}
 标题: ${pageState.title}
 
-## 页面可见内容
-${pageState.visibleText}
+## 页面内容
+${pageState.bodyText}
 
-## 可交互元素（前20个）
-${pageState.interactiveElements.slice(0, 20).map((el, i) => 
+## 可交互元素
+${pageState.interactiveElements.slice(0, 15).map((el, i) => 
   `${i + 1}. [${el.type}] "${el.text}" ${el.id ? '#' + el.id : ''} ${el.class ? '.' + el.class : ''}`
 ).join('\n')}
 
 ## 已执行操作
 ${history.map((h, i) => `${i + 1}. ${h.action}: ${h.result}`).join('\n') || '无'}
 
-## 下一步操作
-请输出JSON格式的操作：`;
+下一步操作（JSON）：`;
 
   const response = await callLLM([
     { role: 'system', content: systemPrompt },
@@ -243,7 +228,7 @@ async function executeAction(action) {
   try {
     switch (action.action) {
       case 'navigate':
-        await page.goto(action.url, { waitUntil: 'domcontentloaded' });
+        await page.goto(action.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForTimeout(2000);
         result.result = `导航到: ${action.url}`;
         result.success = true;
@@ -258,7 +243,7 @@ async function executeAction(action) {
         
       case 'fill':
         await page.fill(action.selector, action.value);
-        result.result = `填写: ${action.selector} = "${action.value}"`;
+        result.result = `填写: ${action.value}`;
         result.success = true;
         break;
         
@@ -280,10 +265,9 @@ async function executeAction(action) {
         break;
         
       case 'extract':
-        result.result = `提取数据: ${JSON.stringify(action.data)}`;
+        result.result = `提取数据`;
         result.success = true;
         result.data = action.data;
-        result.message = action.message;
         break;
         
       case 'done':
@@ -297,11 +281,78 @@ async function executeAction(action) {
         result.success = false;
     }
   } catch (error) {
-    result.result = `执行失败: ${error.message}`;
+    result.result = `失败: ${error.message}`;
     result.success = false;
   }
   
   return result;
+}
+
+/**
+ * 从页面提取搜索结果
+ */
+async function extractSearchResults() {
+  return await page.evaluate(() => {
+    const results = [];
+    
+    // B站视频卡片
+    const biliCards = document.querySelectorAll('.bili-video-card');
+    biliCards.forEach((item, i) => {
+      if (i >= 5) return;
+      
+      const linkEl = item.querySelector('a[href*="video"]');
+      const titleEl = item.querySelector('.bili-video-card__info--tit');
+      
+      if (linkEl && titleEl) {
+        const title = titleEl.textContent.trim().slice(0, 100);
+        const link = linkEl.href;
+        if (title && link) {
+          results.push({ title, link });
+        }
+      }
+    });
+    
+    if (results.length > 0) return results;
+    
+    // 通用选择器
+    const selectors = [
+      '.video-list-item',
+      '.search-result-item',
+      '[class*="video"]',
+      '[class*="note"]',
+      '[class*="item"]'
+    ];
+    
+    for (const sel of selectors) {
+      const items = document.querySelectorAll(sel);
+      if (items.length > 0) {
+        items.forEach((item, i) => {
+          if (i >= 5) return;
+          
+          const linkEl = item.querySelector('a[href*="video"]') || 
+                         item.querySelector('a') ||
+                         item.querySelector('[href]');
+          const titleEl = item.querySelector('[class*="title"]') ||
+                          item.querySelector('h3') ||
+                          item.querySelector('h4') ||
+                          item;
+          
+          if (linkEl && titleEl) {
+            const title = titleEl.textContent.trim().slice(0, 100);
+            const link = linkEl.href;
+            
+            if (title && link && !link.includes('javascript:')) {
+              results.push({ title, link });
+            }
+          }
+        });
+        
+        if (results.length > 0) break;
+      }
+    }
+    
+    return results;
+  });
 }
 
 /**
@@ -350,13 +401,26 @@ async function execute() {
         done = true;
       }
       
-      if (result.data) {
-        extractedData = result.data;
+      // 如果是extract或done操作，从页面提取真实数据
+      if (action.action === 'extract' || action.action === 'done') {
+        const pageResults = await extractSearchResults();
+        if (pageResults.length > 0) {
+          extractedData = {
+            results: pageResults,
+            firstVideo: pageResults[0]
+          };
+        }
       }
-      
-      // 如果是extract操作，继续让LLM判断是否完成
-      if (action.action === 'extract' && !action.done) {
-        // 继续循环
+    }
+    
+    // 如果没有提取到数据，尝试自动提取
+    if (!extractedData) {
+      const pageResults = await extractSearchResults();
+      if (pageResults.length > 0) {
+        extractedData = {
+          results: pageResults,
+          firstVideo: pageResults[0]
+        };
       }
     }
     
