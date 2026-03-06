@@ -93,13 +93,9 @@ export class ExperienceStore {
    */
   async save(experience: ExecutionExperience): Promise<string> {
     try {
-      // 生成向量嵌入
-      let embedding: number[] | undefined;
-      try {
-        embedding = await this.llm.embed(experience.userInput);
-      } catch (e) {
-        logger.warn('[经验存储器] 生成嵌入失败，继续存储');
-      }
+      // ═══════════════════════════════════════════════════════════════
+      // 优化：跳过嵌入生成（因为不支持），直接存储
+      // ═══════════════════════════════════════════════════════════════
       
       this.db.run(`
         INSERT OR REPLACE INTO execution_experiences (
@@ -111,7 +107,7 @@ export class ExperienceStore {
         experience.id,
         experience.userInput,
         experience.intent || '',
-        embedding ? JSON.stringify(embedding) : null,
+        null, // 跳过嵌入
         experience.tool,
         JSON.stringify(experience.params),
         experience.result,
@@ -151,13 +147,9 @@ export class ExperienceStore {
     } = options;
     
     try {
-      // 生成查询向量
-      let queryEmbedding: number[] | undefined;
-      try {
-        queryEmbedding = await this.llm.embed(userInput);
-      } catch (e) {
-        logger.warn('[经验存储器] 生成查询嵌入失败，使用关键词搜索');
-      }
+      // ═══════════════════════════════════════════════════════════════
+      // 优化：直接使用关键词搜索，跳过嵌入生成（因为不支持）
+      // ═══════════════════════════════════════════════════════════════
       
       // 构建查询
       let sql = `SELECT * FROM execution_experiences WHERE 1=1`;
@@ -187,16 +179,8 @@ export class ExperienceStore {
       
       for (const row of rows) {
         const experience = this.rowToExperience(row);
-        let similarity = 0;
-        
-        if (queryEmbedding && row.embedding) {
-          // 向量相似度
-          const storedEmbedding = JSON.parse(row.embedding as string);
-          similarity = this.cosineSimilarity(queryEmbedding, storedEmbedding);
-        } else {
-          // 关键词相似度
-          similarity = this.keywordSimilarity(userInput, experience.userInput);
-        }
+        // 直接使用关键词相似度（跳过嵌入）
+        const similarity = this.keywordSimilarity(userInput, experience.userInput);
         
         if (similarity >= minSimilarity) {
           matches.push({

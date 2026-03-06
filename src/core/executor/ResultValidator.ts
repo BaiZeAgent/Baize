@@ -64,15 +64,19 @@ export class ResultValidator {
     criterion: SuccessCriterion,
     goal: GoalDefinition
   ): Promise<ValidationResult> {
+    // ═══════════════════════════════════════════════════════════════
+    // 优化：默认使用自动验证，避免 LLM 调用
+    // ═══════════════════════════════════════════════════════════════
     switch (criterion.verificationMethod) {
       case 'automatic':
         return this.automaticValidation(output, criterion, goal);
-      case 'llm_check':
-        return this.llmValidation(output, criterion, goal);
       case 'user_confirm':
         return this.userConfirmValidation(output, criterion);
+      case 'llm_check':
+        // LLM 验证改为自动验证（节省调用）
+        return this.automaticValidation(output, criterion, goal);
       default:
-        return this.llmValidation(output, criterion, goal);
+        return this.automaticValidation(output, criterion, goal);
     }
   }
   

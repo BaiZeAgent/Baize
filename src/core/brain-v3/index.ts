@@ -683,6 +683,14 @@ ${this.skillRegistry.getAll().map(s => `- ${s.name}: ${s.description}`).join('\n
   }
   
   private reflectAsync(userInput: string, startTime: number): void {
+    // ═══════════════════════════════════════════════════════════════
+    // 优化：禁用异步反思（节省 LLM 调用）
+    // 如需启用，可设置环境变量 BAIZE_ENABLE_REFLECTION=true
+    // ═══════════════════════════════════════════════════════════════
+    if (process.env.BAIZE_ENABLE_REFLECTION !== 'true') {
+      return;
+    }
+    
     setTimeout(async () => {
       try {
         const duration = Date.now() - startTime;
