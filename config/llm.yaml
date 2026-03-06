@@ -1,6 +1,6 @@
 # 白泽3.0 LLM配置
 
-default: "aliyun"
+default: "ollama"
 
 providers:
   aliyun:
@@ -32,6 +32,6 @@ providers:
 
 strategy:
   taskMapping:
-    thinking: "aliyun"
+    thinking: "ollama"
     simple: "ollama"
-    fallback: "zhipu"
+    fallback: "ollama"

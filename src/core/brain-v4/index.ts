@@ -416,8 +416,35 @@ ${toolDesc}
       return response.content;
     } catch (error) {
       logger.error(`[V4] LLM调用失败: ${error}`);
-      return '抱歉，我暂时无法处理这个请求。';
+      
+      // 降级处理：使用预设响应
+      return this.getFallbackResponse(userInput);
     }
+  }
+  
+  /**
+   * 降级响应（当LLM不可用时）
+   */
+  private getFallbackResponse(userInput: string): string {
+    const lower = userInput.toLowerCase();
+    
+    // 问候
+    if (lower.includes('你好') || lower.includes('hi') || lower.includes('hello')) {
+      return '你好！我是白泽，很高兴见到你。不过我现在连接不到语言模型，请检查配置。';
+    }
+    
+    // 感谢
+    if (lower.includes('谢谢') || lower.includes('thanks')) {
+      return '不客气！有什么我可以帮你的吗？';
+    }
+    
+    // 帮助
+    if (lower.includes('help') || lower.includes('帮助')) {
+      return '我可以帮你：\n1. 查询天气\n2. 操作文件\n3. 搜索信息\n4. 回答问题\n\n不过我现在连接不到语言模型，请检查配置。';
+    }
+    
+    // 默认
+    return '抱歉，我现在连接不到语言模型。请检查：\n1. Ollama 是否运行（ollama serve）\n2. 或设置 API Key（ALIYUN_API_KEY / ZHIPU_API_KEY）';
   }
   
   /**

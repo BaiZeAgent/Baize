@@ -1,10 +1,11 @@
 /**
- * CLI交互模块 - V4 版本
+ * CLI交互模块 - V3 版本
  * 
- * 使用简化大脑 V4：
- * - 快速分类
- * - 最小化LLM调用
- * - 高响应速度
+ * 使用统一大脑 V3：
+ * - 智能路由器
+ * - 任务规划器
+ * - 增强记忆
+ * - 元认知引擎
  */
 
 import * as readline from 'readline';
@@ -27,11 +28,14 @@ for (const envPath of envPaths) {
   }
 }
 
-import { getBrainV4 } from '../core/brain-v4';
+import { getBrainV3 } from '../core/brain-v3';
+import { getEnhancedMemory } from '../memory/v3';
 import { getLLMManager } from '../llm';
 import { getLogger } from '../observability/logger';
 import { initDatabase } from '../memory/database';
+import { SkillLoader } from '../skills/loader';
 import { getSkillRegistry } from '../skills/registry';
+import { registerBuiltinSkills } from '../skills/builtins';
 import { StreamEvent } from '../types/stream';
 
 const logger = getLogger('cli');
@@ -44,6 +48,15 @@ async function initialize(): Promise<void> {
   try {
     await initDatabase();
     getLLMManager();
+    registerBuiltinSkills();
+
+    const loader = new SkillLoader();
+    const skills = await loader.loadAll();
+    const registry = getSkillRegistry();
+    for (const skill of skills) {
+      registry.register(skill);
+    }
+
     initialized = true;
   } catch (error) {
     console.error(chalk.red(`初始化失败: ${error}`));
@@ -57,20 +70,25 @@ async function initialize(): Promise<void> {
 export async function startInteractive(): Promise<void> {
   await initialize();
 
-  const brain = getBrainV4();
+  const brain = getBrainV3();
+  const memory = getEnhancedMemory();
   const llmManager = getLLMManager();
 
-  console.log(chalk.green('\n🦌 白泽 V4 已启动'));
-  console.log(chalk.gray('使用简化大脑 V4 架构'));
+  console.log(chalk.green('\n🦌 白泽 V3 已启动'));
+  console.log(chalk.gray('使用统一大脑 V3 架构'));
   console.log(chalk.gray('输入 "exit" 退出，输入 "help" 查看帮助\n'));
 
   const providers = llmManager.getAvailableProviders();
-  console.log(chalk.gray(`可用LLM提供商: ${providers.join(', ')}\n`));
+  const registry = getSkillRegistry();
+  const skills = registry.getAll();
+
+  console.log(chalk.gray(`可用LLM提供商: ${providers.join(', ')}`));
+  console.log(chalk.gray(`已加载技能: ${skills.map(s => s.name).join(', ')}\n`));
 
   // 检查是否是 TTY（真正的交互式终端）
   if (!process.stdin.isTTY) {
     // 非交互模式：从 stdin 读取所有行
-    await runNonInteractiveMode(brain);
+    await runNonInteractiveMode(brain, memory);
     return;
   }
 
@@ -82,7 +100,7 @@ export async function startInteractive(): Promise<void> {
 
   const askQuestion = (): void => {
     rl.question(chalk.cyan('你: '), async (input) => {
-      await handleInput(input.trim(), brain, rl);
+      await handleInput(input.trim(), brain, memory, rl);
       
       // 检查是否应该继续
       if (input.trim().toLowerCase() !== 'exit' && input.trim().toLowerCase() !== 'quit') {
@@ -97,7 +115,7 @@ export async function startInteractive(): Promise<void> {
 /**
  * 非交互模式（处理管道输入）
  */
-async function runNonInteractiveMode(brain: any): Promise<void> {
+async function runNonInteractiveMode(brain: any, memory: any): Promise<void> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -115,7 +133,7 @@ async function runNonInteractiveMode(brain: any): Promise<void> {
     const trimmed = line.trim();
     if (!trimmed || trimmed.toLowerCase() === 'exit') continue;
     
-    await handleInput(trimmed, brain, null);
+    await handleInput(trimmed, brain, memory, null);
   }
 
   process.exit(0);
@@ -127,6 +145,7 @@ async function runNonInteractiveMode(brain: any): Promise<void> {
 async function handleInput(
   input: string,
   brain: any,
+  memory: any,
   rl: readline.Interface | null
 ): Promise<void> {
   if (!input) return;
@@ -151,14 +170,30 @@ async function handleInput(
     return;
   }
 
-  try {
+  // 自我评估命令
+  if (input.toLowerCase() === 'self' || input.toLowerCase() === 'assess') {
+    const assessment = await brain.getSelfAssessment();
+    console.log(chalk.cyan('\n【自我评估】'));
+    console.log(chalk.gray(assessment));
     console.log();
+    return;
+  }
+
+  try {
+    memory.recordEvent('user_input', input);
+
+    console.log();
+    let thinkingShown = false;
     let contentStarted = false;
     let fullContent = '';
 
     for await (const event of brain.processStream(input, 'cli-session')) {
       switch (event.type) {
         case 'thinking':
+          if (!thinkingShown) {
+            console.log(chalk.gray('【思考过程】'));
+            thinkingShown = true;
+          }
           const thinkingData = event.data as any;
           console.log(chalk.gray(`  → [${thinkingData.stage}] ${thinkingData.message}`));
           break;
@@ -180,6 +215,7 @@ async function handleInput(
 
         case 'content':
           if (!contentStarted) {
+            console.log();
             process.stdout.write(chalk.cyan('白泽: '));
             contentStarted = true;
           }
@@ -201,7 +237,16 @@ async function handleInput(
           const errorData = event.data as any;
           console.log(chalk.red(`错误: ${errorData.message}`));
           break;
+          
+        case 'strategy_adjust':
+          const strategyData = event.data as any;
+          console.log(chalk.yellow(`  ⚡ 策略调整: ${strategyData.message}`));
+          break;
       }
+    }
+
+    if (fullContent) {
+      memory.recordEvent('assistant_reply', fullContent);
     }
 
     console.log();
@@ -218,10 +263,16 @@ async function handleInput(
 function showStats(brain: any): void {
   console.log(chalk.cyan('\n【系统状态】'));
   
-  const stats = brain.getStats();
-  console.log(chalk.gray(`技能数量: ${stats.skillsCount}`));
-  console.log(chalk.gray(`工具数量: ${stats.toolsCount}`));
-  console.log(chalk.gray(`对话历史: ${stats.historyLength} 条`));
+  const routerStats = brain.getRouterStats();
+  console.log(chalk.gray(`路由统计:`));
+  console.log(chalk.gray(`  总路由次数: ${routerStats.totalRoutings}`));
+  console.log(chalk.gray(`  成功率: ${(routerStats.successRate * 100).toFixed(1)}%`));
+  
+  const memoryStats = brain.getMemoryStats();
+  console.log(chalk.gray(`\n记忆统计:`));
+  console.log(chalk.gray(`  事件数: ${memoryStats.eventsCount}`));
+  console.log(chalk.gray(`  学习记录: ${memoryStats.learningRecords}`));
+  console.log(chalk.gray(`  偏好数: ${memoryStats.preferencesCount}`));
   
   console.log();
 }
@@ -232,21 +283,28 @@ function showStats(brain: any): void {
 export async function chatOnce(message: string): Promise<void> {
   await initialize();
 
-  const brain = getBrainV4();
+  const brain = getBrainV3();
+  const memory = getEnhancedMemory();
 
   try {
+    let thinkingShown = false;
     let contentStarted = false;
     let fullContent = '';
 
     for await (const event of brain.processStream(message, 'cli-once')) {
       switch (event.type) {
         case 'thinking':
+          if (!thinkingShown) {
+            console.log(chalk.gray('\n【思考过程】'));
+            thinkingShown = true;
+          }
           const thinkingData = event.data as any;
           console.log(chalk.gray(`  → [${thinkingData.stage}] ${thinkingData.message}`));
           break;
 
         case 'content':
           if (!contentStarted) {
+            console.log();
             process.stdout.write(chalk.cyan('白泽: '));
             contentStarted = true;
           }
@@ -269,6 +327,10 @@ export async function chatOnce(message: string): Promise<void> {
       }
     }
 
+    if (fullContent) {
+      memory.recordEvent('assistant_reply', fullContent);
+    }
+
   } catch (error) {
     console.error(chalk.red(`错误: ${error}`));
     process.exit(1);
@@ -282,10 +344,18 @@ export async function runTests(): Promise<void> {
   await initialize();
 
   console.log(chalk.cyan('\n═══════════════════════════════════════════════════════════════'));
-  console.log(chalk.cyan('           白泽 V4 功能测试'));
+  console.log(chalk.cyan('           白泽 V3 功能测试'));
   console.log(chalk.cyan('═══════════════════════════════════════════════════════════════\n'));
 
   const tests = [
+    {
+      name: '数据库',
+      run: async () => {
+        const db = require('../memory/database').getDatabase();
+        const tables = db.all("SELECT name FROM sqlite_master WHERE type='table'");
+        return `表: ${tables.map((t: any) => t.name).join(', ')}`;
+      },
+    },
     {
       name: 'LLM连接',
       run: async () => {
@@ -295,20 +365,38 @@ export async function runTests(): Promise<void> {
       },
     },
     {
-      name: '简单问候',
+      name: '技能系统',
       run: async () => {
-        const b = getBrainV4();
-        const result = await b.process('你好');
-        return `响应: ${result.response.slice(0, 30)}...`;
+        const registry = getSkillRegistry();
+        const skills = registry.getAll();
+        return `技能: ${skills.map(s => s.name).join(', ')}`;
       },
     },
     {
-      name: '响应速度',
+      name: '增强记忆',
       run: async () => {
-        const b = getBrainV4();
-        const start = Date.now();
-        await b.process('hi');
-        return `耗时: ${Date.now() - start}ms`;
+        const mem = getEnhancedMemory();
+        mem.recordEvent('test', '测试记忆');
+        return '正常';
+      },
+    },
+    {
+      name: '统一大脑V3',
+      run: async () => {
+        const b = getBrainV3();
+        const result = await b.process('你好');
+        return `成功: ${result.success}, 置信度: ${result.confidence.toFixed(2)}`;
+      },
+    },
+    {
+      name: '流式处理',
+      run: async () => {
+        const b = getBrainV3();
+        let count = 0;
+        for await (const _ of b.processStream('你好', 'test')) {
+          count++;
+        }
+        return `事件数: ${count}`;
       },
     },
   ];
@@ -393,7 +481,7 @@ async function listSkills(): Promise<void> {
 }
 
 function showHelp(): void {
-  console.log(chalk.cyan('\n白泽 V4 命令行工具'));
+  console.log(chalk.cyan('\n白泽 V3 命令行工具'));
   console.log(chalk.gray('\n用法:'));
   console.log(chalk.gray('  baize                    启动交互模式'));
   console.log(chalk.gray('  baize start              启动交互模式'));
@@ -405,6 +493,7 @@ function showHelp(): void {
   console.log(chalk.gray('交互模式命令:'));
   console.log(chalk.gray('  help      显示帮助'));
   console.log(chalk.gray('  status    显示系统状态'));
+  console.log(chalk.gray('  self      自我评估'));
   console.log(chalk.gray('  exit      退出'));
   console.log();
 }
