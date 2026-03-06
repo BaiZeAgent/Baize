@@ -60,6 +60,15 @@ export class GoalDefiner {
    * 分析任务
    */
   async analyzeTask(userInput: string): Promise<TaskAnalysis> {
+    // ═══════════════════════════════════════════════════════════════
+    // 快速路径：简单问候/闲聊直接返回，不调用 LLM
+    // ═══════════════════════════════════════════════════════════════
+    const quickAnalysis = this.quickAnalyze(userInput);
+    if (quickAnalysis) {
+      logger.info(`[目标定义器] 快速路径: ${quickAnalysis.taskType}`);
+      return quickAnalysis;
+    }
+    
     // 查询相似经验
     const similarExperiences = await this.experienceStore.findSimilar(userInput, {
       limit: 5,
@@ -90,6 +99,105 @@ export class GoalDefiner {
       similarExperiences,
       riskLevel,
     };
+  }
+  
+  /**
+   * 快速分析 - 对于简单输入跳过 LLM 调用
+   * 返回 null 表示需要完整分析
+   */
+  private quickAnalyze(userInput: string): TaskAnalysis | null {
+    const input = userInput.trim().toLowerCase();
+    const len = input.length;
+    
+    // 简单问候（长度短且是问候语）
+    const greetings = ['你好', '您好', 'hi', 'hello', 'hey', '嗨', '哈喽', '早上好', '下午好', '晚上好', '再见', '拜拜', 'bye'];
+    if (len <= 20 && greetings.some(g => input.includes(g))) {
+      return {
+        userInput,
+        features: {
+          requiresMultipleSteps: false,
+          involvesExternalSystem: false,
+          requiresObservation: false,
+          hasTimeDependency: false,
+          hasConditionalBranches: false,
+          requiresPrecision: false,
+          involvesBrowser: false,
+          involvesFileSystem: false,
+          involvesNetwork: false,
+        },
+        complexity: 'simple',
+        taskType: 'greeting',
+        successCriteria: [{
+          id: 'criterion_1',
+          description: '友好地回应用户问候',
+          priority: 'required',
+          verificationMethod: 'automatic',
+        }],
+        similarExperiences: [],
+        riskLevel: 'low',
+      };
+    }
+    
+    // 简单感谢
+    const thanks = ['谢谢', '感谢', 'thanks', 'thank you', '多谢'];
+    if (len <= 20 && thanks.some(t => input.includes(t))) {
+      return {
+        userInput,
+        features: {
+          requiresMultipleSteps: false,
+          involvesExternalSystem: false,
+          requiresObservation: false,
+          hasTimeDependency: false,
+          hasConditionalBranches: false,
+          requiresPrecision: false,
+          involvesBrowser: false,
+          involvesFileSystem: false,
+          involvesNetwork: false,
+        },
+        complexity: 'simple',
+        taskType: 'thanks',
+        successCriteria: [{
+          id: 'criterion_1',
+          description: '礼貌地回应感谢',
+          priority: 'required',
+          verificationMethod: 'automatic',
+        }],
+        similarExperiences: [],
+        riskLevel: 'low',
+      };
+    }
+    
+    // 简单闲聊（短句且不含任务关键词）
+    const taskKeywords = ['帮我', '请', '执行', '运行', '读取', '写入', '创建', '删除', '搜索', '查找', '打开', '关闭', '点击', '下载', '上传', '计算', '分析'];
+    if (len <= 15 && !taskKeywords.some(k => input.includes(k))) {
+      return {
+        userInput,
+        features: {
+          requiresMultipleSteps: false,
+          involvesExternalSystem: false,
+          requiresObservation: false,
+          hasTimeDependency: false,
+          hasConditionalBranches: false,
+          requiresPrecision: false,
+          involvesBrowser: false,
+          involvesFileSystem: false,
+          involvesNetwork: false,
+        },
+        complexity: 'simple',
+        taskType: 'chat',
+        successCriteria: [{
+          id: 'criterion_1',
+          description: '自然地回复用户',
+          priority: 'required',
+          verificationMethod: 'automatic',
+        }],
+        similarExperiences: [],
+        riskLevel: 'low',
+      };
+    }
+    
+    // 需要完整分析
+    return null;
   }
   
   /**

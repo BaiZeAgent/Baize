@@ -273,6 +273,27 @@ export class UnifiedExecutor {
         data: { stage: 'strategy_selected' as any, message: `策略: ${strategy.type}` }
       };
       
+      // ═══════════════════════════════════════════════════════════════
+      // 对于 direct 策略或简单任务类型，直接用 LLM 回复，不调用工具
+      // ═══════════════════════════════════════════════════════════════
+      if (strategy.type === 'direct' || ['greeting', 'thanks', 'chat'].includes(analysis.taskType)) {
+        const response = await this.generateDirectResponse(userInput);
+        
+        yield {
+          type: 'content',
+          timestamp: Date.now(),
+          data: { text: response, isDelta: false }
+        };
+        
+        yield {
+          type: 'done',
+          timestamp: Date.now(),
+          data: { duration: Date.now() - startTime }
+        };
+        
+        return;
+      }
+      
       const plan = await this.generatePlan(userInput, analysis, strategy);
       
       yield {
@@ -648,6 +669,32 @@ ${experiencePrompt}
       } else {
         return `执行失败: ${output.error || '未知错误'}`;
       }
+    }
+  }
+  
+  /**
+   * 直接回复（不调用工具）
+   */
+  private async generateDirectResponse(userInput: string): Promise<string> {
+    try {
+      const response = await this.llm.chat([
+        { 
+          role: 'system', 
+          content: `你是白泽，一个友好、智能的助手。
+回答要自然、简洁，像朋友一样交流。
+如果是问候，友好地回应。
+如果是问题，尽力回答。`
+        },
+        { role: 'user', content: userInput }
+      ], { temperature: 0.7 });
+      
+      return response.content;
+    } catch (error) {
+      // 降级处理
+      if (userInput.includes('你好') || userInput.includes('hi') || userInput.includes('hello')) {
+        return '你好！有什么我可以帮助你的吗？';
+      }
+      return '抱歉，我暂时无法处理这个请求。';
     }
   }
   
